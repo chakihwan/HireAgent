@@ -74,6 +74,9 @@ docker compose up
 | [009](adr/009-jd-input-text-first.md) | 공고 입력은 텍스트 붙여넣기 우선 | 채택 |
 | [010](adr/010-dedicated-ollama-container.md) | HireAgent 전용 Ollama 컨테이너 분리 | 채택 |
 | [011](adr/011-llm-factory-registry-pattern.md) | LLM Factory 레지스트리 패턴 | 채택 |
+| [012](adr/012-sse-streaming-response.md) | 자소서 생성 응답은 SSE 스트리밍 | 채택 |
+| [013](adr/013-job-application-model.md) | JobApplication 모델로 자소서-공고 연결 | 채택 |
+| [014](adr/014-phase3-ollama-local-only.md) | Phase 3 Ollama는 로컬 전용 (서버 미배포) | 채택 |
 
 ---
 

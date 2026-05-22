@@ -234,8 +234,13 @@ export function EssayForm({ onSubmit }: { onSubmit: (item: EssayItem) => void })
 | 007 | 처음부터 Next.js (Jinja2 생략) | 채용 시장, AI 도구 친화, 마이그레이션 비용 |
 | 008 | 멀티 LLM 프로바이더 | 사용자 비용 컨트롤, 에이전트별 최적화 |
 | 009 | 공고 입력은 텍스트 우선 | IP 밴 방지 |
+| 010 | HireAgent 전용 Ollama 컨테이너 | 다른 프로젝트와 분리, docker-compose 통합 관리 |
+| 011 | LLM Factory 레지스트리 패턴 | 새 프로바이더 추가 시 한 줄 등록 |
+| 012 | 자소서 생성 응답은 SSE 스트리밍 | 60초+ 처리 시간, 단계별 진행률 표시 |
+| 013 | JobApplication 모델로 자소서-공고 연결 | 같은 회사 재지원, 합격 이력 단위 분석 |
+| 014 | Phase 3 Ollama는 로컬 전용 (서버 미배포) | GPU 비용 회피, 브라우저→로컬 직접 호출 |
 
-상세 내용: `docs/requirements.md` 섹션 10 참고
+상세 내용: `docs/adr/` 폴더 + `docs/architecture.md`
 
 ---
 
@@ -303,19 +308,44 @@ class CareerDocument(Base):
     indexed_at: Mapped[datetime]
 ```
 
-### EssayLibraryItem
+### JobApplication (ADR-013)
+지원 단위로 관리. 같은 회사 여러 번 지원 구분, 자소서 항목 묶음 관리.
+```python
+class JobApplication(Base):
+    __tablename__ = "job_applications"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[str] = mapped_column(index=True)
+    company: Mapped[str]
+    position: Mapped[str | None]
+    job_description: Mapped[str]                # 원본 공고 텍스트 보존
+    job_url: Mapped[str | None]
+    applied_at: Mapped[datetime | None]
+    status: Mapped[str] = mapped_column(default="draft")
+    # "draft" | "submitted" | "passed_doc" | "passed_interview" | "passed_final" | "rejected" | "withdrawn"
+    created_at: Mapped[datetime]
+```
+
+### EssayLibraryItem (ADR-013 적용)
+자소서 항목 단위. `application_id`로 지원과 연결 (NULL이면 자유 작성).
 ```python
 class EssayLibraryItem(Base):
     __tablename__ = "essay_library"
-    
+
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[str] = mapped_column(index=True)
-    category: Mapped[str]  # "자기소개", "지원동기" 등
+    application_id: Mapped[int | None] = mapped_column(
+        ForeignKey("job_applications.id"), index=True
+    )
+    category: Mapped[str]                       # "자기소개", "지원동기" 등
     content: Mapped[str]
     char_count: Mapped[int]
-    target_company: Mapped[str | None]
-    version: Mapped[int]
-    status: Mapped[str]  # "draft" | "submitted" | "passed_doc" | "passed_interview" | "passed_final" | "rejected"
+    char_target: Mapped[int]                    # 작성 시점 목표 글자수
+    tone: Mapped[str | None]
+    persona: Mapped[str | None]
+    version: Mapped[int] = mapped_column(default=1)
+    is_final: Mapped[bool] = mapped_column(default=False)
+    generation_metadata: Mapped[dict | None] = mapped_column(JSONB)
     created_at: Mapped[datetime]
 ```
 

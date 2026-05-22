@@ -14,6 +14,40 @@
 
 ---
 
+## [0.2.2] - 2026-05-22
+
+### 추가 (아키텍처 검토 반영)
+
+#### 유틸리티 구현
+- `backend/app/utils/char_counter.py` — Python `len()` 기반 한국어 글자수 검증
+  - `count_chars`, `validate_chars`, `diff_chars` (ADR-001 구현)
+- `backend/app/utils/crypto.py` — Fernet AES-256 암호화/복호화
+  - `encrypt_api_key`, `decrypt_api_key`, `mask_key` (CLAUDE.md 규칙 #2 구현)
+
+#### 신규 ADR
+- **ADR-012**: 자소서 생성 응답은 SSE 스트리밍 방식
+  - 60초+ 응답 시간 대응, Ollama pull과 동일 패턴 재사용
+- **ADR-013**: JobApplication 모델로 자소서-공고-합격이력 연결
+  - 같은 회사 재지원, 항목 묶음 관리, 합격 단위 분석 가능
+- **ADR-014**: Phase 3 Ollama는 사용자 로컬 전용 (서버 미배포)
+  - GPU 비용 회피, 브라우저 → 로컬 Ollama 직접 호출
+
+#### 문서 수정 (검토 결과 반영)
+- `docs/architecture.md` v0.1 → v0.2
+  - 파이프라인 다이어그램 수정: 항목별 완전 독립 병렬 플로우로 명확화
+  - Ollama 위치 다이어그램에서 분리 (외부 API ❌ → 로컬 Docker 컨테이너 ✅)
+  - SSE 스트리밍 데이터 흐름 추가
+  - LLM 테스트 엔드포인트 보안 경고 명시
+  - Phase 3 배포 다이어그램에 로컬 Ollama 분기 추가
+  - ADR 010~014 테이블 추가
+- `CLAUDE.md`
+  - ADR 요약 테이블에 010~014 추가
+  - 데이터 모델에 `JobApplication` 추가, `EssayLibraryItem`에 `application_id` 외래키
+- `docs/README.md` — ADR 인덱스 010~014 추가
+- `backend/app/api/v1/llm.py` — `/api/v1/llm/test` 에 개발용 임시 엔드포인트 경고 docstring
+
+---
+
 ## [0.2.1] - 2026-05-22
 
 ### 추가 (ADR 문서 체계 정립)
