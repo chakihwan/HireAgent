@@ -52,11 +52,28 @@ docker compose up
 
 ## 📖 문서
 
-- [요구사항 명세](docs/requirements.md)
-- [M1 실행 가이드](docs/M1_execution_guide.md)
-- [문서 인덱스](docs/README.md)
-- [Claude Code 컨텍스트](CLAUDE.md)
-- [변경 이력](docs/CHANGELOG.md)
+- [요구사항 명세](requirements.md)
+- [M1 실행 가이드](M1_execution_guide.md)
+- [변경 이력](CHANGELOG.md)
+- [Claude Code 컨텍스트](../CLAUDE.md) — 루트에 위치, Claude Code 자동 로드
+
+### Architecture Decision Records (ADR)
+
+주요 기술/설계 결정과 그 근거를 기록합니다.
+
+| ADR | 제목 | 상태 |
+|-----|------|------|
+| [001](adr/001-char-count-validation.md) | 글자수 검증은 Python `len()` 사용 (LLM 미사용) | 채택 |
+| [002](adr/002-no-auto-job-submit.md) | 채용 사이트 자동 입력 미지원 | 채택 |
+| [003](adr/003-multi-user-design-from-start.md) | 처음부터 멀티유저 설계 강제 (user_id) | 채택 |
+| [004](adr/004-pgvector-over-chroma.md) | pgvector 채택 (Chroma, Pinecone 대신) | 채택 |
+| [005](adr/005-korean-embeddings.md) | 한국어 특화 임베딩 모델 (BGE-M3 / KURE-v1) | 채택 |
+| [006](adr/006-langgraph-orchestration.md) | LangGraph 멀티에이전트 오케스트레이션 채택 | 채택 |
+| [007](adr/007-nextjs-from-start.md) | 처음부터 Next.js 채택 (Jinja2 단계 생략) | 채택 |
+| [008](adr/008-multi-llm-provider.md) | 멀티 LLM 프로바이더 지원 | 채택 |
+| [009](adr/009-jd-input-text-first.md) | 공고 입력은 텍스트 붙여넣기 우선 | 채택 |
+| [010](adr/010-dedicated-ollama-container.md) | HireAgent 전용 Ollama 컨테이너 분리 | 채택 |
+| [011](adr/011-llm-factory-registry-pattern.md) | LLM Factory 레지스트리 패턴 | 채택 |
 
 ---
 

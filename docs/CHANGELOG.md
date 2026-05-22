@@ -14,6 +14,28 @@
 
 ---
 
+## [0.2.1] - 2026-05-22
+
+### 추가 (ADR 문서 체계 정립)
+- `docs/adr/` 디렉토리에 ADR 002~011 작성 (표준 Nygard ADR 형식)
+  - 002: 채용 사이트 자동 입력 미지원
+  - 003: 처음부터 멀티유저 설계 강제
+  - 004: pgvector 채택 (Chroma 대신)
+  - 005: 한국어 특화 임베딩 (BGE-M3/KURE-v1)
+  - 006: LangGraph 멀티에이전트 오케스트레이션
+  - 007: 처음부터 Next.js (Jinja2 생략)
+  - 008: 멀티 LLM 프로바이더 지원
+  - 009: 공고 입력 텍스트 우선
+  - 010: HireAgent 전용 Ollama 컨테이너 분리
+  - 011: LLM Factory 레지스트리 패턴
+- `docs/README.md`에 ADR 인덱스 테이블 추가
+
+### 변경
+- `docs/CLAUDE.md` → `CLAUDE.md` (루트로 이동)
+  - Claude Code는 루트의 CLAUDE.md를 자동 로드함
+
+---
+
 ## [0.2.0] - 2026-05-22
 
 ### 추가 (M1 Day 3-4: LLM Factory + Ollama 독립 컨테이너)
