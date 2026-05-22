@@ -16,6 +16,20 @@ services:
       timeout: 5s
       retries: 5
 
+  ollama:
+    image: ollama/ollama
+    container_name: hireagent-ollama
+    ports:
+      - "11435:11434"          # 11434는 다른 프로젝트 컨테이너가 선점, 11435 사용
+    volumes:
+      - ${HOME}/.ollama:/root/.ollama   # WSL2 기존 모델 재사용 (재다운로드 불필요)
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
   backend:
     build:
       context: ./backend
@@ -26,14 +40,14 @@ services:
     environment:
       DATABASE_URL: postgresql://hireagent:${POSTGRES_PASSWORD:-changeme}@postgres:5432/hireagent
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change-me-in-production}
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_BASE_URL: http://ollama:11434    # Docker 내부 네트워크로 직접 연결
     volumes:
       - ./backend:/app
     depends_on:
       postgres:
         condition: service_healthy
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      ollama:
+        condition: service_healthy
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   # frontend: Day 5-7에 활성화
@@ -45,7 +59,7 @@ services:
   #   ports:
   #     - "3000:3000"
   #   environment:
-  #     NEXT_PUBLIC_API_URL: http://localhost:8000
+  #     NEXT_PUBLIC_API_URL: http://localhost:8080
   #   volumes:
   #     - ./frontend:/app
   #     - /app/node_modules

@@ -10,8 +10,48 @@
 ## [Unreleased]
 
 ### 계획 중
-- LLM Factory 구현 (M1, Day 3-4)
 - Next.js 초기화 + shadcn/ui (M1, Day 5-7)
+
+---
+
+## [0.2.0] - 2026-05-22
+
+### 추가 (M1 Day 3-4: LLM Factory + Ollama 독립 컨테이너)
+
+#### LLM Factory
+- `backend/app/llm/base.py` — `LLMProvider` 추상 베이스 클래스, `LLMResponse` 데이터 클래스
+- `backend/app/llm/providers/anthropic.py` — Claude (Opus/Sonnet/Haiku) 프로바이더
+- `backend/app/llm/providers/ollama.py` — Ollama 로컬 LLM 프로바이더 (스트리밍 포함)
+- `backend/app/llm/providers/openai.py` — OpenAI 스텁 (M2 구현 예정)
+- `backend/app/llm/providers/google.py` — Google Gemini 스텁 (M2 구현 예정)
+- `backend/app/llm/factory.py` — 레지스트리 패턴 팩토리 (`_REGISTRY` 딕셔너리에 등록만 하면 됨)
+
+#### API 엔드포인트
+- `POST /api/v1/llm/test` — LLM 호출 테스트 (provider/model/api_key/prompt 파라미터)
+- `GET /api/v1/llm/providers` — 지원 프로바이더 목록
+- `GET /api/v1/ollama/models` — 설치된 Ollama 모델 목록
+- `POST /api/v1/ollama/pull` — 모델 pull (SSE 스트리밍으로 진행률 전달)
+- `DELETE /api/v1/ollama/models/{name}` — 모델 삭제
+
+#### Ollama 독립 컨테이너
+- `docker-compose.yml`에 `hireagent-ollama` 서비스 추가
+  - 포트: 11435 (기존 프로젝트 11434와 충돌 없음)
+  - `${HOME}/.ollama` 볼륨 마운트로 기존 모델 재사용 + 영구 저장
+  - 백엔드는 내부 네트워크 `http://ollama:11434`로 직접 연결
+- `scripts/pull-models.sh` — 모델 pull/list/delete 편의 스크립트
+
+#### 설치된 모델
+- `exaone3.5:7.8b` — 한국어 특화, 자소서 작성 에이전트 추천
+- `gemma4:e2b` — 경량 모델, 평가/압축 에이전트용
+- `deepseek-r1:7b` — 추론 특화, 평가 에이전트용
+
+### 완료 기준 달성
+- `GET /api/v1/ollama/models` → 3개 모델 정상 반환
+- `POST /api/v1/llm/test` (Ollama, exaone3.5:7.8b) → 한국어 응답 정상
+
+### 아키텍처 결정
+- Ollama는 HireAgent 전용 컨테이너로 완전 분리 (다른 프로젝트 컨테이너 의존 없음)
+- 새 LLM 프로바이더 추가: `providers/` 파일 추가 → `factory.py` `_REGISTRY` 등록 끝
 
 ---
 
