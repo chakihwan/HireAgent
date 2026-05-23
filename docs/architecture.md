@@ -177,7 +177,16 @@ class EssayState(TypedDict):
 7. [Frontend] EventSource로 수신하면서 단계별 UI 업데이트
 ```
 
-### 3.2 RAG 데이터 인덱싱 시
+### 3.2 데이터 모델 (ERD)
+
+전체 테이블 구조와 관계는 **[ERD 문서](erd.md)** 참고. M2 시점 4개 테이블:
+
+- `job_applications` ─┐
+- `essay_library`     ┘ 1:N FK (ADR-013)
+- `career_documents` (RAG, pgvector 1024-dim)
+- `user_llm_configs` (Fernet 암호화 API 키)
+
+### 3.3 RAG 데이터 인덱싱 시
 
 ```
 1. [Frontend] 이력서 PDF 업로드 또는 GitHub URL 입력

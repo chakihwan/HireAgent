@@ -53,6 +53,8 @@ docker compose up
 ## 📖 문서
 
 - [요구사항 명세](requirements.md)
+- [시스템 아키텍처](architecture.md)
+- [데이터 모델 ERD](erd.md)
 - [M1 실행 가이드](M1_execution_guide.md)
 - [변경 이력](CHANGELOG.md)
 - [Claude Code 컨텍스트](../CLAUDE.md) — 루트에 위치, Claude Code 자동 로드
