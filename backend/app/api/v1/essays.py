@@ -1,13 +1,17 @@
 import json
 from collections.abc import AsyncGenerator
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.orchestrator import essay_graph
 from app.agents.state import EssayItem, EssayState
 from app.config import settings
+from app.db import get_db
 from app.schemas.essay import DraftResult, EssayGenerateRequest, EssayGenerateResponse
+from app.schemas.library import EssayLibraryCreate
+from app.services import library as lib_svc
 
 router = APIRouter(prefix="/essays", tags=["essays"])
 
@@ -35,7 +39,12 @@ def _build_agent_config(req: EssayGenerateRequest) -> dict:
     return config
 
 
-async def _stream_generation(req: EssayGenerateRequest) -> AsyncGenerator[str, None]:
+async def _stream_generation(
+    req: EssayGenerateRequest,
+    save: bool = False,
+    application_id: int | None = None,
+    db: AsyncSession | None = None,
+) -> AsyncGenerator[str, None]:
     agent_config = _build_agent_config(req)
     items: list[EssayItem] = [
         EssayItem(
@@ -90,7 +99,32 @@ async def _stream_generation(req: EssayGenerateRequest) -> AsyncGenerator[str, N
         )
         for d in accumulated_drafts
     ]
-    yield _sse("done", EssayGenerateResponse(drafts=drafts, progress=accumulated_progress).model_dump())
+
+    saved_ids: list[int] = []
+    if save and db is not None:
+        for draft in drafts:
+            item = await lib_svc.save_essay(
+                db,
+                EssayLibraryCreate(
+                    application_id=application_id,
+                    category=draft.category,
+                    content=draft.content,
+                    char_target=draft.char_target,
+                    generation_metadata={
+                        "evaluation_score": draft.evaluation_score,
+                        "evaluation_feedback": draft.evaluation_feedback,
+                        "iterations": draft.iteration,
+                        "agent_config": req.agent_config,
+                    },
+                ),
+                req.user_id,
+            )
+            saved_ids.append(item.id)
+
+    response_data = EssayGenerateResponse(drafts=drafts, progress=accumulated_progress).model_dump()
+    if saved_ids:
+        response_data["saved_ids"] = saved_ids
+    yield _sse("done", response_data)
 
 
 def _sse(event: str, data: dict) -> str:
@@ -98,13 +132,19 @@ def _sse(event: str, data: dict) -> str:
 
 
 @router.post("/generate")
-async def generate_essays(req: EssayGenerateRequest) -> StreamingResponse:
+async def generate_essays(
+    req: EssayGenerateRequest,
+    save: bool = False,
+    application_id: int | None = None,
+    db: AsyncSession = Depends(get_db),
+) -> StreamingResponse:
     """자소서 생성 (SSE 스트리밍).
 
     진행 단계별 event: start → progress → done (또는 error)
+    save=true 시 done 이벤트에서 라이브러리에 자동 저장.
     """
     return StreamingResponse(
-        _stream_generation(req),
+        _stream_generation(req, save=save, application_id=application_id, db=db),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

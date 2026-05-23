@@ -35,16 +35,16 @@ export default function RootLayout({
               HireAgent
             </Link>
             <nav className="flex items-center gap-4">
-              <Link
-                href="/generate"
-                className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors"
-              >
+              <Link href="/generate" className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors">
                 자소서 생성
               </Link>
-              <Link
-                href="/settings"
-                className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors"
-              >
+              <Link href="/library" className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors">
+                라이브러리
+              </Link>
+              <Link href="/jobs" className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors">
+                지원 관리
+              </Link>
+              <Link href="/settings" className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors">
                 설정
               </Link>
             </nav>

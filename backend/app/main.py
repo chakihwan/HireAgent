@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import essays, llm, ollama
+from app.api.v1 import essays, jobs, library, llm, ollama
 from app.config import settings
 
 app = FastAPI(
@@ -22,6 +22,8 @@ app.add_middleware(
 app.include_router(llm.router, prefix="/api/v1")
 app.include_router(ollama.router, prefix="/api/v1")
 app.include_router(essays.router, prefix="/api/v1")
+app.include_router(jobs.router, prefix="/api/v1")
+app.include_router(library.router, prefix="/api/v1")
 
 
 @app.get("/")

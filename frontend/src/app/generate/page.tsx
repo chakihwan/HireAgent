@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { generateEssays } from "@/lib/api";
+import { generateEssays, saveToLibrary } from "@/lib/api";
 import { loadSettings, buildAgentConfig } from "@/lib/settings-store";
 import type { DraftResult, EssayTone, EssayPersona, ItemConfig, SseDoneEvent } from "@/lib/types";
 
@@ -95,6 +95,8 @@ export default function GeneratePage() {
   const [results, setResults] = useState<DraftResult[]>([]);
   const [genError, setGenError] = useState<string | null>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
+  const [savedIds, setSavedIds] = useState<Record<string, number>>({});  // category → library id
+  const [saving, setSaving] = useState<Record<string, boolean>>({});
 
   // ── Derived ──────────────────────────────────────────────────────────────
 
@@ -465,13 +467,44 @@ export default function GeneratePage() {
                   <Badge variant="secondary">{draft.iteration}회 조정</Badge>
                 )}
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 {draft.evaluation_score !== null && (
                   <span className={`text-sm font-semibold ${scoreColor(draft.evaluation_score)}`}>
                     ★ {draft.evaluation_score.toFixed(1)}
                   </span>
                 )}
                 <CopyButton text={draft.content} />
+                {savedIds[draft.category] ? (
+                  <Badge variant="secondary" className="text-xs">저장됨</Badge>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={saving[draft.category]}
+                    onClick={async () => {
+                      setSaving((p) => ({ ...p, [draft.category]: true }));
+                      try {
+                        const item = await saveToLibrary({
+                          category: draft.category,
+                          content: draft.content,
+                          char_target: draft.char_target,
+                          generation_metadata: {
+                            evaluation_score: draft.evaluation_score,
+                            evaluation_feedback: draft.evaluation_feedback,
+                            iterations: draft.iteration,
+                          },
+                        });
+                        setSavedIds((p) => ({ ...p, [draft.category]: item.id }));
+                      } catch (e) {
+                        alert(e instanceof Error ? e.message : String(e));
+                      } finally {
+                        setSaving((p) => ({ ...p, [draft.category]: false }));
+                      }
+                    }}
+                  >
+                    {saving[draft.category] ? "저장 중..." : "저장"}
+                  </Button>
+                )}
               </div>
             </div>
           </CardHeader>

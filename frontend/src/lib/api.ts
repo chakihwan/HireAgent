@@ -78,6 +78,154 @@ export interface EssayGenerateResponse {
   progress: string[];
 }
 
+// ── Jobs (JobApplication) ─────────────────────────────────────────────────────
+
+export interface JobCreate {
+  company: string;
+  position?: string;
+  job_description: string;
+  job_url?: string;
+  deadline?: string;
+}
+
+export interface JobUpdate {
+  company?: string;
+  position?: string;
+  status?: string;
+  applied_at?: string;
+  result_notes?: string;
+}
+
+export interface JobResponse {
+  id: number;
+  user_id: string;
+  company: string;
+  position: string | null;
+  job_description: string;
+  job_url: string | null;
+  applied_at: string | null;
+  deadline: string | null;
+  status: string;
+  result_notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function createJob(data: JobCreate): Promise<JobResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/jobs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error((err as { detail?: string }).detail ?? res.statusText);
+  }
+  return res.json();
+}
+
+export async function listJobs(status?: string): Promise<JobResponse[]> {
+  const url = new URL(`${API_BASE}/api/v1/jobs`);
+  if (status) url.searchParams.set("status", status);
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();
+}
+
+export async function updateJob(id: number, data: JobUpdate): Promise<JobResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/jobs/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error((err as { detail?: string }).detail ?? res.statusText);
+  }
+  return res.json();
+}
+
+export async function deleteJob(id: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/v1/jobs/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(res.statusText);
+}
+
+// ── Library (EssayLibraryItem) ────────────────────────────────────────────────
+
+export interface LibraryItemCreate {
+  application_id?: number;
+  category: string;
+  content: string;
+  char_target: number;
+  tone?: string;
+  persona?: string;
+  is_final?: boolean;
+  generation_metadata?: Record<string, unknown>;
+}
+
+export interface LibraryItemResponse {
+  id: number;
+  user_id: string;
+  application_id: number | null;
+  category: string;
+  content: string;
+  char_count: number;
+  char_target: number;
+  tone: string | null;
+  persona: string | null;
+  version: number;
+  is_final: boolean;
+  generation_metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export async function saveToLibrary(data: LibraryItemCreate): Promise<LibraryItemResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/library`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error((err as { detail?: string }).detail ?? res.statusText);
+  }
+  return res.json();
+}
+
+export async function listLibrary(params?: {
+  application_id?: number;
+  category?: string;
+  is_final?: boolean;
+}): Promise<LibraryItemResponse[]> {
+  const url = new URL(`${API_BASE}/api/v1/library`);
+  if (params?.application_id != null) url.searchParams.set("application_id", String(params.application_id));
+  if (params?.category) url.searchParams.set("category", params.category);
+  if (params?.is_final != null) url.searchParams.set("is_final", String(params.is_final));
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();
+}
+
+export async function updateLibraryItem(
+  id: number,
+  data: { content?: string; is_final?: boolean },
+): Promise<LibraryItemResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/library/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();
+}
+
+export async function deleteLibraryItem(id: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/v1/library/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(res.statusText);
+}
+
+// ── Essay generation ──────────────────────────────────────────────────────────
+
 /**
  * Stream essay generation via SSE.
  * `onEvent` receives each parsed event; the promise resolves when the stream closes.
