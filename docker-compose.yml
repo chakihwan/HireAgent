@@ -23,6 +23,13 @@ services:
       - "11435:11434"          # 11434는 다른 프로젝트 컨테이너가 선점, 11435 사용
     volumes:
       - ${HOME}/.ollama:/root/.ollama   # WSL2 기존 모델 재사용 (재다운로드 불필요)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     healthcheck:
       test: ["CMD-SHELL", "ollama list"]
       interval: 10s
