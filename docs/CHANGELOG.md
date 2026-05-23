@@ -9,8 +9,33 @@
 
 ## [Unreleased]
 
-### 계획 중
-- Next.js 초기화 + shadcn/ui (M1, Day 5-7)
+---
+
+## [0.3.0] - 2026-05-24
+
+### 추가 (M1 Day 5-7: Next.js + shadcn/ui + LLM 테스트 페이지)
+
+#### 프론트엔드 초기화
+- `frontend/` — Next.js 16 + TypeScript + TailwindCSS v4 + App Router + Turbopack
+- `frontend/src/components/ui/` — shadcn/ui 컴포넌트: button, input, card, textarea
+- `frontend/src/lib/api.ts` — 백엔드 REST 클라이언트 (`getOllamaModels`, `testLLM`)
+- `frontend/src/app/page.tsx` — LLM 테스트 페이지
+  - Ollama 설치 모델 자동 로드 후 버튼으로 선택
+  - Anthropic 탭: API 키 입력 + 모델 선택 (haiku/sonnet/opus)
+  - 프롬프트 입력 → 백엔드 `/api/v1/llm/test` 호출 → 응답 표시 (토큰 수 포함)
+- `frontend/Dockerfile` — node:20-slim 기반 개발 서버
+- `frontend/.dockerignore`
+
+#### 백엔드 수정
+- `backend/app/schemas/llm.py` — `api_key` optional로 변경 (`str | None`, default=None)
+- `backend/app/api/v1/llm.py` — Ollama 호출 시 `api_key` 미전달이면 `settings.ollama_base_url` 자동 사용
+
+#### docker-compose.yml
+- `frontend` 서비스 활성화 (포트 3000, `NEXT_PUBLIC_API_URL=http://localhost:8080`)
+
+### M1 완료 기준 달성
+- `http://localhost:3000` → 테스트 페이지 렌더링
+- Ollama 탭 → 설치 모델 목록 표시 → 프롬프트 전송 → 한국어 응답
 
 ---
 

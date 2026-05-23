@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
+from app.config import settings
 from app.llm.factory import LLMFactory
 from app.schemas.llm import LLMTestRequest, LLMTestResponse, ProviderListResponse
 
@@ -23,8 +24,13 @@ async def test_llm(req: LLMTestRequest) -> LLMTestResponse:
 
     관련: CLAUDE.md 절대 규칙 #2, app/utils/crypto.py, docs/architecture.md §4.1
     """
+    # Ollama: api_key 생략 시 서버에 설정된 OLLAMA_BASE_URL 사용
+    api_key = req.api_key
+    if req.provider == "ollama" and not api_key:
+        api_key = settings.ollama_base_url
+
     try:
-        llm = LLMFactory.create(req.provider, req.model, req.api_key)
+        llm = LLMFactory.create(req.provider, req.model, api_key or "")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
