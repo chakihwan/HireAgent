@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { CheckCircle, XCircle, Loader2, Copy, Check, ChevronRight } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, Copy, Check, ChevronRight, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -192,6 +192,15 @@ export default function GeneratePage() {
               placeholder="채용 공고 전문을 붙여넣으세요 (최소 50자)..."
               className="resize-none font-mono text-sm"
             />
+            {/^https?:\/\//i.test(jd.trim()) && (
+              <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                <AlertTriangle className="size-4 text-amber-500 mt-0.5 shrink-0" />
+                <div className="text-xs text-amber-700 leading-relaxed">
+                  <strong>URL은 지원하지 않습니다.</strong> 공고 페이지를 열고 텍스트를 전체 선택(Ctrl+A)한 뒤 붙여넣으세요.
+                  URL만 입력하면 AI가 공고 내용을 추측해 엉뚱한 자소서를 만들 수 있습니다.
+                </div>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className={`text-xs ${jd.length < 50 ? "text-red-400" : "text-zinc-400"}`}>
                 {jd.length.toLocaleString()}자 {jd.length < 50 && `(최소 50자 필요)`}
