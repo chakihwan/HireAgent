@@ -11,6 +11,44 @@
 
 ---
 
+## [0.4.0] - 2026-05-24
+
+### 추가 (M2: DB 레이어 + LangGraph 코어 에이전트 + Essay API)
+
+#### DB 레이어
+- `backend/app/db.py` — SQLAlchemy 2.0 async engine + session (asyncpg 드라이버)
+- `backend/app/models/career_document.py` — RAG용 문서 모델 (pgvector 1024차원 임베딩)
+- `backend/app/models/job_application.py` — 지원 단위 모델 (ADR-013)
+- `backend/app/models/essay_library.py` — 자소서 항목 모델 (application_id FK)
+- `backend/app/models/user_llm_config.py` — API 키 + 에이전트 할당 설정
+- `backend/alembic/` — Alembic 초기화, `alembic upgrade head` 한 번에 전체 스키마 생성
+  - pgvector extension 자동 활성화 (`CREATE EXTENSION IF NOT EXISTS vector`)
+- `backend/pyproject.toml` — asyncpg 의존성 추가
+
+#### LangGraph 에이전트 파이프라인
+- `backend/app/agents/state.py` — `EssayState`, `ItemState`, `EssayItem`, `Draft` TypedDict
+  - 병렬 노드용 `Annotated[list, operator.add]` reducer 패턴 (CLAUDE.md §멀티에이전트)
+- `backend/app/agents/jd_analyzer.py` — 공고 분석 (인재상/요구역량/직무요약 추출)
+- `backend/app/agents/essay_writer.py` — 항목별 초안 작성 (글자수 목표 준수)
+- `backend/app/agents/compressor.py` — 글자수 초과/미달 시 압축/확장
+- `backend/app/agents/evaluator.py` — JSON 품질 평가 (1-10점 + 개선 제안)
+- `backend/app/agents/orchestrator.py` — LangGraph 그래프
+  - JD 분석 → `Send` API로 항목별 병렬 처리 → 글자수 검증 루프(최대 3회) → 평가
+  - `essay_graph.ainvoke()` / `essay_graph.astream()` 모두 지원
+
+#### Essay 생성 API
+- `backend/app/schemas/essay.py` — `EssayGenerateRequest`, `DraftResult`, `EssayGenerateResponse`
+- `backend/app/api/v1/essays.py`
+  - `POST /api/v1/essays/generate` — SSE 스트리밍 (진행단계 실시간 전달, ADR-012)
+  - `POST /api/v1/essays/generate/sync` — 동기 응답 (테스트/디버깅용)
+
+### M2 완료 기준 달성
+- `alembic upgrade head` → 테이블 4개 + pgvector extension 생성 ✅
+- `POST /api/v1/essays/generate/sync` + Ollama exaone3.5:7.8b → 지원동기 307자, 평가 8점 ✅
+- JD분석 → 작성 → 글자수검증 → (압축) → 평가 파이프라인 엔드투엔드 동작 ✅
+
+---
+
 ## [0.3.1] - 2026-05-24
 
 ### 수정
