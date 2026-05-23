@@ -2,7 +2,7 @@
 
 > 한 번 정리한 커리어 데이터로, 항목별 자소서를 멀티에이전트가 토론하며 다듬어주는 AI 도구
 
-[![Status](https://img.shields.io/badge/status-M2%20진행중-orange)]()
+[![Status](https://img.shields.io/badge/status-M3%20완료-green)]()
 [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
 ---
@@ -85,9 +85,9 @@ docker compose up
 ## 🛣️ 로드맵
 
 - ✅ **M1** (완료, 2026-05-24): Docker 환경 + LLM Factory + Next.js 기반 + GPU Ollama
-- 🟢 **M2** (진행 중): 핵심 에이전트 (JD분석 → 작성 → 글자수검증 → 압축 → 평가) + DB 레이어 + Essay API (SSE)
-- **M3** (~2주): UI 핵심 페이지 (공고 입력 → 항목 선택 → 결과 확인)
-- **M4** (~2주): RAG + 자소서 라이브러리
+- ✅ **M2** (완료, 2026-05-24): 핵심 에이전트 (JD분석 → 작성 → 글자수검증 → 압축 → 평가) + DB 레이어 + Essay API (SSE)
+- ✅ **M3** (완료, 2026-05-24): UI 핵심 페이지 (공고 입력 → 항목 선택 → SSE 스트리밍 → 결과 확인 + 설정 페이지)
+- 🟢 **M4** (진행 중): RAG + 자소서 라이브러리
 - **M5** (지속): 본인 실사용 → 피드백 반영
 
 ---

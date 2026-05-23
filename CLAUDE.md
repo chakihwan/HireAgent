@@ -9,7 +9,7 @@
 
 **프로젝트명**: HireAgent
 **한 줄 정의**: 한 번 정리한 커리어 데이터로, 항목별 자소서를 멀티에이전트가 토론하며 다듬어주는 AI 도구
-**현재 단계**: M2 (코어 에이전트, 2주)
+**현재 단계**: M4 (RAG + 자소서 라이브러리)
 **개발자**: 1인 (개인 프로젝트, 풀스택)
 
 ### 정체성
@@ -370,20 +370,36 @@ class UserLLMConfig(Base):
 
 ---
 
-## 🚀 M2 마일스톤 (현재 진행 중)
+## ✅ M2 완료 (2026-05-24)
 
-**목표**: 2주 안에 "공고 입력 → 자소서 항목 선택 → 멀티에이전트 생성 → 결과 확인" API 완성
+- SQLAlchemy 2.0 async + asyncpg, Alembic 마이그레이션 (ADR-016)
+- DB 모델: CareerDocument(pgvector), JobApplication, EssayLibraryItem, UserLLMConfig
+- LangGraph 파이프라인: JD분석 → Send API 동적 fan-out → ItemState 서브그래프
+  - 서브그래프: write → validate(Python len()) → compress(≤3회) → evaluate
+- `POST /api/v1/essays/generate` SSE 스트리밍 (ADR-012)
+- E2E 검증: exaone3.5:7.8b → 지원동기 307자, 평가 8점
+
+---
+
+## ✅ M3 완료 (2026-05-24)
+
+- `GET /generate`: 4단계 자소서 생성 플로우
+  1. 공고 붙여넣기 → 2. 항목/글자수/톤/페르소나 선택 → 3. SSE 진행상황 → 4. 결과 확인
+- `GET /settings`: 에이전트별 프로바이더/모델/API 키 설정 (localStorage 저장)
+- 복사 버튼, 평가 점수, 글자수 배지, 생성 로그 접기 등 UI 완성
+- `lib/types.ts` + `lib/settings-store.ts` 공유 유틸
+
+---
+
+## 🚀 M4 마일스톤 (현재 진행 중)
+
+**목표**: RAG 파이프라인 + 자소서 라이브러리 기능 추가
 
 ### 작업 항목
-1. **DB 레이어**: SQLAlchemy 모델 + Alembic 마이그레이션
-2. **LangGraph 에이전트**: JD분석 → 작성 → 글자수검증 → 압축 → 평가 → 재작성
-3. **Essay 생성 API**: SSE 스트리밍 엔드포인트
-
-### M2 완료 기준
-- [ ] Alembic `upgrade head` 한 번에 테이블 생성
-- [ ] `POST /api/v1/essays/generate` → SSE로 진행 단계 스트리밍
-- [ ] 공고 + 항목(카테고리/글자수) 입력 → 글자수 검증된 자소서 반환
-- [ ] Ollama (exaone3.5:7.8b) 로 엔드투엔드 테스트 통과
+1. **RAG 인덱서**: 이력서/README 텍스트 → BGE-M3 임베딩 → pgvector
+2. **RAG 검색기**: ItemState 서브그래프에서 관련 경험 추출
+3. **자소서 라이브러리 API**: `GET/POST /api/v1/library` + 합격 태깅
+4. **라이브러리 UI**: 저장된 자소서 목록 + 상세 보기
 
 ---
 
