@@ -11,6 +11,15 @@
 
 ---
 
+## [0.3.1] - 2026-05-24
+
+### 수정
+- `docker-compose.yml` ollama 서비스에 NVIDIA GPU passthrough 추가
+  - `deploy.resources.reservations.devices` 설정 (RTX 5060, 8GB VRAM)
+  - 기존 CPU 추론 → GPU 추론으로 전환, ~82 tokens/sec 달성 (exaone3.5:7.8b 기준)
+
+---
+
 ## [0.3.0] - 2026-05-24
 
 ### 추가 (M1 Day 5-7: Next.js + shadcn/ui + LLM 테스트 페이지)

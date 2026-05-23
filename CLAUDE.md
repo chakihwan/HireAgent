@@ -9,7 +9,7 @@
 
 **프로젝트명**: HireAgent
 **한 줄 정의**: 한 번 정리한 커리어 데이터로, 항목별 자소서를 멀티에이전트가 토론하며 다듬어주는 AI 도구
-**현재 단계**: M1 (기반 구축, 1주)
+**현재 단계**: M2 (코어 에이전트, 2주)
 **개발자**: 1인 (개인 프로젝트, 풀스택)
 
 ### 정체성
@@ -361,23 +361,29 @@ class UserLLMConfig(Base):
 
 ---
 
-## 🚀 M1 마일스톤 (현재 진행 중)
+## ✅ M1 완료 (2026-05-24)
 
-**목표**: 1주 안에 "Docker Compose로 모든 서비스 뜨고, API 키 입력해서 LLM 호출 가능, 이력서 RAG 검색 가능"
+- Docker Compose + FastAPI + PostgreSQL(pgvector) + Ollama(GPU) + Next.js 16
+- LLM Factory: Anthropic / Ollama / OpenAI stub / Google stub
+- Next.js 테스트 페이지: Ollama 모델 선택 → 프롬프트 → 응답 확인
+- RTX 5060 GPU passthrough → ~82 tokens/sec (exaone3.5:7.8b)
 
-### 작업 순서
-1. **Day 1-2**: Docker Compose + FastAPI 골격 + PostgreSQL+pgvector
-2. **Day 3-4**: LLM Factory (Anthropic + Ollama 우선)
-3. **Day 5-7**: Next.js + shadcn/ui + 테스트 페이지
+---
 
-### M1 완료 기준
-- [ ] `docker compose up` 한 번에 모든 서비스 뜨기
-- [ ] FastAPI `/health` 200 응답
-- [ ] LLM Factory Anthropic + Ollama 호출 성공
-- [ ] Next.js 페이지에서 API 키 입력 → Claude 호출 → 응답
-- [ ] `docs/CHANGELOG.md` 매일 업데이트
+## 🚀 M2 마일스톤 (현재 진행 중)
 
-상세: `docs/M1_execution_guide.md`
+**목표**: 2주 안에 "공고 입력 → 자소서 항목 선택 → 멀티에이전트 생성 → 결과 확인" API 완성
+
+### 작업 항목
+1. **DB 레이어**: SQLAlchemy 모델 + Alembic 마이그레이션
+2. **LangGraph 에이전트**: JD분석 → 작성 → 글자수검증 → 압축 → 평가 → 재작성
+3. **Essay 생성 API**: SSE 스트리밍 엔드포인트
+
+### M2 완료 기준
+- [ ] Alembic `upgrade head` 한 번에 테이블 생성
+- [ ] `POST /api/v1/essays/generate` → SSE로 진행 단계 스트리밍
+- [ ] 공고 + 항목(카테고리/글자수) 입력 → 글자수 검증된 자소서 반환
+- [ ] Ollama (exaone3.5:7.8b) 로 엔드투엔드 테스트 통과
 
 ---
 
@@ -386,7 +392,7 @@ class UserLLMConfig(Base):
 ### 작업 요청 시 우선순위
 1. **이 CLAUDE.md를 먼저 확인** - 컨벤션, 절대 규칙 숙지
 2. **`docs/requirements.md` 참고** - 전체 요구사항
-3. **`docs/M1_execution_guide.md` 참고** - 현재 단계 작업
+3. **`docs/requirements.md` §4.1.4** - 에이전트 요구사항
 4. **관련 ADR 확인** - 의사결정 근거
 
 ### 코드 작성 시
@@ -427,3 +433,4 @@ class UserLLMConfig(Base):
 | 날짜 | 변경 내용 |
 |------|-----------|
 | 2026-05-22 | 초기 작성 (M1 시작 시점) |
+| 2026-05-24 | M1 완료 반영, M2 마일스톤 추가, GPU passthrough 설정 |
