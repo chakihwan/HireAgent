@@ -526,16 +526,16 @@ class CareerDocument(Base):
 - [ ] LLM Factory 골격
 
 ### 11.2 추가로 잡아야 할 문서
-- [ ] `architecture.md` - 상세 아키텍처
-- [ ] `agents.md` - 각 에이전트 상세 정의
-- [ ] `data_model.md` - DB 스키마
-- [ ] `api_design.md` - REST API 명세
-- [ ] `frontend_design.md` - UI 와이어프레임
-- [ ] `CHANGELOG.md` - 변경 이력
+- [x] `architecture.md` - 상세 아키텍처 (M2 구현 매핑 포함)
+- [x] `CHANGELOG.md` - 변경 이력 (v0.0.1~)
+- [ ] `data_model.md` - DB 스키마 (현재는 CLAUDE.md §데이터 모델로 대체)
+- [ ] `api_design.md` - REST API 명세 (현재는 FastAPI `/docs` 자동 생성으로 대체)
+- [ ] `frontend_design.md` - UI 와이어프레임 (M3에서 작성)
+- ~~`agents.md`~~ - 별도 문서 대신 `architecture.md §2 M2 구현 매핑` + ADR-015로 통합
 
 ### 11.3 검토 후 확정
-- [ ] 모노레포 vs 분리 레포 결정
-- [ ] 라이선스 (MIT 추천)
+- [x] 모노레포 vs 분리 레포 결정 → **모노레포** (backend/, frontend/ 한 레포)
+- [x] 라이선스 → **MIT**
 - [ ] 도메인 등록 여부 (hireagent.io / .ai)
 
 ---

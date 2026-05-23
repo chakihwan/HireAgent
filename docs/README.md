@@ -2,7 +2,7 @@
 
 > 한 번 정리한 커리어 데이터로, 항목별 자소서를 멀티에이전트가 토론하며 다듬어주는 AI 도구
 
-[![Status](https://img.shields.io/badge/status-M1%20개발중-yellow)]()
+[![Status](https://img.shields.io/badge/status-M2%20진행중-orange)]()
 [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
 ---
@@ -77,15 +77,17 @@ docker compose up
 | [012](adr/012-sse-streaming-response.md) | 자소서 생성 응답은 SSE 스트리밍 | 채택 |
 | [013](adr/013-job-application-model.md) | JobApplication 모델로 자소서-공고 연결 | 채택 |
 | [014](adr/014-phase3-ollama-local-only.md) | Phase 3 Ollama는 로컬 전용 (서버 미배포) | 채택 |
+| [015](adr/015-langgraph-send-item-subgraph.md) | LangGraph `Send` API + 항목별 서브그래프 패턴 | 채택 |
+| [016](adr/016-sqlalchemy-async-asyncpg.md) | SQLAlchemy async + asyncpg (Alembic은 psycopg2 sync) | 채택 |
 
 ---
 
 ## 🛣️ 로드맵
 
-- **M1** (현재, ~1주): Docker 환경 + LLM Factory + Next.js 기반
-- **M2** (~2주): 핵심 에이전트 (작성/평가/재작성)
-- **M3** (~2주): UI 핵심 페이지
-- **M4** (~2주): RAG + 라이브러리
+- ✅ **M1** (완료, 2026-05-24): Docker 환경 + LLM Factory + Next.js 기반 + GPU Ollama
+- 🟢 **M2** (진행 중): 핵심 에이전트 (JD분석 → 작성 → 글자수검증 → 압축 → 평가) + DB 레이어 + Essay API (SSE)
+- **M3** (~2주): UI 핵심 페이지 (공고 입력 → 항목 선택 → 결과 확인)
+- **M4** (~2주): RAG + 자소서 라이브러리
 - **M5** (지속): 본인 실사용 → 피드백 반영
 
 ---

@@ -61,11 +61,9 @@ hireagent/
 ├── docs/                      # 살아있는 문서 (계속 업데이트)
 │   ├── requirements.md        # 요구사항 명세 (v0.2)
 │   ├── M1_execution_guide.md  # M1 실행 가이드
-│   ├── architecture.md
-│   ├── agents.md
-│   ├── api_design.md
+│   ├── architecture.md        # 시스템 아키텍처 + M2 구현 매핑
 │   ├── CHANGELOG.md           # 매일 변경사항 기록
-│   └── adr/                   # 아키텍처 의사결정 기록
+│   └── adr/                   # 아키텍처 의사결정 기록 (001~016)
 │
 ├── backend/
 │   ├── Dockerfile
@@ -239,6 +237,8 @@ export function EssayForm({ onSubmit }: { onSubmit: (item: EssayItem) => void })
 | 012 | 자소서 생성 응답은 SSE 스트리밍 | 60초+ 처리 시간, 단계별 진행률 표시 |
 | 013 | JobApplication 모델로 자소서-공고 연결 | 같은 회사 재지원, 합격 이력 단위 분석 |
 | 014 | Phase 3 Ollama는 로컬 전용 (서버 미배포) | GPU 비용 회피, 브라우저→로컬 직접 호출 |
+| 015 | LangGraph `Send` API + 항목별 서브그래프 | 항목 수 런타임 결정, 글자수 루프 캡슐화 |
+| 016 | SQLAlchemy async + asyncpg (Alembic sync) | FastAPI async 풀스택, Alembic은 단순 sync |
 
 상세 내용: `docs/adr/` 폴더 + `docs/architecture.md`
 

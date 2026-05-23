@@ -2,7 +2,7 @@
 
 > **버전**: v0.2
 > **작성일**: 2026-05-22
-> **연계 문서**: [requirements.md](requirements.md), [agents.md](agents.md) (작성 예정)
+> **연계 문서**: [requirements.md](requirements.md) · 에이전트 상세는 본 문서 §2 "M2 구현 매핑" + [ADR-015](adr/015-langgraph-send-item-subgraph.md)
 
 ---
 
@@ -135,6 +135,24 @@ class EssayState(TypedDict):
     drafts: Annotated[list[Draft], add]                       # 병렬 노드가 동시에 추가 가능
     char_counts: Annotated[dict, lambda a, b: {**a, **b}]     # 항목별 카운트 머지
 ```
+
+### M2 구현 매핑
+
+| 파이프라인 단계 | 파일 | 비고 |
+|----------------|------|------|
+| State 정의 | `backend/app/agents/state.py` | `EssayState` (메인) / `ItemState` (항목 서브그래프) |
+| JD 분석 | `backend/app/agents/jd_analyzer.py` | 인재상/요구역량/직무요약 추출 |
+| 항목별 작성 | `backend/app/agents/essay_writer.py` | 톤/페르소나 반영, max_tokens = char_limit × 3 |
+| 글자수 검증 | `backend/app/utils/char_counter.py` | `validate_chars()` Python 순수 함수 (ADR-001) |
+| 압축/확장 | `backend/app/agents/compressor.py` | `diff_chars()` 기반 방향 결정, 최대 3회 |
+| 자가 평가 | `backend/app/agents/evaluator.py` | JSON 출력 (score + suggestion) |
+| 오케스트레이션 | `backend/app/agents/orchestrator.py` | LangGraph `Send` API로 fan-out, 항목별 서브그래프 |
+| API 엔드포인트 | `backend/app/api/v1/essays.py` | SSE (`/generate`) + 동기 (`/generate/sync`) |
+
+**그래프 구조 (실제 구현):**
+- **메인 그래프** (`EssayState`): `jd_analyzer → Send 분기 → _process_item (병렬) → END`
+- **항목 서브그래프** (`ItemState`): `write → [validate 분기] → compress(루프) → evaluate → END`
+- `Send` API로 각 항목이 독립된 `ItemState`로 fan-out, reducer로 fan-in
 
 ---
 

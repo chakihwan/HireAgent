@@ -11,6 +11,24 @@
 
 ---
 
+## [0.4.1] - 2026-05-24
+
+### 수정
+- `backend/app/api/v1/essays.py` `/generate` 엔드포인트의 그래프 중복 실행 버그
+  - 기존: `astream` + 별도 `ainvoke` → 그래프가 2회 실행, 결과가 비결정적이라 SSE progress와 최종 done이 불일치
+  - 수정: `astream` 한 번만 호출하면서 reducer로 누적된 `drafts`를 메모리에 모아 done 이벤트로 전송
+
+### 추가 (문서 검토 결과 반영)
+- `docs/adr/015-langgraph-send-item-subgraph.md` — LangGraph `Send` API + 항목 서브그래프 패턴
+- `docs/adr/016-sqlalchemy-async-asyncpg.md` — SQLAlchemy async + asyncpg (Alembic sync 병행)
+- `docs/architecture.md` §2 "M2 구현 매핑" 추가 (파이프라인 단계 ↔ 실제 파일 매핑 표)
+- `docs/README.md` 상태 배지 M1 → M2, ADR 인덱스 015~016 추가
+- `CLAUDE.md` ADR 요약 테이블 015~016 추가, 프로젝트 구조에서 미작성 문서 참조 제거
+- `docs/requirements.md` §11.2 문서 체크리스트 현재 상태 반영
+  - `agents.md`는 `architecture.md §2` + ADR-015로 대체
+
+---
+
 ## [0.4.0] - 2026-05-24
 
 ### 추가 (M2: DB 레이어 + LangGraph 코어 에이전트 + Essay API)

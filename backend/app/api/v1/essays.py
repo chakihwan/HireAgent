@@ -60,16 +60,23 @@ async def _stream_generation(req: EssayGenerateRequest) -> AsyncGenerator[str, N
 
     yield _sse("start", {"message": "자소서 생성을 시작합니다.", "total_items": len(items)})
 
+    # astream으로 한 번만 실행하면서 reducer로 누적된 drafts를 직접 추출
+    # (예전: astream + ainvoke 따로 호출 → 그래프 2회 실행 + 결과 불일치)
+    accumulated_drafts: list[dict] = []
+    accumulated_progress: list[str] = []
+    accumulated_errors: list[str] = []
+
     async for event in essay_graph.astream(initial_state, stream_mode="updates"):
         for node_name, node_output in event.items():
-            # 진행 메시지 스트리밍
             for msg in node_output.get("progress", []):
+                accumulated_progress.append(msg)
                 yield _sse("progress", {"node": node_name, "message": msg})
             for err in node_output.get("errors", []):
+                accumulated_errors.append(err)
                 yield _sse("error", {"message": err})
+            for draft in node_output.get("drafts", []):
+                accumulated_drafts.append(draft)
 
-    # 최종 상태에서 결과 추출
-    final = await essay_graph.ainvoke(initial_state)
     char_targets = {item.category: item.char_limit for item in req.items}
     drafts = [
         DraftResult(
@@ -81,9 +88,9 @@ async def _stream_generation(req: EssayGenerateRequest) -> AsyncGenerator[str, N
             evaluation_score=d.get("evaluation_score"),
             evaluation_feedback=d.get("evaluation_feedback"),
         )
-        for d in final.get("drafts", [])
+        for d in accumulated_drafts
     ]
-    yield _sse("done", EssayGenerateResponse(drafts=drafts, progress=final.get("progress", [])).model_dump())
+    yield _sse("done", EssayGenerateResponse(drafts=drafts, progress=accumulated_progress).model_dump())
 
 
 def _sse(event: str, data: dict) -> str:
