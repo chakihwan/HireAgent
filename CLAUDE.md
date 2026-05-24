@@ -9,7 +9,7 @@
 
 **프로젝트명**: HireAgent
 **한 줄 정의**: 한 번 정리한 커리어 데이터로, 항목별 자소서를 멀티에이전트가 토론하며 다듬어주는 AI 도구
-**현재 단계**: M4 (RAG + 자소서 라이브러리)
+**현재 단계**: M5 (본인 실사용 + 피드백 반영)
 **개발자**: 1인 (개인 프로젝트, 풀스택)
 
 ### 정체성
@@ -63,7 +63,8 @@ hireagent/
 │   ├── M1_execution_guide.md  # M1 실행 가이드
 │   ├── architecture.md        # 시스템 아키텍처 + M2 구현 매핑
 │   ├── CHANGELOG.md           # 매일 변경사항 기록
-│   └── adr/                   # 아키텍처 의사결정 기록 (001~016)
+│   ├── erd.md                 # 데이터 모델 ERD (Mermaid)
+│   └── adr/                   # 아키텍처 의사결정 기록 (001~018)
 │
 ├── backend/
 │   ├── Dockerfile
@@ -239,6 +240,8 @@ export function EssayForm({ onSubmit }: { onSubmit: (item: EssayItem) => void })
 | 014 | Phase 3 Ollama는 로컬 전용 (서버 미배포) | GPU 비용 회피, 브라우저→로컬 직접 호출 |
 | 015 | LangGraph `Send` API + 항목별 서브그래프 | 항목 수 런타임 결정, 글자수 루프 캡슐화 |
 | 016 | SQLAlchemy async + asyncpg (Alembic sync) | FastAPI async 풀스택, Alembic은 단순 sync |
+| 017 | 임베딩 모델 KURE-v1 (sentence-transformers) | 한국어 SOTA, 자소서 도메인 최적 |
+| 018 | URL 페칭 보조 입력 (httpx + BeautifulSoup) | ADR-009 보조 옵션 구체 구현, 드래그 금지 사이트 우회 |
 
 상세 내용: `docs/adr/` 폴더 + `docs/architecture.md`
 
@@ -391,15 +394,24 @@ class UserLLMConfig(Base):
 
 ---
 
-## 🚀 M4 마일스톤 (현재 진행 중)
+## ✅ M4 완료 (2026-05-24)
 
-**목표**: RAG 파이프라인 + 자소서 라이브러리 기능 추가
+- 자소서 라이브러리 API + UI (`/library`): 저장/조회/최종 토글/삭제, 같은 application+category 자동 version 증가
+- 지원 관리 API + UI (`/jobs`): 회사/포지션/상태 머신/자소서 연결
+- RAG 파이프라인 (ADR-017):
+  - `app/rag/embeddings.py`: KURE-v1 (한국어 SOTA, 1024-dim), lazy load + `asyncio.to_thread`
+  - `app/rag/loaders/text.py`: RecursiveCharacterTextSplitter (한국어 separators)
+  - `app/rag/indexer.py` + `retriever.py`: 청킹/임베딩/INSERT/pgvector cosine 검색
+  - `/projects` 페이지: 데이터 등록 + 검색 테스트 + 청크 관리
+- LangGraph 통합: ItemState에 `rag_context`, `rag_retriever_node` 추가 → `retrieve → write → ...`
+- URL 페칭 보조 입력 (ADR-018): `POST /jobs/fetch-url` (httpx + BeautifulSoup), 차단/로그인/JS 렌더링 케이스별 안내
+- essay_writer 출력 후처리: 마크다운 헤더/메타/코드펜스 제거
 
-### 작업 항목
-1. **RAG 인덱서**: 이력서/README 텍스트 → BGE-M3 임베딩 → pgvector
-2. **RAG 검색기**: ItemState 서브그래프에서 관련 경험 추출
-3. **자소서 라이브러리 API**: `GET/POST /api/v1/library` + 합격 태깅
-4. **라이브러리 UI**: 저장된 자소서 목록 + 상세 보기
+---
+
+## 🚀 M5 마일스톤 (다음)
+
+**목표**: 본인 실사용 + 피드백 반영
 
 ---
 

@@ -81,6 +81,8 @@ docker compose up
 | [014](adr/014-phase3-ollama-local-only.md) | Phase 3 Ollama는 로컬 전용 (서버 미배포) | 채택 |
 | [015](adr/015-langgraph-send-item-subgraph.md) | LangGraph `Send` API + 항목별 서브그래프 패턴 | 채택 |
 | [016](adr/016-sqlalchemy-async-asyncpg.md) | SQLAlchemy async + asyncpg (Alembic은 psycopg2 sync) | 채택 |
+| [017](adr/017-kure-v1-embedding.md) | 임베딩 모델 KURE-v1 (한국어 SOTA, sentence-transformers) | 채택 |
+| [018](adr/018-url-fetch-secondary-input.md) | URL 페칭 보조 입력 (ADR-009 구체 구현) | 채택 |
 
 ---
 
@@ -89,7 +91,7 @@ docker compose up
 - ✅ **M1** (완료, 2026-05-24): Docker 환경 + LLM Factory + Next.js 기반 + GPU Ollama
 - ✅ **M2** (완료, 2026-05-24): 핵심 에이전트 (JD분석 → 작성 → 글자수검증 → 압축 → 평가) + DB 레이어 + Essay API (SSE)
 - ✅ **M3** (완료, 2026-05-24): UI 핵심 페이지 (공고 입력 → 항목 선택 → SSE 스트리밍 → 결과 확인 + 설정 페이지)
-- 🟢 **M4** (진행 중): RAG + 자소서 라이브러리
+- ✅ **M4** (완료, 2026-05-24): 자소서 라이브러리 + 지원 관리 + RAG 파이프라인 (KURE-v1) + URL 페칭
 - **M5** (지속): 본인 실사용 → 피드백 반영
 
 ---

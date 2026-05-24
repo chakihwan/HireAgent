@@ -150,6 +150,116 @@ export async function deleteJob(id: number): Promise<void> {
   if (!res.ok) throw new Error(res.statusText);
 }
 
+export interface FetchUrlResponse {
+  text: string;
+  title: string | null;
+}
+
+// ── Projects (RAG documents) ──────────────────────────────────────────────────
+
+export interface ProjectDocCreate {
+  content: string;
+  source_type: string;
+  project_name?: string;
+  category?: string;
+  company?: string;
+  role?: string;
+  tech_stack?: string[];
+}
+
+export interface ProjectDocResponse {
+  id: number;
+  user_id: string;
+  content: string;
+  source_type: string;
+  project_name: string | null;
+  category: string | null;
+  company: string | null;
+  role: string | null;
+  tech_stack: string[];
+  indexed_at: string;
+}
+
+export interface IndexResponse {
+  chunks_created: number;
+  document_ids: number[];
+}
+
+export async function indexProject(data: ProjectDocCreate): Promise<IndexResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/projects/index`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error((err as { detail?: string }).detail ?? res.statusText);
+  }
+  return res.json();
+}
+
+export async function listProjects(params?: {
+  source_type?: string;
+  project_name?: string;
+}): Promise<ProjectDocResponse[]> {
+  const url = new URL(`${API_BASE}/api/v1/projects`);
+  if (params?.source_type) url.searchParams.set("source_type", params.source_type);
+  if (params?.project_name) url.searchParams.set("project_name", params.project_name);
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();
+}
+
+export async function deleteProject(id: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/v1/projects/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(res.statusText);
+}
+
+export async function deleteProjectByName(name: string): Promise<{ deleted: number }> {
+  const res = await fetch(`${API_BASE}/api/v1/projects/by-project/${encodeURIComponent(name)}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error((err as { detail?: string }).detail ?? res.statusText);
+  }
+  return res.json();
+}
+
+export interface SearchResult {
+  id: number;
+  content: string;
+  source_type: string;
+  project_name: string | null;
+  category: string | null;
+  distance: number;
+}
+
+export async function searchProjects(query: string, limit = 5): Promise<SearchResult[]> {
+  const res = await fetch(`${API_BASE}/api/v1/projects/search`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query, limit }),
+  });
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();
+}
+
+// ── URL fetch ─────────────────────────────────────────────────────────────────
+
+export async function fetchJobUrl(url: string): Promise<FetchUrlResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/jobs/fetch-url`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error((err as { detail?: string }).detail ?? res.statusText);
+  }
+  return res.json();
+}
+
 // ── Library (EssayLibraryItem) ────────────────────────────────────────────────
 
 export interface LibraryItemCreate {

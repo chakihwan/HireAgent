@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { CheckCircle, XCircle, Loader2, Copy, Check, ChevronRight, AlertTriangle } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, Copy, Check, ChevronRight, AlertTriangle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { generateEssays, saveToLibrary } from "@/lib/api";
+import { generateEssays, saveToLibrary, fetchJobUrl } from "@/lib/api";
 import { loadSettings, buildAgentConfig } from "@/lib/settings-store";
 import type { DraftResult, EssayTone, EssayPersona, ItemConfig, SseDoneEvent } from "@/lib/types";
 
@@ -78,6 +78,8 @@ function CopyButton({ text }: { text: string }) {
 export default function GeneratePage() {
   const [step, setStep] = useState<Step>("jd");
   const [jd, setJd] = useState("");
+  const [fetching, setFetching] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Item selection state
   const [checkedPresets, setCheckedPresets] = useState<Record<string, boolean>>({});
@@ -192,13 +194,49 @@ export default function GeneratePage() {
               placeholder="채용 공고 전문을 붙여넣으세요 (최소 50자)..."
               className="resize-none font-mono text-sm"
             />
-            {/^https?:\/\//i.test(jd.trim()) && (
-              <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
-                <AlertTriangle className="size-4 text-amber-500 mt-0.5 shrink-0" />
-                <div className="text-xs text-amber-700 leading-relaxed">
-                  <strong>URL은 지원하지 않습니다.</strong> 공고 페이지를 열고 텍스트를 전체 선택(Ctrl+A)한 뒤 붙여넣으세요.
-                  URL만 입력하면 AI가 공고 내용을 추측해 엉뚱한 자소서를 만들 수 있습니다.
+            {/^https?:\/\/\S+$/i.test(jd.trim()) && (
+              <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2.5 space-y-2">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="text-xs text-blue-700 leading-relaxed flex-1 min-w-0">
+                    <strong>URL이 감지됐습니다.</strong> 가져오기를 누르면 페이지 텍스트를 추출해 자동으로 채웁니다.
+                    사람인 등 일부 사이트는 차단되어 있어 실패할 수 있습니다.
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      setFetching(true);
+                      setFetchError(null);
+                      try {
+                        const result = await fetchJobUrl(jd.trim());
+                        setJd(result.text);
+                      } catch (e) {
+                        setFetchError(e instanceof Error ? e.message : String(e));
+                      } finally {
+                        setFetching(false);
+                      }
+                    }}
+                    disabled={fetching}
+                    className="shrink-0"
+                  >
+                    {fetching ? (
+                      <>
+                        <Loader2 className="size-3.5 mr-1 animate-spin" />
+                        가져오는 중...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="size-3.5 mr-1" />
+                        URL에서 가져오기
+                      </>
+                    )}
+                  </Button>
                 </div>
+                {fetchError && (
+                  <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
+                    <AlertTriangle className="size-3.5 mt-0.5 shrink-0" />
+                    <span>{fetchError}</span>
+                  </div>
+                )}
               </div>
             )}
             <div className="flex items-center justify-between">

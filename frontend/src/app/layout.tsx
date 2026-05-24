@@ -41,6 +41,9 @@ export default function RootLayout({
               <Link href="/library" className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors">
                 라이브러리
               </Link>
+              <Link href="/projects" className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors">
+                내 데이터
+              </Link>
               <Link href="/jobs" className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors">
                 지원 관리
               </Link>

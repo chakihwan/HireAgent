@@ -186,17 +186,47 @@ class EssayState(TypedDict):
 - `career_documents` (RAG, pgvector 1024-dim)
 - `user_llm_configs` (Fernet 암호화 API 키)
 
-### 3.3 RAG 데이터 인덱싱 시
+### 3.3 RAG 데이터 인덱싱 (M4 구현)
 
 ```
-1. [Frontend] 이력서 PDF 업로드 또는 GitHub URL 입력
+1. [Frontend] /projects 페이지에서 텍스트 + 메타데이터(source_type, project_name, category, tech_stack) 입력
 2. [Backend] POST /api/v1/projects/index
-3. [Backend] 데이터 로더로 파싱 (PDF/MD/GitHub README)
-4. [Backend] 청킹 (의미 단위로 분할)
-5. [Backend] BGE-M3 임베딩 생성
-6. [Backend] 메타데이터 추출 (프로젝트명, 기술스택, 카테고리)
-7. [Backend] pgvector에 INSERT (user_id 포함)
-8. [Backend] Frontend로 인덱싱 결과 응답
+3. [Backend] app/rag/loaders/text.py: RecursiveCharacterTextSplitter로 청킹
+              (chunk_size=500, overlap=50, 한국어 구분자 우선)
+4. [Backend] app/rag/embeddings.py: KURE-v1 임베딩 생성 (ADR-017)
+              (asyncio.to_thread로 이벤트 루프 블로킹 회피)
+5. [Backend] career_documents에 user_id + embedding + 메타데이터로 INSERT
+6. [Backend] {chunks_created, document_ids} 응답
+```
+
+### 3.4 자소서 생성 시 RAG 검색 통합 (M4 구현)
+
+```
+ItemState 서브그래프 (orchestrator.py):
+  retrieve → write → [validate] → compress(loop≤3) → evaluate → END
+     │
+     └─ app/agents/rag_retriever.py
+        - 쿼리: "{category} 관련 경험. {jd_analysis[:300]}"
+        - app/rag/retriever.py: pgvector cosine_distance, user_id 필터
+        - threshold 0.8 이하만 채택, 최대 5개
+        - state["rag_context"]에 저장
+
+write 노드 (essay_writer.py):
+  - 프롬프트에 [참고 경험] 섹션 동적 삽입
+  - 시스템 프롬프트: "참고 경험을 자연스럽게 녹여낼 것, 메타 표현 금지"
+  - 후처리: 마크다운 헤더/글자수 메타/코드펜스 제거
+```
+
+### 3.5 URL 페칭 (M4 구현, ADR-018)
+
+```
+1. [Frontend] /generate JD 입력 단계에서 http(s):// 패턴 감지
+2. [Frontend] "URL에서 가져오기" 버튼 표시
+3. [Backend] POST /api/v1/jobs/fetch-url
+4. [Backend] httpx GET + BeautifulSoup 본문 추출
+              script/style/nav/header/footer 제거, main/article 우선
+5. [Backend] 차단(403)/로그인 필요(401)/JS 렌더링 등 케이스별 사용자 친화 에러
+6. [Frontend] textarea를 추출 텍스트로 교체, 사용자가 검토/수정
 ```
 
 ---

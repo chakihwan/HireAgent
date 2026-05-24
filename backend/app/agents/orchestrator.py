@@ -5,7 +5,8 @@ from app.agents.compressor import compressor_node
 from app.agents.essay_writer import essay_writer_node
 from app.agents.evaluator import evaluator_node
 from app.agents.jd_analyzer import jd_analyzer_node
-from app.agents.state import Draft, EssayItem, EssayState, ItemState
+from app.agents.rag_retriever import rag_retriever_node
+from app.agents.state import Draft, EssayState, ItemState
 from app.utils.char_counter import validate_chars
 
 MAX_ITERATIONS = 3
@@ -25,11 +26,13 @@ def _needs_compression(state: ItemState) -> str:
 
 def _build_item_graph() -> StateGraph:
     g = StateGraph(ItemState)
+    g.add_node("retrieve", rag_retriever_node)
     g.add_node("write", essay_writer_node)
     g.add_node("compress", compressor_node)
     g.add_node("evaluate", evaluator_node)
 
-    g.set_entry_point("write")
+    g.set_entry_point("retrieve")
+    g.add_edge("retrieve", "write")
     g.add_conditional_edges("write", _needs_compression, {"compress": "compress", "evaluate": "evaluate"})
     g.add_conditional_edges("compress", _needs_compression, {"compress": "compress", "evaluate": "evaluate"})
     g.add_edge("evaluate", END)
@@ -51,6 +54,7 @@ def _fan_out(state: EssayState) -> list[Send]:
                 jd_analysis=state["jd_analysis"],
                 agent_config=state["agent_config"],
                 user_id=state["user_id"],
+                rag_context=[],
                 content="",
                 char_count=0,
                 iteration=0,
@@ -73,11 +77,13 @@ async def _process_item(item_state: ItemState) -> dict:
         evaluation_score=result.get("evaluation_score"),
         evaluation_feedback=result.get("evaluation_feedback"),
     )
+    rag_count = len(result.get("rag_context") or [])
+    rag_note = f" [RAG {rag_count}개 참고]" if rag_count else ""
     return {
         "drafts": [draft],
         "progress": [
             f"✅ {draft['category']} 완료 "
-            f"({draft['char_count']}자, 평가 {draft['evaluation_score'] or '-'}점)"
+            f"({draft['char_count']}자, 평가 {draft['evaluation_score'] or '-'}점){rag_note}"
         ],
     }
 

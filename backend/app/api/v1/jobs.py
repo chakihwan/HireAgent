@@ -1,13 +1,34 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.schemas.jobs import JobApplicationCreate, JobApplicationResponse, JobApplicationUpdate
 from app.services import jobs as jobs_svc
+from app.services.url_fetcher import URLFetchError, fetch_job_text
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
 _USER_ID = "local"  # Phase 1: 단일 사용자
+
+
+class FetchUrlRequest(BaseModel):
+    url: str = Field(..., min_length=10)
+
+
+class FetchUrlResponse(BaseModel):
+    text: str
+    title: str | None
+
+
+@router.post("/fetch-url", response_model=FetchUrlResponse)
+async def fetch_url(req: FetchUrlRequest) -> FetchUrlResponse:
+    """공고 URL에서 텍스트 추출 (ADR-009 보조 기능)."""
+    try:
+        result = await fetch_job_text(req.url)
+    except URLFetchError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return FetchUrlResponse(**result)
 
 
 @router.post("", response_model=JobApplicationResponse, status_code=201)

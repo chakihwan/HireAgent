@@ -45,6 +45,9 @@ class ItemState(TypedDict):
     agent_config: dict
     user_id: str
 
+    # RAG 검색 결과 (작성 에이전트가 참고)
+    rag_context: list[str]
+
     content: str
     char_count: int
     iteration: int
