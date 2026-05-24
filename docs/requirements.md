@@ -424,7 +424,8 @@ class CareerDocument(Base):
 - [x] LangGraph 통합 (`retrieve → write → ...`, ItemState.rag_context)
 - [x] `/projects` 페이지 (텍스트 인덱싱 + 검색 테스트 + 청크 관리)
 - [x] URL 페칭 보조 입력 (ADR-018, ADR-009 구체 구현)
-- [ ] GitHub URL 자동 인덱싱 → M5 또는 향후 (Phase 2 F-8.6 브라우저 확장과 연계 검토)
+- [x] GitHub URL 자동 인덱싱 (ADR-019, 공개 레포 README + docs)
+- [x] 파일 업로드 PDF/DOCX/MD/TXT (ADR-020, F-1.1/F-1.2)
 - [ ] 프로젝트 카드 자동 생성 → M5 또는 향후 (Phase 2 기능)
 
 ### M5: 본인 실사용 (진행 중)
@@ -533,6 +534,8 @@ class CareerDocument(Base):
 | 016 | SQLAlchemy async + asyncpg (Alembic sync) | M2 |
 | 017 | KURE-v1 임베딩 (sentence-transformers, 한국어 SOTA) | M4 |
 | 018 | URL 페칭 보조 입력 (httpx + BeautifulSoup) | M4 |
+| 019 | GitHub 공개 레포 자동 인덱싱 (무인증 API) | M4+ |
+| 020 | 이력서 파일 업로드 (PDF/DOCX/MD/TXT) | M4+ |
 
 상세: [`docs/adr/`](adr/) 폴더 또는 [`docs/README.md`](README.md) 인덱스 참고.
 

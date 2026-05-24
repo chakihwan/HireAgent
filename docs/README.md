@@ -83,6 +83,8 @@ docker compose up
 | [016](adr/016-sqlalchemy-async-asyncpg.md) | SQLAlchemy async + asyncpg (Alembic은 psycopg2 sync) | 채택 |
 | [017](adr/017-kure-v1-embedding.md) | 임베딩 모델 KURE-v1 (한국어 SOTA, sentence-transformers) | 채택 |
 | [018](adr/018-url-fetch-secondary-input.md) | URL 페칭 보조 입력 (ADR-009 구체 구현) | 채택 |
+| [019](adr/019-github-repo-indexing.md) | GitHub 공개 레포 자동 인덱싱 (무인증 API) | 채택 |
+| [020](adr/020-file-upload-resume.md) | 이력서 파일 업로드 (PDF/DOCX/MD/TXT, OCR 미지원) | 채택 |
 
 ---
 

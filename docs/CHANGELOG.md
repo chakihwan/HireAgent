@@ -11,6 +11,50 @@
 
 ---
 
+## [0.7.0] - 2026-05-25
+
+### 추가 (RAG 데이터 입력 확장 — GitHub repo + 파일 업로드)
+
+#### GitHub 공개 레포 인덱싱 (ADR-019)
+- `backend/app/rag/loaders/github.py` — httpx + 무인증 GitHub REST API
+  - `parse_repo_url()`: `https://github.com/owner/repo[.git][/tree/main]` 패턴 파싱
+  - `fetch_repo_docs()`: README (default branch 자동 탐색) + `docs/`, `doc/` 재귀 *.md/*.mdx/*.markdown
+  - `_MAX_FILES = 50` 제한, 404/403(rate limit) 케이스별 명확한 에러
+  - 인증 없이 60 req/h, 개인 사용에 충분
+- `POST /api/v1/projects/index-github` 엔드포인트
+  - 자동 `source_type` 설정 (README* → project_readme, docs/* → project_doc)
+  - `project_name`은 `owner/repo` 형식으로 통일
+
+#### 파일 업로드 (ADR-020)
+- `backend/app/rag/loaders/file.py` — PDF / DOCX / MD / TXT 텍스트 추출
+  - PDF: `pypdf` (이미지 PDF 실패 시 명확한 안내)
+  - DOCX: `python-docx` (paragraphs + table cells)
+  - MD/TXT: UTF-8 / UTF-8-sig / CP949 / EUC-KR fallback
+  - 20MB 제한, 암호화 PDF 거부
+- `POST /api/v1/projects/index-file` (multipart/form-data)
+  - 파일 + 메타데이터 (source_type, project_name, category, company, role, tech_stack)
+
+#### 프론트엔드 `/projects` 페이지 리팩토링
+- 데이터 추가 폼을 3개 모드 탭으로 분리: **텍스트** / **GitHub Repo** / **파일 업로드**
+- 모드별 입력 필드 동적 표시 (메타데이터 공통, 본문만 모드별 차이)
+- 파일 input: PDF/DOCX/MD/TXT accept, 선택 파일명 + 크기 표시
+- 인덱싱 성공 시 emerald 메시지, 실패 시 red 메시지
+
+#### 의존성 추가
+- `pypdf>=5.0.0`, `python-docx>=1.1.0`
+
+#### 문서
+- `docs/adr/019-github-repo-indexing.md` — GitHub 무인증 API + 마크다운 한정 + 50파일 제한 근거
+- `docs/adr/020-file-upload-resume.md` — pypdf/python-docx 채택 + OCR 미지원 사유
+- `docs/README.md` ADR 인덱스 019, 020 추가
+
+### 검증
+- E2E GitHub: `anthropics/anthropic-quickstarts` repo → README 1파일 → 12개 청크
+- E2E 파일: 마크다운 이력서 → 1개 청크
+- 프론트 빌드: 6개 페이지 모두 정상
+
+---
+
 ## [0.6.0] - 2026-05-24
 
 ### 추가 (M4-2: RAG 파이프라인 + URL 페칭)

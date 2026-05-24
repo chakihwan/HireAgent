@@ -1,12 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.rag.indexer import index_text
+from app.rag.loaders.file import FileParseError, parse_file
+from app.rag.loaders.github import GitHubFetchError, fetch_repo_docs
 from app.rag.retriever import search as rag_search
 from app.schemas.projects import (
     CareerDocumentCreate,
     CareerDocumentResponse,
+    GitHubIndexRequest,
+    GitHubIndexResponse,
     IndexResponse,
     SearchRequest,
     SearchResult,
@@ -68,6 +72,85 @@ async def delete_by_project(
     if count == 0:
         raise HTTPException(status_code=404, detail="No documents found for that project")
     return {"deleted": count}
+
+
+@router.post("/index-github", response_model=GitHubIndexResponse, status_code=201)
+async def index_github(
+    req: GitHubIndexRequest, db: AsyncSession = Depends(get_db)
+) -> GitHubIndexResponse:
+    """GitHub 공개 레포의 README + docs/*.md 자동 인덱싱 (ADR-019).
+
+    무인증 GitHub API rate limit 60/h 적용. 같은 레포 재인덱싱 시 기존 청크가 누적될 수 있으므로
+    사전에 `DELETE /by-project/{repo_name}` 호출 권장.
+    """
+    try:
+        result = await fetch_repo_docs(req.repo_url)
+    except GitHubFetchError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    project_name = f"{result['owner']}/{result['repo']}"
+    total_chunks = 0
+    all_ids: list[int] = []
+
+    for file in result["files"]:
+        docs = await index_text(
+            db,
+            user_id=_USER_ID,
+            content=file["content"],
+            source_type="project_readme" if file["path"].lower().startswith("readme") else "project_doc",
+            project_name=project_name,
+            category=req.category,
+            tech_stack=req.tech_stack,
+        )
+        total_chunks += len(docs)
+        all_ids.extend(d.id for d in docs)
+
+    return GitHubIndexResponse(
+        owner=result["owner"],
+        repo=result["repo"],
+        description=result["description"],
+        files_indexed=len(result["files"]),
+        total_chunks=total_chunks,
+        document_ids=all_ids,
+    )
+
+
+@router.post("/index-file", response_model=IndexResponse, status_code=201)
+async def index_file(
+    file: UploadFile = File(...),
+    source_type: str = Form(...),
+    project_name: str | None = Form(None),
+    category: str | None = Form(None),
+    company: str | None = Form(None),
+    role: str | None = Form(None),
+    tech_stack: str = Form(""),  # 쉼표 구분
+    db: AsyncSession = Depends(get_db),
+) -> IndexResponse:
+    """이력서/문서 파일 업로드 (PDF / DOCX / MD / TXT)."""
+    if not file.filename:
+        raise HTTPException(status_code=422, detail="파일명이 없습니다.")
+
+    data = await file.read()
+    try:
+        text = parse_file(file.filename, data)
+    except FileParseError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    if len(text) < 20:
+        raise HTTPException(status_code=422, detail="추출된 텍스트가 너무 짧습니다 (20자 미만).")
+
+    docs = await index_text(
+        db,
+        user_id=_USER_ID,
+        content=text,
+        source_type=source_type,
+        project_name=project_name,
+        category=category,
+        company=company,
+        role=role,
+        tech_stack=[s.strip() for s in tech_stack.split(",") if s.strip()],
+    )
+    return IndexResponse(chunks_created=len(docs), document_ids=[d.id for d in docs])
 
 
 @router.post("/search", response_model=list[SearchResult])

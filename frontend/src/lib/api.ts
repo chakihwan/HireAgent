@@ -215,6 +215,67 @@ export async function deleteProject(id: number): Promise<void> {
   if (!res.ok) throw new Error(res.statusText);
 }
 
+export interface GitHubIndexRequest {
+  repo_url: string;
+  category?: string;
+  tech_stack?: string[];
+}
+
+export interface GitHubIndexResponse {
+  owner: string;
+  repo: string;
+  description: string | null;
+  files_indexed: number;
+  total_chunks: number;
+  document_ids: number[];
+}
+
+export async function indexGitHub(data: GitHubIndexRequest): Promise<GitHubIndexResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/projects/index-github`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error((err as { detail?: string }).detail ?? res.statusText);
+  }
+  return res.json();
+}
+
+export interface FileUploadFields {
+  source_type: string;
+  project_name?: string;
+  category?: string;
+  company?: string;
+  role?: string;
+  tech_stack?: string;  // 쉼표 구분
+}
+
+export async function indexFile(
+  file: File,
+  fields: FileUploadFields,
+): Promise<IndexResponse> {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("source_type", fields.source_type);
+  if (fields.project_name) form.append("project_name", fields.project_name);
+  if (fields.category) form.append("category", fields.category);
+  if (fields.company) form.append("company", fields.company);
+  if (fields.role) form.append("role", fields.role);
+  if (fields.tech_stack) form.append("tech_stack", fields.tech_stack);
+
+  const res = await fetch(`${API_BASE}/api/v1/projects/index-file`, {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error((err as { detail?: string }).detail ?? res.statusText);
+  }
+  return res.json();
+}
+
 export async function deleteProjectByName(name: string): Promise<{ deleted: number }> {
   const res = await fetch(`${API_BASE}/api/v1/projects/by-project/${encodeURIComponent(name)}`, {
     method: "DELETE",

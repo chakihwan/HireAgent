@@ -64,7 +64,7 @@ hireagent/
 │   ├── architecture.md        # 시스템 아키텍처 + M2 구현 매핑
 │   ├── CHANGELOG.md           # 매일 변경사항 기록
 │   ├── erd.md                 # 데이터 모델 ERD (Mermaid)
-│   └── adr/                   # 아키텍처 의사결정 기록 (001~018)
+│   └── adr/                   # 아키텍처 의사결정 기록 (001~020)
 │
 ├── backend/
 │   ├── Dockerfile
@@ -242,6 +242,8 @@ export function EssayForm({ onSubmit }: { onSubmit: (item: EssayItem) => void })
 | 016 | SQLAlchemy async + asyncpg (Alembic sync) | FastAPI async 풀스택, Alembic은 단순 sync |
 | 017 | 임베딩 모델 KURE-v1 (sentence-transformers) | 한국어 SOTA, 자소서 도메인 최적 |
 | 018 | URL 페칭 보조 입력 (httpx + BeautifulSoup) | ADR-009 보조 옵션 구체 구현, 드래그 금지 사이트 우회 |
+| 019 | GitHub 공개 레포 자동 인덱싱 (무인증 API) | 요구사항 §1.4 프로젝트 문서 RAG 차별점 구현 |
+| 020 | 이력서 파일 업로드 (PDF/DOCX/MD/TXT) | 요구사항 F-1.1/F-1.2, OCR 미지원 (텍스트 변환 권유) |
 
 상세 내용: `docs/adr/` 폴더 + `docs/architecture.md`
 

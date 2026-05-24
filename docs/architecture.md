@@ -217,7 +217,33 @@ write 노드 (essay_writer.py):
   - 후처리: 마크다운 헤더/글자수 메타/코드펜스 제거
 ```
 
-### 3.5 URL 페칭 (M4 구현, ADR-018)
+### 3.5 RAG 데이터 입력 다양화 (v0.7, ADR-019/020)
+
+```
+[A] 텍스트 직접 입력 (M4 기본)
+    POST /api/v1/projects/index — JSON body
+
+[B] GitHub 공개 레포 (ADR-019)
+    POST /api/v1/projects/index-github — {"repo_url": "..."}
+    1. app/rag/loaders/github.py: 무인증 GitHub REST API
+       - /repos/{owner}/{repo} (메타 검증)
+       - /repos/{owner}/{repo}/readme (default branch)
+       - /repos/{owner}/{repo}/contents/docs (재귀 *.md)
+    2. 각 파일을 index_text()로 청킹/임베딩/저장
+    3. project_name = "owner/repo", source_type = project_readme | project_doc
+    4. rate limit 60/h (무인증), 최대 50파일
+
+[C] 파일 업로드 (ADR-020)
+    POST /api/v1/projects/index-file — multipart/form-data
+    1. app/rag/loaders/file.py: 확장자별 파서 dispatch
+       - .pdf  → pypdf.PdfReader (암호화/이미지 PDF는 명확한 에러)
+       - .docx → python-docx (paragraphs + table cells)
+       - .md/.txt → utf-8/utf-8-sig/cp949/euc-kr fallback
+    2. 20MB 제한
+    3. 추출 텍스트로 index_text() 호출
+```
+
+### 3.6 URL 페칭 (M4 구현, ADR-018)
 
 ```
 1. [Frontend] /generate JD 입력 단계에서 http(s):// 패턴 감지

@@ -34,6 +34,21 @@ class IndexResponse(BaseModel):
     document_ids: list[int]
 
 
+class GitHubIndexRequest(BaseModel):
+    repo_url: str = Field(..., description="https://github.com/owner/repo")
+    category: str | None = None
+    tech_stack: list[str] = Field(default_factory=list)
+
+
+class GitHubIndexResponse(BaseModel):
+    owner: str
+    repo: str
+    description: str | None
+    files_indexed: int
+    total_chunks: int
+    document_ids: list[int]
+
+
 class SearchRequest(BaseModel):
     query: str = Field(..., min_length=2)
     limit: int = Field(default=5, ge=1, le=20)
