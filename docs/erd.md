@@ -1,6 +1,7 @@
 # HireAgent ERD
 
-> M2 시점 기준 (2026-05-24). M4에서 RAG 메타데이터 컬럼 추가 가능성 있음.
+> M4 완료 시점 기준 (2026-05-24). 스키마는 M2 마이그레이션(`d38ba57bebea`) 이후 변경 없음.
+> M4에서 `career_documents` 테이블이 실제로 가동 시작 (KURE-v1 임베딩, ADR-017).
 
 ---
 
@@ -70,7 +71,7 @@ erDiagram
 |--------|------|----|----|----------|
 | `job_applications` | 지원 단위 (회사 + 공고 + 결과) | `id` | — | [013](adr/013-job-application-model.md) |
 | `essay_library` | 자소서 항목 (지원과 연결, NULL이면 자유 작성) | `id` | `application_id` → `job_applications.id` | [013](adr/013-job-application-model.md) |
-| `career_documents` | RAG 인덱스 (이력서/README/자소서) | `id` | — | [004](adr/004-pgvector-over-chroma.md), [005](adr/005-korean-embeddings.md) |
+| `career_documents` | RAG 인덱스 (이력서/README/자소서, KURE-v1 임베딩) | `id` | — | [004](adr/004-pgvector-over-chroma.md), [005](adr/005-korean-embeddings.md), [017](adr/017-kure-v1-embedding.md) |
 | `user_llm_configs` | 사용자별 API 키 + 에이전트 모델 설정 | `user_id` | — | [008](adr/008-multi-llm-provider.md) |
 
 ---
@@ -98,8 +99,8 @@ erDiagram
 | `job_applications.user_id` | 멀티유저 격리 — 모든 쿼리에 user_id 필터 필수 (ADR-003) |
 | `essay_library.user_id` | 동일 |
 | `essay_library.application_id` | 지원별 자소서 묶음 조회 |
-| `career_documents.user_id` | RAG 검색 시 사용자 격리 |
-| `career_documents.embedding` | M4에서 ivfflat/hnsw 인덱스 추가 예정 |
+| `career_documents.user_id` | RAG 검색 시 사용자 격리 (`app/rag/retriever.py`에서 강제) |
+| `career_documents.embedding` | 현재는 시퀀셜 스캔, 데이터 누적 시 ivfflat/hnsw 추가 검토 |
 
 ---
 
@@ -146,3 +147,4 @@ docker exec hireagent-backend alembic current  # 현재 리비전 확인
 | 날짜 | 변경 |
 |------|------|
 | 2026-05-24 | 최초 작성 (M3 완료 시점) |
+| 2026-05-24 | M4 완료 반영 — 스키마 무변경, `career_documents` 가동 시작 명시 + ADR-017 링크 추가 |

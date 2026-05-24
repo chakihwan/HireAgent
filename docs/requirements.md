@@ -1,9 +1,9 @@
 # HireAgent 요구사항 명세서
 
-> **버전**: v0.2
-> **작성일**: 2026-05-22
-> **상태**: 🟢 확정 (M1 진행 대기)
-> **이전 버전**: v0.1 (CareerOS 가칭)
+> **버전**: v0.3
+> **작성일**: 2026-05-22 (v0.3 업데이트: 2026-05-24)
+> **상태**: 🟢 M1-M4 완료, M5 진행 중
+> **이전 버전**: v0.2 (HireAgent 명명, 멀티 LLM)
 
 ---
 
@@ -13,6 +13,7 @@
 |------|------|----------|
 | v0.1 | 2026-05-22 | 초안 작성 (CareerOS 가칭) |
 | v0.2 | 2026-05-22 | 프로젝트명 확정(HireAgent), 기술스택 조정, 멀티 LLM 프로바이더 추가, UI 전략 변경 |
+| v0.3 | 2026-05-24 | M1-M4 완료 반영 (마일스톤 체크리스트, ADR 010-018 요약, 문서 인덱스 정리) |
 
 ---
 
@@ -390,40 +391,48 @@ class CareerDocument(Base):
 
 ## 8. 마일스톤 (가속화)
 
-### M1: 기반 구축 (1주) ← v0.2 압축
-- [ ] 프로젝트 초기 세팅 (모노레포 또는 분리)
-- [ ] Docker Compose (FastAPI + Postgres+pgvector + Next.js)
-- [ ] LLM Factory 골격 (Anthropic + Ollama 우선)
-- [ ] 기본 RAG 파이프라인 (이력서 인덱싱)
-- [ ] Next.js 기본 페이지 (홈, 설정)
-- [ ] 살아있는 문서 워크플로우 확립
+### M1: 기반 구축 ✅ 완료 (2026-05-24)
+- [x] 프로젝트 초기 세팅 (모노레포 backend/ + frontend/)
+- [x] Docker Compose (FastAPI + Postgres+pgvector + Ollama GPU + Next.js)
+- [x] LLM Factory 골격 (Anthropic + Ollama + OpenAI stub + Google stub)
+- [x] Next.js 16 + shadcn/ui + LLM 테스트 페이지
+- [x] 살아있는 문서 워크플로우 확립 (CLAUDE.md + ADR 001-011)
+- [x] RTX 5060 GPU passthrough → Ollama ~82 tokens/sec
+- ~~기본 RAG 파이프라인~~ → M4에서 구현
 
-### M2: 코어 에이전트 (2주)
-- [ ] 공고 텍스트 분석 에이전트
-- [ ] 작성 에이전트 + 글자수 검증
-- [ ] 자가 평가 + 재작성 루프
-- [ ] LangGraph 병렬 처리
-- [ ] API 엔드포인트 완성
+### M2: 코어 에이전트 + DB ✅ 완료 (2026-05-24)
+- [x] 공고 텍스트 분석 에이전트 (`jd_analyzer.py`)
+- [x] 작성 에이전트 + 글자수 검증 (`essay_writer.py` + `char_counter.py`)
+- [x] 자가 평가 + 재작성 루프 (`evaluator.py` + `compressor.py`, ≤3회)
+- [x] LangGraph 병렬 처리 (`Send` API + ItemState 서브그래프, ADR-015)
+- [x] SQLAlchemy 2.0 async + asyncpg + Alembic (ADR-016)
+- [x] DB 모델 4개 (CareerDocument, JobApplication, EssayLibraryItem, UserLLMConfig)
+- [x] `POST /api/v1/essays/generate` SSE 스트리밍 (ADR-012)
 
-### M3: UI 핵심 (2주)
-- [ ] 공고 입력 페이지
-- [ ] 항목 선택 + 글자수 입력 UI
-- [ ] 결과 확인 페이지 (실시간 진행상황)
-- [ ] 설정 페이지 (API 키, 모델 선택)
-- [ ] shadcn/ui 컴포넌트 적용
+### M3: UI 핵심 ✅ 완료 (2026-05-24)
+- [x] 공고 입력 페이지 (`/generate` 4단계 플로우)
+- [x] 항목 선택 + 글자수/톤/페르소나 UI
+- [x] 결과 확인 페이지 (SSE 실시간 진행상황 + 글자수/평가 배지)
+- [x] 설정 페이지 (`/settings`, 에이전트별 API 키/모델, localStorage)
+- [x] shadcn/ui 컴포넌트 (button/card/select/badge/input/textarea/label/separator)
 
-### M4: 데이터 레이어 (2주)
-- [ ] GitHub URL 자동 인덱싱
-- [ ] 메타데이터 분리된 RAG
-- [ ] 프로젝트 카드 자동 생성
-- [ ] 자소서 라이브러리 + 합격 태깅
+### M4: 데이터 레이어 + RAG ✅ 완료 (2026-05-24)
+- [x] 자소서 라이브러리 API + UI (`/library`, 합격 태깅)
+- [x] 지원 관리 API + UI (`/jobs`, JobApplication 상태 머신)
+- [x] RAG 인덱서 (KURE-v1 한국어 SOTA 임베딩, ADR-017)
+- [x] RAG 검색기 (pgvector cosine + user_id 필터)
+- [x] LangGraph 통합 (`retrieve → write → ...`, ItemState.rag_context)
+- [x] `/projects` 페이지 (텍스트 인덱싱 + 검색 테스트 + 청크 관리)
+- [x] URL 페칭 보조 입력 (ADR-018, ADR-009 구체 구현)
+- [ ] GitHub URL 자동 인덱싱 → M5 또는 향후 (Phase 2 F-8.6 브라우저 확장과 연계 검토)
+- [ ] 프로젝트 카드 자동 생성 → M5 또는 향후 (Phase 2 기능)
 
-### M5: 본인 실사용 (지속)
+### M5: 본인 실사용 (진행 중)
 - [ ] 실제 이직 지원에 사용
 - [ ] 피드백으로 개선
 - [ ] 합격 자소서 데이터 축적
 
-**예상 완료**: M1-M4 합 7주 (~2026-07-10)
+**실제 완료**: M1-M4 1일 (2026-05-24) — 가속화 페이스
 
 ---
 
@@ -510,7 +519,22 @@ class CareerDocument(Base):
 ### ADR-009: 공고 입력은 텍스트 우선 (v0.2 명시)
 - **결정**: URL 크롤링은 보조, 직접 붙여넣기가 메인
 - **근거**: IP 밴 사례 다수, 사이트 정책 변경 빈번
-- **결과**: 사용자 액션 1번 추가, 안정성 확보
+- **결과**: 사용자 액션 1번 추가, 안정성 확보 (ADR-018에서 보조 URL 페칭 구체화)
+
+### ADR-010~018 (요약)
+| ID | 결정 | 단계 |
+|----|------|------|
+| 010 | HireAgent 전용 Ollama 컨테이너 분리 | M1 |
+| 011 | LLM Factory 레지스트리 패턴 | M1 |
+| 012 | 자소서 생성 응답은 SSE 스트리밍 | M2 |
+| 013 | JobApplication 모델로 자소서-공고 연결 | M2 |
+| 014 | Phase 3 Ollama는 로컬 전용 (서버 미배포) | M1 |
+| 015 | LangGraph `Send` API + 항목 서브그래프 | M2 |
+| 016 | SQLAlchemy async + asyncpg (Alembic sync) | M2 |
+| 017 | KURE-v1 임베딩 (sentence-transformers, 한국어 SOTA) | M4 |
+| 018 | URL 페칭 보조 입력 (httpx + BeautifulSoup) | M4 |
+
+상세: [`docs/adr/`](adr/) 폴더 또는 [`docs/README.md`](README.md) 인덱스 참고.
 
 ---
 
@@ -526,11 +550,11 @@ class CareerDocument(Base):
 - [ ] LLM Factory 골격
 
 ### 11.2 추가로 잡아야 할 문서
-- [x] `architecture.md` - 상세 아키텍처 (M2 구현 매핑 포함)
-- [x] `CHANGELOG.md` - 변경 이력 (v0.0.1~)
-- [ ] `data_model.md` - DB 스키마 (현재는 CLAUDE.md §데이터 모델로 대체)
-- [ ] `api_design.md` - REST API 명세 (현재는 FastAPI `/docs` 자동 생성으로 대체)
-- [ ] `frontend_design.md` - UI 와이어프레임 (M3에서 작성)
+- [x] `architecture.md` - 상세 아키텍처 (M2~M4 구현 매핑 포함)
+- [x] `CHANGELOG.md` - 변경 이력 (v0.0.1~v0.6.0)
+- [x] `erd.md` - DB 스키마 (Mermaid ERD, M4 시점 확정)
+- [x] `api_design.md` 역할 - FastAPI `/docs` 자동 생성 + `architecture.md §3` 흐름도로 대체
+- [x] `frontend_design.md` 역할 - M3/M4 페이지가 곧 명세 (`/generate`, `/library`, `/jobs`, `/projects`, `/settings`)
 - ~~`agents.md`~~ - 별도 문서 대신 `architecture.md §2 M2 구현 매핑` + ADR-015로 통합
 
 ### 11.3 검토 후 확정

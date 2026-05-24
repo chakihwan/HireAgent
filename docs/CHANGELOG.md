@@ -11,6 +11,107 @@
 
 ---
 
+## [0.6.0] - 2026-05-24
+
+### 추가 (M4-2: RAG 파이프라인 + URL 페칭)
+
+#### RAG 인프라
+- `backend/app/rag/embeddings.py` — KURE-v1 (한국어 SOTA 임베딩, 1024-dim) lazy load
+  - `asyncio.to_thread`로 동기 `model.encode` 호출 시 이벤트 루프 블로킹 회피
+  - `threading.Lock`으로 동시 첫 호출 시 중복 로드 방지
+- `backend/app/rag/loaders/text.py` — `RecursiveCharacterTextSplitter` (한국어 separators)
+  - chunk_size=500, overlap=50, 우선순위: `\n\n` > `\n` > `。` > `.` 등
+- `backend/app/rag/indexer.py` — 청킹 → 임베딩 → `career_documents` INSERT
+- `backend/app/rag/retriever.py` — pgvector `cosine_distance` 검색 + user_id 필터 (CLAUDE.md Rule #4)
+
+#### RAG REST API (`/api/v1/projects`)
+- `POST /index` — 텍스트 + 메타데이터(source_type/project_name/category/tech_stack) 인덱싱
+- `GET /` — 인덱싱된 청크 목록 (source_type/project_name 필터)
+- `DELETE /{doc_id}` — 단일 청크 삭제
+- `DELETE /by-project/{project_name}` — 같은 프로젝트 모든 청크 삭제
+- `POST /search` — RAG 검색 (디버깅/검증용, distance 포함 응답)
+
+#### LangGraph RAG 통합
+- `backend/app/agents/state.py` `ItemState`에 `rag_context: list[str]` 필드 추가
+- `backend/app/agents/rag_retriever.py` — 신규 노드
+  - 쿼리: `"{category} 관련 경험. {jd_analysis[:300]}"`
+  - 코사인 거리 0.8 이하만 채택, 최대 5개
+  - 검색 실패 시 빈 리스트 반환해 자소서 생성 계속
+- `backend/app/agents/orchestrator.py` — 서브그래프: `retrieve → write → ... → evaluate`
+  - progress에 `[RAG N개 참고]` 표시
+- `backend/app/agents/essay_writer.py` — 프롬프트에 `[참고 경험]` 섹션 동적 삽입
+  - 시스템 프롬프트: "참고 경험을 자연스럽게 녹여낼 것, 출처 메타 노출 금지, 마크다운/메타 출력 금지"
+  - `_clean_output()`: 마크다운 헤더(`###`), 글자수 메타(`**400자**`), 코드펜스 후처리 제거
+
+#### URL 페칭 (ADR-018, ADR-009 보조 옵션 구현)
+- `backend/app/services/url_fetcher.py` — httpx + BeautifulSoup
+  - 정직한 User-Agent, 10초 timeout, 5MB 응답 제한
+  - script/style/nav/header/footer 제거, main/article 우선 추출
+  - 403/401/HTML 아님/본문 < 100자 케이스별 사용자 친화 에러
+- `backend/app/api/v1/jobs.py` `POST /fetch-url` 엔드포인트
+- 프론트 `/generate` 페이지 — URL 패턴 감지 시 경고 박스 대신 "URL에서 가져오기" 액션 버튼
+  - 성공 시 textarea를 추출 텍스트로 교체, 실패 시 amber 에러 박스로 안내
+
+#### 프론트엔드 `/projects` 페이지
+- 데이터 추가 폼: source_type select + project_name/category/tech_stack + 본문 textarea
+- 검색 테스트: 쿼리 입력 → 유사도 + 본문 미리보기
+- 청크 목록 (프로젝트별 그룹핑): 메타데이터 표시 + 단일/전체 삭제
+- 네비게이션 헤더에 "내 데이터" 링크 추가
+
+#### 의존성 추가 (`backend/pyproject.toml`)
+- `langchain-text-splitters>=0.3.0`
+- `beautifulsoup4>=4.12.0` + `lxml>=5.0.0`
+
+#### 문서
+- `docs/adr/017-kure-v1-embedding.md` — KURE-v1 임베딩 채택 ADR
+- `docs/adr/018-url-fetch-secondary-input.md` — URL 페칭 보조 입력 정책
+- `docs/architecture.md` §3.3-3.5: RAG 인덱싱/검색 통합/URL 페칭 흐름 추가
+- `docs/README.md` ADR 인덱스 017, 018 추가, 상태 배지 M4 완료
+- `CLAUDE.md` ADR 요약 표 017, 018 추가, 단계 M5로 업데이트
+
+### 검증
+- E2E: KURE-v1 첫 로드 후 인덱싱 1건 (LangGraph 멀티에이전트 경험) → 자소서 생성
+  - 인덱싱한 경험 키워드("5개 에이전트", "Send API", "reducer 패턴", "Python+FastAPI+PostgreSQL+pgvector")가 모두 자연스럽게 반영
+  - progress: `[RAG 1개 참고]`, 평가 8.0점, 글자수 ±5% 이내
+
+---
+
+## [0.5.0] - 2026-05-24
+
+### 추가 (M4-1: 자소서 라이브러리 + 지원 관리)
+
+#### 백엔드 API
+- `backend/app/schemas/jobs.py` + `services/jobs.py` + `api/v1/jobs.py`
+  - `POST/GET/PATCH/DELETE /api/v1/jobs` — JobApplication CRUD
+  - Status 머신 검증 (draft/submitted/passed_doc/passed_interview/passed_final/rejected/withdrawn)
+- `backend/app/schemas/library.py` + `services/library.py` + `api/v1/library.py`
+  - `POST/GET/PATCH/DELETE /api/v1/library` — EssayLibraryItem CRUD
+  - 같은 application_id + category 재저장 시 version 자동 증가
+- `backend/app/api/v1/essays.py` `?save=true` 쿼리파라미터
+  - done 이벤트 직전에 라이브러리에 자동 저장, response에 `saved_ids` 포함
+
+#### 프론트엔드
+- `/library` 페이지 — 저장된 자소서 목록
+  - 카테고리/최종 여부 필터, 최종 토글, 복사, 삭제, 확장/접기
+  - 평가 점수 + 글자수 색상 코딩
+- `/jobs` 페이지 — 지원 관리
+  - 등록 폼 (회사/포지션/공고 URL/공고 내용)
+  - 상태 변경 select (합격 태깅)
+  - "자소서" 버튼으로 `/library?application_id=N`로 이동
+- `/generate` 결과 화면 — 항목별 "저장" 버튼 (`saveToLibrary` API 호출)
+- 네비게이션 헤더에 "라이브러리"/"지원 관리" 링크 추가
+
+### 추가 (ERD 문서)
+- `docs/erd.md` — Mermaid `erDiagram` (4개 테이블 + 관계 + 인덱스 + 상태 머신)
+- `docs/architecture.md` §3.2에 ERD 링크 + 요약
+- `docs/README.md` 문서 인덱스에 ERD 추가
+
+### 수정 (URL 입력 경고 - 0.6.0에서 페칭으로 대체됨)
+- `frontend/src/app/generate/page.tsx` — URL 패턴 감지 시 amber 경고 박스
+- `backend/app/agents/jd_analyzer.py` — URL만 들어온 경우 progress에 경고 메시지
+
+---
+
 ## [0.4.1] - 2026-05-24
 
 ### 수정
