@@ -11,6 +11,53 @@
 
 ---
 
+## [0.7.3] - 2026-05-26
+
+### 개선 — `/projects` 페이지 카드형 + 디렉토리 구조 재설계
+
+**배경**: 0.7.2의 카드형 빈 상태가 좋은 피드백을 받아, 데이터 등록 후에도 동일한 카드 UI를 유지하고 업로드된 데이터는 별도 디렉토리 뷰로 분리하기로 결정.
+
+**변경 사항** (`frontend/src/app/projects/page.tsx` — 전체 재작성)
+
+- **3-카드 선택 영역** (항상 표시, 고정 높이 h-28)
+  - 이력서 / GitHub 레포 / 경험·자소서
+  - **카드 전체가 클릭 영역** (`<button>` 태그) — 모서리 + 버튼만 클릭 안 함
+  - 선택된 카드는 강조 보더 + 그림자
+  - 우측 상단에 등록된 항목 수 배지 표시
+
+- **인라인 폼 패널** (카드 아래 풀 너비)
+  - 카드 클릭 시 슬라이드 다운, 같은 카드 재클릭하면 닫힘
+  - 카드 종류에 따라 다른 필드 노출:
+    - 이력서: 파일 + 레이블 + 기술 스택
+    - GitHub: URL + 기술 스택
+    - 경험·자소서: 유형(`essay`/`custom`) + 제목 + 텍스트
+
+- **인덱싱된 데이터 디렉토리 뷰**
+  - 폴더 3개 (이력서 / GitHub / 경험·자소서)로 분리, 각각 접기/펼치기 가능
+  - 파일 row: 이름 + 청크 수 + 등록일, hover 시 삭제 버튼
+  - 카드 영역과 데이터 영역 완전 분리 (등록 시 카드 크기 변동 없음)
+
+### 수정 — GitHub 레포 삭제 404 버그
+
+- `backend/app/api/v1/projects.py`
+  - `{project_name}` → `{project_name:path}` 타입 변경
+  - 슬래시 포함 project_name (`owner/repo` 형식)도 단일 파라미터로 매칭
+
+### 인프라 — WSL2 + Docker HMR 활성화
+
+**배경**: Windows 파일시스템(`/mnt/d/...`)의 inotify 이벤트가 컨테이너로 전달 안 됨 → 파일 수정마다 `docker compose restart frontend` 필요했던 문제.
+
+- `docker-compose.yml`
+  - `frontend.environment.WATCHPACK_POLLING: "true"` 추가
+- `frontend/package.json`
+  - `"dev": "next dev --webpack"` (Turbopack → webpack, Next.js 16 폴링 지원)
+- `frontend/next.config.ts`
+  - `webpack.watchOptions.poll: 1000` (1초 간격 폴링)
+
+이제 파일 저장 시 브라우저가 자동으로 변경사항 반영됨 (재시작 불필요).
+
+---
+
 ## [0.7.2] - 2026-05-26
 
 ### 개선 — `/projects` 페이지 UX 전면 개선
