@@ -180,7 +180,21 @@
   - compressor도 `_clean_output` 미적용 → `clean_llm_output()` 추가 (2026-05-26)
   - RAG 출처 레이블 `[참고 경험 N]` 누출 방지 정규식 추가
   - 볼드/이탤릭/불릿/글자수메타 줄 제거
+  - **7개 시나리오 자동 검증 완료** (2026-05-26, `docs/test-scenarios.md` 참조)
 - [ ] orchestrator의 `_pack_draft` 제거 흔적 검증
+
+### 2026-05-26 시나리오 검증 중 발견 이슈
+
+- [ ] **GPU fallback 안전장치**: 다른 컨테이너가 VRAM 점유 시 hireagent-ollama가 조용히 CPU 모드로 떨어짐
+  - 사용자가 응답 지연 원인을 모르고 답답함
+  - `/health` 또는 `/settings`에 현재 GPU/CPU 상태 표시 + `ollama ps` 결과 노출
+  - 또는 모델 로드 시 GPU 사용률 검증 후 경고
+- [ ] **URL 페칭 로그인 페이지 감지 부재**: LinkedIn 등 로그인 벽 URL 페칭 시 로그인 페이지 본문이 그대로 반환됨
+  - `app/services/url_fetcher.py`에 "로그인" "sign in" "회원가입" 키워드 감지 → 경고
+  - 또는 본문 길이가 너무 짧거나 공고 키워드 부재 시 의심 플래그
+- [ ] **`chakihwan/HireAgent` 공개 전환**: 본인 레포 인덱싱 핵심 시나리오를 위해 GitHub Settings → 공개로 변경
+- [ ] **API 직접 호출 시 `char_target` 최소 100자 제약**: 프론트엔드는 영향 없으나 API 사용자엔 혼란 가능
+  - 제약 자체는 합리적이나 schema description에 명시
 - [ ] 에러 핸들링 일관성 (`raise HTTPException` vs ValueError vs Exception)
 - [ ] 프론트 API 에러 메시지 한국어 통일
 - [ ] CORS 설정 환경별 분기 (`config.py`에서 origin 리스트 관리)
@@ -203,3 +217,4 @@
 |------|------|
 | 2026-05-25 | 최초 작성 (M5 시작 시점, M4+ GitHub/파일 업로드 완료 후) |
 | 2026-05-26 | 기술부채 수정: `clean_llm_output` 공통 유틸 분리, compressor/essay_writer 마크다운 클린업, `[참고 경험 N]` 누출 방지 |
+| 2026-05-26 | 7개 시나리오 자동 검증 완료 (글자수/병렬/URL/GitHub/저장 모두 통과), GPU fallback·LinkedIn 로그인페이지 페칭 이슈 발견 추가 |

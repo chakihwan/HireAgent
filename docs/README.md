@@ -2,7 +2,7 @@
 
 > 한 번 정리한 커리어 데이터로, 항목별 자소서를 멀티에이전트가 토론하며 다듬어주는 AI 도구
 
-[![Status](https://img.shields.io/badge/status-M3%20완료-green)]()
+[![Status](https://img.shields.io/badge/status-M5%20진행%20중-green)]()
 [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
 ---

@@ -1,7 +1,7 @@
 # HireAgent 아키텍처
 
-> **버전**: v0.2
-> **작성일**: 2026-05-22
+> **버전**: v0.3
+> **작성일**: 2026-05-22 (최근 갱신: 2026-05-26)
 > **연계 문서**: [requirements.md](requirements.md) · 에이전트 상세는 본 문서 §2 "M2 구현 매핑" + [ADR-015](adr/015-langgraph-send-item-subgraph.md)
 
 ---
@@ -144,8 +144,10 @@ class EssayState(TypedDict):
 | JD 분석 | `backend/app/agents/jd_analyzer.py` | 인재상/요구역량/직무요약 추출 |
 | 항목별 작성 | `backend/app/agents/essay_writer.py` | 톤/페르소나 반영, max_tokens = char_limit × 3 |
 | 글자수 검증 | `backend/app/utils/char_counter.py` | `validate_chars()` Python 순수 함수 (ADR-001) |
-| 압축/확장 | `backend/app/agents/compressor.py` | `diff_chars()` 기반 방향 결정, 최대 3회 |
+| 압축/확장 | `backend/app/agents/compressor.py` | `diff_chars()` 기반 방향 결정, 최대 3회 + `clean_llm_output` 적용 |
 | 자가 평가 | `backend/app/agents/evaluator.py` | JSON 출력 (score + suggestion) |
+| LLM 출력 후처리 | `backend/app/utils/text_cleaner.py` | `clean_llm_output()` — essay_writer + compressor 공통 (v0.7.1) |
+| RAG 검색 노드 | `backend/app/agents/rag_retriever.py` | KURE-v1 + pgvector cosine, user_id 필터 |
 | 오케스트레이션 | `backend/app/agents/orchestrator.py` | LangGraph `Send` API로 fan-out, 항목별 서브그래프 |
 | API 엔드포인트 | `backend/app/api/v1/essays.py` | SSE (`/generate`) + 동기 (`/generate/sync`) |
 
@@ -212,9 +214,14 @@ ItemState 서브그래프 (orchestrator.py):
         - state["rag_context"]에 저장
 
 write 노드 (essay_writer.py):
-  - 프롬프트에 [참고 경험] 섹션 동적 삽입
-  - 시스템 프롬프트: "참고 경험을 자연스럽게 녹여낼 것, 메타 표현 금지"
-  - 후처리: 마크다운 헤더/글자수 메타/코드펜스 제거
+  - 프롬프트에 [경험 자료] 섹션 동적 삽입 (v0.7.1 — 번호 레이블 제거)
+  - 시스템 프롬프트: "경험 자료 외 수치/회사명/기술명 생성 금지, 마크다운 금지"
+  - 후처리: clean_llm_output() — 볼드/이탤릭/불릿/출처레이블/헤더/코드펜스/글자수메타 제거
+
+후처리 공통 유틸 (utils/text_cleaner.py, v0.7.1):
+  - essay_writer + compressor 모두 호출
+  - 근본 원인: 볼드 제거 → 글자수 줄어 compress 트리거 → compressor가 마크다운 재도입 연쇄 버그
+  - 패턴: **bold** / [참고 경험 N] / [경험 자료] / 수정 후 글자 수: N자 / ### / ```
 ```
 
 ### 3.5 RAG 데이터 입력 다양화 (v0.7, ADR-019/020)
@@ -363,6 +370,12 @@ flowchart LR
 | SSE 스트리밍 응답 | [012](adr/012-sse-streaming-response.md) | 60초+ 처리 시간, 단계별 진행률 표시 |
 | JobApplication 모델 | [013](adr/013-job-application-model.md) | 자소서-공고-합격이력 연결 |
 | Phase 3 Ollama 로컬 전용 | [014](adr/014-phase3-ollama-local-only.md) | 서버 GPU 비용 회피 |
+| LangGraph Send + 서브그래프 | [015](adr/015-langgraph-send-item-subgraph.md) | 항목 수 런타임 결정, 글자수 루프 캡슐화 |
+| SQLAlchemy async + asyncpg | [016](adr/016-sqlalchemy-async-asyncpg.md) | FastAPI async 풀스택 |
+| KURE-v1 임베딩 | [017](adr/017-kure-v1-embedding.md) | 한국어 SOTA, 자소서 도메인 최적 |
+| URL 페칭 보조 입력 | [018](adr/018-url-fetch-secondary-input.md) | ADR-009 보조 옵션 구현 |
+| GitHub 공개 레포 인덱싱 | [019](adr/019-github-repo-indexing.md) | 무인증 API, 프로젝트 문서 RAG |
+| 이력서 파일 업로드 | [020](adr/020-file-upload-resume.md) | PDF/DOCX/MD/TXT, OCR 미지원 |
 
 ---
 
@@ -372,3 +385,4 @@ flowchart LR
 |------|------|------|
 | v0.1 | 2026-05-22 | 초기 작성 (M1 시작 시점) |
 | v0.2 | 2026-05-22 | 아키텍처 검토 반영: 파이프라인 병렬 흐름 명확화, Ollama 위치 분리, SSE 스트리밍 추가, ADR 010~014 반영, LLM 테스트 엔드포인트 보안 경고 |
+| v0.3 | 2026-05-26 | M2 매핑표에 `text_cleaner.py` / `rag_retriever.py` 추가, §3.4 후처리 설명 갱신 (`clean_llm_output` + 연쇄 버그 설명), §6 ADR 인덱스 015~020 보강 |
