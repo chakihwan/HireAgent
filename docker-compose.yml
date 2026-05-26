@@ -66,6 +66,7 @@ services:
       - "3000:3000"
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8080
+      WATCHPACK_POLLING: "true"    # WSL2 inotify 미동작 → 폴링으로 HMR 활성화
     volumes:
       - ./frontend:/app
       - /app/node_modules
