@@ -411,9 +411,18 @@ class UserLLMConfig(Base):
 
 ---
 
-## 🚀 M5 마일스톤 (다음)
+## ✅ M5 진행 중 (2026-05-26~)
 
 **목표**: 본인 실사용 + 피드백 반영
+
+### M5 버그 수정 (2026-05-26)
+- **`clean_llm_output()` 공통 유틸 분리** (`app/utils/text_cleaner.py`)
+  - essay_writer + compressor 모두 적용
+  - 볼드(`**text**`), 불릿(`- `, `* `), 출처레이블(`[참고 경험 N]`), 글자수메타 제거
+- **근본 원인**: `_clean_output`이 볼드 제거 → 글자수 줄어 compress 트리거 → compressor가 볼드 재도입하는 연쇄 버그
+- **RAG context 포맷 개선**: `[참고 경험 N]` 번호 레이블 제거, `[경험 자료]`로 섹션명 통일
+- **시스템 프롬프트 강화**: 경험 자료 외 수치/회사명/기술명 생성 금지, 마크다운 금지 명시
+- **RAG 인용 E2E 검증**: mock README → 고유 수치 정확 인용, 레이블 누출 없음 ✅
 
 ---
 
@@ -429,6 +438,7 @@ class UserLLMConfig(Base):
 - 새 LLM 프로바이더 추가 → `app/llm/providers/`에 파일 추가, `factory.py` 등록만 하면 됨 (확장성)
 - 새 RAG 데이터 타입 → `app/rag/loaders/`에 파일 추가
 - 새 API 엔드포인트 → `app/api/v1/`에 파일 추가 + `main.py`에 라우터 등록
+- LLM 출력을 자소서 본문으로 사용할 때 → 반드시 `app/utils/text_cleaner.clean_llm_output()` 적용 (essay_writer, compressor 모두 사용 중)
 
 ### 의문나는 결정이 있다면
 - 추측하지 말고 사용자에게 물어볼 것

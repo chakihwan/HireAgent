@@ -56,6 +56,7 @@ docker compose up
 - [시스템 아키텍처](architecture.md)
 - [데이터 모델 ERD](erd.md)
 - [M5 체크리스트 + UI 고도화 로드맵](m5-checklist.md)
+- [테스트 시나리오 (M5 실사용 검증)](test-scenarios.md)
 - [M1 실행 가이드](M1_execution_guide.md)
 - [변경 이력](CHANGELOG.md)
 - [Claude Code 컨텍스트](../CLAUDE.md) — 루트에 위치, Claude Code 자동 로드

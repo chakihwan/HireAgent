@@ -11,6 +11,41 @@
 
 ---
 
+## [0.7.1] - 2026-05-26
+
+### 수정 (M5: 에세이 출력 품질 개선)
+
+#### 핵심 버그 수정 — LLM 마크다운 오염 + 출처 레이블 누출
+
+**근본 원인 분석**
+- `essay_writer_node`가 `_clean_output()`으로 볼드/불릿 제거 → 글자수 감소 → `validate_chars` threshold 초과 → `compressor_node` 실행
+- `compressor_node`는 `result.content.strip()`만 적용하여 볼드/불릿이 재도입됨
+- RAG context 주입 시 `[참고 경험 1]`, `[참고 경험 2]` 번호 레이블 포함 → LLM이 그대로 복사
+
+**수정 사항**
+- `backend/app/utils/text_cleaner.py` — 신규: 공통 클린업 유틸 (`clean_llm_output`)
+  - 볼드(`**text**` → `text`), 이탤릭(`*text*` → `text`), 불릿 마커(`- `, `* `) 제거
+  - RAG 출처 레이블(`[참고 경험 N]`, `[경험 자료]`, `**[참고 경험 N]**`) 제거
+  - 마크다운 헤더(`###`), 코드펜스(` ``` `), 글자수 메타(`**400자**`) 제거
+  - compressor가 출력하는 `수정 후 글자 수: N자` 패턴 줄 단위 제거
+- `backend/app/agents/essay_writer.py`
+  - `_clean_output()` → `clean_llm_output()` (공통 유틸로 교체)
+  - RAG context 포맷 변경: `[참고 경험 N]` 번호 레이블 제거 → `---` 구분자만 사용
+  - 섹션명 `[참고 경험]` → `[경험 자료]` (LLM 혼선 감소)
+  - 시스템 프롬프트 강화: "경험 자료에 없는 수치/회사명/기술명 절대 금지", "마크다운 금지" 명시
+- `backend/app/agents/compressor.py`
+  - `result.content.strip()` → `clean_llm_output(result.content)` 적용
+  - 시스템 프롬프트 강화: 마크다운 금지, 글자수 메타 출력 금지 명시
+
+#### RAG 인용 E2E 검증 (2026-05-26)
+- 고유 수치 포함 mock README (InventorySync Pro) 인덱싱
+- 공고 생성 결과: 47% / 4.2배 / 320ms→83ms 정확히 인용 ✅
+- `[참고 경험 N]` 출처 레이블 본문 미노출 ✅
+- 볼드/불릿 마크다운 미노출 ✅ (essay_writer + compressor 모두)
+- 할루시네이션 없이 인덱싱된 데이터만 활용 ✅
+
+---
+
 ## [0.7.0] - 2026-05-25
 
 ### 추가 (RAG 데이터 입력 확장 — GitHub repo + 파일 업로드)
