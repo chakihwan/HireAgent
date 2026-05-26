@@ -64,7 +64,7 @@ async def delete_document(doc_id: int, db: AsyncSession = Depends(get_db)) -> No
         raise HTTPException(status_code=404, detail="Document not found")
 
 
-@router.delete("/by-project/{project_name}")
+@router.delete("/by-project/{project_name:path}")
 async def delete_by_project(
     project_name: str, db: AsyncSession = Depends(get_db)
 ) -> dict:
