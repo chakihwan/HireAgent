@@ -140,21 +140,31 @@ class EssayState(TypedDict):
 
 | 파이프라인 단계 | 파일 | 비고 |
 |----------------|------|------|
-| State 정의 | `backend/app/agents/state.py` | `EssayState` (메인) / `ItemState` (항목 서브그래프) |
+| State 정의 | `backend/app/agents/state.py` | `EssayState` (메인) / `ItemState` (`+tech_whitelist` v0.7.4) |
 | JD 분석 | `backend/app/agents/jd_analyzer.py` | 인재상/요구역량/직무요약 추출 |
-| 항목별 작성 | `backend/app/agents/essay_writer.py` | 톤/페르소나 반영, max_tokens = char_limit × 3 |
+| 항목별 작성 | `backend/app/agents/essay_writer.py` | 톤/페르소나 + tech_whitelist 명시 (v0.7.4, ADR-022) |
 | 글자수 검증 | `backend/app/utils/char_counter.py` | `validate_chars()` Python 순수 함수 (ADR-001) |
-| 압축/확장 | `backend/app/agents/compressor.py` | `diff_chars()` 기반 방향 결정, 최대 3회 + `clean_llm_output` 적용 |
+| 압축/확장 | `backend/app/agents/compressor.py` | `diff_chars()` 기반 방향, 최대 3회, iteration 증가 (v0.7.4 fix) |
 | 자가 평가 | `backend/app/agents/evaluator.py` | JSON 출력 (score + suggestion) |
-| LLM 출력 후처리 | `backend/app/utils/text_cleaner.py` | `clean_llm_output()` — essay_writer + compressor 공통 (v0.7.1) |
-| RAG 검색 노드 | `backend/app/agents/rag_retriever.py` | KURE-v1 + pgvector cosine, user_id 필터 |
-| 오케스트레이션 | `backend/app/agents/orchestrator.py` | LangGraph `Send` API로 fan-out, 항목별 서브그래프 |
+| LLM 출력 후처리 | `backend/app/utils/text_cleaner.py` | `clean_llm_output()` + `detect_output_issue()` (v0.7.4, ADR-022) |
+| 기술 키워드 자동 추출 | `backend/app/rag/tech_extractor.py` | ~150 패턴 매칭, 한국어 안전 boundary (v0.7.4, ADR-021) |
+| RAG 검색 노드 | `backend/app/agents/rag_retriever.py` | KURE-v1 + pgvector cosine + tech_whitelist 수집 (v0.7.4) |
+| 오케스트레이션 | `backend/app/agents/orchestrator.py` | `Send` fan-out + SSE 품질 경고 (v0.7.4) |
 | API 엔드포인트 | `backend/app/api/v1/essays.py` | SSE (`/generate`) + 동기 (`/generate/sync`) |
 
 **그래프 구조 (실제 구현):**
-- **메인 그래프** (`EssayState`): `jd_analyzer → Send 분기 → _process_item (병렬) → END`
-- **항목 서브그래프** (`ItemState`): `write → [validate 분기] → compress(루프) → evaluate → END`
+- **메인 그래프** (`EssayState`): `jd_analyzer → Send 분기 → _process_item (병렬, 결과 + 품질 경고) → END`
+- **항목 서브그래프** (`ItemState`): `retrieve(RAG + 화이트리스트) → write → [validate 분기] → compress(루프, iteration 증가) → evaluate → END`
 - `Send` API로 각 항목이 독립된 `ItemState`로 fan-out, reducer로 fan-in
+
+**자소서 출력 다층 방어 (v0.7.4, ADR-022):**
+
+| 레이어 | 위치 | 역할 |
+|--------|------|------|
+| L1 프롬프트 강화 | `essay_writer._SYSTEM` | Kafka 예시로 공고 vs 본인 경험 분리 명시 |
+| L2 화이트리스트 명시 | `essay_writer` prompt | 본인이 다룬 기술 목록을 LLM에 직접 박음 |
+| L3 출력 후처리 | `clean_llm_output()` | `<think>` / prompt echo / 영문 헤더 / 반복 패턴 제거 |
+| R 품질 검사 + 경고 | `detect_output_issue()` → `orchestrator` | 한글 비율 / 외국 문자 / 반복 감지 → SSE 경고 |
 
 ---
 
@@ -248,17 +258,37 @@ write 노드 (essay_writer.py):
        - .md/.txt → utf-8/utf-8-sig/cp949/euc-kr fallback
     2. 20MB 제한
     3. 추출 텍스트로 index_text() 호출
+
+[D] tech_stack 자동 추출 (v0.7.4, ADR-021)
+    indexer.index_text() 내부에서:
+    1. tech_extractor.extract_tech_stack(content) — 사전 정의 ~150개 키워드 매칭
+    2. 한국어 안전 boundary로 "PyTorch로", "Docker로" 같은 조사 접합 정확 매칭
+    3. 사용자 입력 tech_stack과 merge_tech_stacks()로 중복 제거 병합
+    4. 같은 프로젝트의 모든 청크에 동일 tech_stack 적용
+    5. 추출된 tech_stack은 rag_retriever가 화이트리스트로 활용 (ADR-022)
 ```
 
-### 3.6 URL 페칭 (M4 구현, ADR-018)
+### 3.6 URL 페칭 + SPA 사이트 우회 (M4 + v0.7.4, ADR-018/023)
 
 ```
 1. [Frontend] /generate JD 입력 단계에서 http(s):// 패턴 감지
 2. [Frontend] "URL에서 가져오기" 버튼 표시
 3. [Backend] POST /api/v1/jobs/fetch-url
-4. [Backend] httpx GET + BeautifulSoup 본문 추출
+4. [Backend] 사전 차단 (ADR-023):
+   ├─ saramin.co.kr / jobkorea.co.kr / linkedin.com → 즉시 spa_site 에러
+   └─ 그 외: 시도 후 노이즈 휴리스틱 (메뉴/안내 키워드 5개 이상이면 spa_site)
+5. [Backend] httpx GET + BeautifulSoup 본문 추출
               script/style/nav/header/footer 제거, main/article 우선
-5. [Backend] 차단(403)/로그인 필요(401)/JS 렌더링 등 케이스별 사용자 친화 에러
+6. [Backend] 케이스별 사용자 친화 에러:
+   - URLFetchError(code="spa_site" | "bot_blocked" | "login_required" | "timeout" | "bad_request")
+   - 422 응답 detail = {code, message, site_name}
+7. [Frontend] FetchUrlError로 code 분기:
+   - spa_site → SpaSiteGuide 카드 (북마클릿/Ctrl+P/Ctrl+U 우회 안내)
+   - 그 외 → 일반 에러 박스
+8. [Frontend] 북마클릿 (사용자 PC, ADR-023):
+   - useRef + setAttribute로 React javascript: sanitize 우회
+   - 드래그 / 수동 등록 (코드 복사 버튼) 두 가지 등록 방식
+   - 사람인/잡코리아 감지 시 iframe 직접 dive + 차단 시 새 탭 옵션
 6. [Frontend] textarea를 추출 텍스트로 교체, 사용자가 검토/수정
 ```
 
@@ -376,6 +406,9 @@ flowchart LR
 | URL 페칭 보조 입력 | [018](adr/018-url-fetch-secondary-input.md) | ADR-009 보조 옵션 구현 |
 | GitHub 공개 레포 인덱싱 | [019](adr/019-github-repo-indexing.md) | 무인증 API, 프로젝트 문서 RAG |
 | 이력서 파일 업로드 | [020](adr/020-file-upload-resume.md) | PDF/DOCX/MD/TXT, OCR 미지원 |
+| tech_stack 자동 추출 | [021](adr/021-tech-stack-auto-extraction.md) | 키워드 매칭 (LLM 안 씀), 한국어 안전 boundary |
+| 자소서 출력 다층 방어 | [022](adr/022-essay-output-defense-layers.md) | 프롬프트 강화 + 화이트리스트 + 후처리 + 품질 경고 |
+| SPA 사이트 URL 정책 | [023](adr/023-spa-site-url-policy.md) | 사람인/잡코리아 사전 차단 + 사용자 PC 북마클릿 우회 |
 
 ---
 
@@ -386,3 +419,4 @@ flowchart LR
 | v0.1 | 2026-05-22 | 초기 작성 (M1 시작 시점) |
 | v0.2 | 2026-05-22 | 아키텍처 검토 반영: 파이프라인 병렬 흐름 명확화, Ollama 위치 분리, SSE 스트리밍 추가, ADR 010~014 반영, LLM 테스트 엔드포인트 보안 경고 |
 | v0.3 | 2026-05-26 | M2 매핑표에 `text_cleaner.py` / `rag_retriever.py` 추가, §3.4 후처리 설명 갱신 (`clean_llm_output` + 연쇄 버그 설명), §6 ADR 인덱스 015~020 보강 |
+| v0.4 | 2026-05-27 | M2 매핑표에 `tech_extractor.py` 추가 + 자소서 다층 방어 테이블, §3.5 자동 추출(D) 흐름 추가, §3.6 SPA 사이트 차단/북마클릿 흐름 추가, §6 ADR 021~023 추가 |

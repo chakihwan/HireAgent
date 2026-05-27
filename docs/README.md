@@ -87,6 +87,9 @@ docker compose up
 | [018](adr/018-url-fetch-secondary-input.md) | URL 페칭 보조 입력 (ADR-009 구체 구현) | 채택 |
 | [019](adr/019-github-repo-indexing.md) | GitHub 공개 레포 자동 인덱싱 (무인증 API) | 채택 |
 | [020](adr/020-file-upload-resume.md) | 이력서 파일 업로드 (PDF/DOCX/MD/TXT, OCR 미지원) | 채택 |
+| [021](adr/021-tech-stack-auto-extraction.md) | tech_stack 자동 추출 (키워드 매칭, 한국어 안전 boundary) | 채택 |
+| [022](adr/022-essay-output-defense-layers.md) | 자소서 출력 다층 방어 (프롬프트+화이트리스트+후처리+경고) | 채택 |
+| [023](adr/023-spa-site-url-policy.md) | SPA 채용 사이트 URL 정책 (사람인 등 사전 차단 + 북마클릿) | 채택 |
 
 ---
 
