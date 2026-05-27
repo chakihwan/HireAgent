@@ -11,6 +11,87 @@
 
 ---
 
+## [0.7.4] - 2026-05-27
+
+### 수정 — 자소서 압축 무한 루프 (Critical)
+
+`compressor_node`가 `iteration` 카운터를 증가시키지 않아 `_needs_compression`이 영원히 `compress` 분기로 빠지는 버그. 한국어 약한 모델로 글자수가 안 맞을 때 1시간 넘게 무한 호출되는 사례 발생.
+
+- `backend/app/agents/compressor.py`: `iteration: state.get("iteration", 0) + 1` 반환에 추가
+
+### 추가 — 자소서 품질 다층 방어
+
+**할루시네이션 방지**
+- **시스템 프롬프트 강화** (`essay_writer.py`)
+  - "공고 분석 ≠ 본인 경험" 명시, Kafka 예시 추가 (공고에 있어도 [경험 자료]에 없으면 사용 금지)
+- **tech_stack 화이트리스트 명시 전달**
+  - `ItemState.tech_whitelist` 신규 (`state.py`)
+  - `rag_retriever_node`가 사용자의 전체 문서에서 tech_stack 합집합 수집
+  - essay_writer 프롬프트에 "이 목록에 없는 기술은 절대 사용 금지" 명시
+
+**출력 폭주 / 다국어 혼용 대응**
+- **`detect_output_issue()` + `strip_repetition()` 신규** (`text_cleaner.py`)
+  - 반복 패턴 (`8-8-8-8-...`) 자동 압축
+  - 한글 비율 30% 미만 / 한자·키릴·베트남어 5% 이상 감지
+  - DeepSeek-R1 `<think>` 태그, prompt label echo (`[현재 자소서]`), 영문 헤더(`Key Contributions:`) 자동 제거
+- **SSE 진행 로그에 품질 경고 추가** (`orchestrator.py`)
+  - 항목 완료 시 자동 검사 → 문제 시 `⚠️ 품질 경고: foreign_script (14%)` 메시지
+  - 사용자가 어느 항목이 깨졌는지 즉시 인지 + 한국어 모델 권장 안내
+
+### 추가 — tech_stack 자동 추출
+
+수동 작성 부담 + 화이트리스트 정확도 동시 해결.
+
+- **`backend/app/rag/tech_extractor.py` 신규**
+  - 사전 정의 ~150개 기술 키워드 패턴 매칭 (언어/프레임워크/DB/클라우드/AI/ML 등)
+  - 한국어 안전 boundary — `PyTorch로` 같이 한국어 조사 붙어도 정확히 매칭
+- **`indexer.py`**: 본문에서 자동 추출 후 사용자 입력과 병합 (대소문자 무시 중복 제거)
+- 기존 인덱싱된 데이터도 마이그레이션 스크립트로 일괄 채움
+
+### 추가 — 사람인/잡코리아 URL 페칭 대응
+
+**백엔드 SPA 사이트 차단** (`url_fetcher.py`)
+- 도메인 화이트리스트: 사람인 / 잡코리아 / LinkedIn (확실히 안 되는 곳만)
+- 노이즈 키워드 휴리스틱: "로그인/회원가입/메뉴" 등 5개 이상이면 SPA shell 판정
+- `URLFetchError`에 분류 코드 (`spa_site` / `bot_blocked` / `login_required` / `timeout` / `bad_request`) 추가
+
+**API 응답 구조화** (`jobs.py`)
+- 422 응답 `detail`에 `{code, message, site_name}` dict 형태로 반환
+
+**프론트엔드 SPA 안내 카드** (`generate/page.tsx`)
+- `SpaSiteGuide` 컴포넌트 신규
+- 사람인 한정 팁: `Ctrl+P` → PDF 저장 경로 우선 안내 (iframe 본문도 함께 렌더됨)
+- **북마클릿 신규 제공**
+  - 드래그·우클릭 두 가지 등록 방식 + 코드 복사 버튼 (React `javascript:` href sanitize 우회용 useRef)
+  - 셀렉터 후보 + iframe 자동 dive
+  - 사람인/잡코리아 감지 시: iframe 직접 접근 실패하면 → "iframe URL 새 탭으로 열기" 옵션 제공
+  - 다른 사이트에서는 일반 추출 로직 그대로
+
+### 추가 — Ollama 모델 관리 UI (`settings/page.tsx` 전면 재작성)
+
+- 모델 선택을 **텍스트 입력 → 설치된 모델 드롭다운** 으로 교체
+- **Ollama 모델 관리 카드** 신규
+  - 설치된 모델 목록 (크기·파라미터 표시) + hover 삭제
+  - **추천 모델 7개** 다운로드 버튼 (exaone3.5:7.8b/2.4b, qwen2.5:7b/3b, gemma2:9b/2b, llama3.2:3b)
+  - "한국어 SOTA" 등 능력 태그 + 권장 에이전트 표시
+  - SSE 진행률 바 + 다운로드 취소 버튼
+- `frontend/src/lib/api.ts`: `pullOllamaModel` (SSE), `deleteOllamaModel`, `OllamaModel` 타입 수정
+
+### 추가 — 청크 미리보기 모달 (`/projects`)
+
+"내 데이터가 어떻게 임베딩됐는지 모르겠다"는 피드백 해결.
+
+- 디렉토리 뷰 항목 row 클릭 → 모달로 청크 전체 내용 표시
+- 각 청크: ID, 길이, 본문 텍스트, 메타데이터(source_type, tech_stack, 등록일)
+- 안내: "RAG 검색 단위. 의미 단위로 잘 쪼개졌는지 확인"
+
+### 발견된 이슈 (향후 작업)
+
+- ⚠️ **사람인 본문 iframe**: 부모 페이지에 다른 회사 공고가 길게 들어있어 단순 longest-match는 노이즈를 가져옴. 북마클릿이 iframe 직접 접근 못 하면 사용자가 iframe URL을 새 탭으로 열고 거기서 다시 클릭해야 함 (또는 Ctrl+P 권장).
+- ⚠️ **다국어 작은 모델 폭주**: qwen2.5/deepseek-r1/gemma4 등이 한국어 출력 중 한자/베트남어/키릴 섞이거나 `8-8-8` 패턴으로 폭주. `clean_llm_output`이 패턴을 압축하지만 근본 해결은 한국어 특화 모델(exaone3.5) 통일.
+
+---
+
 ## [0.7.3] - 2026-05-26
 
 ### 개선 — `/projects` 페이지 카드형 + 디렉토리 구조 재설계
