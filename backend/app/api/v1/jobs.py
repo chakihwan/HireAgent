@@ -23,11 +23,22 @@ class FetchUrlResponse(BaseModel):
 
 @router.post("/fetch-url", response_model=FetchUrlResponse)
 async def fetch_url(req: FetchUrlRequest) -> FetchUrlResponse:
-    """공고 URL에서 텍스트 추출 (ADR-009 보조 기능)."""
+    """공고 URL에서 텍스트 추출 (ADR-009 보조 기능).
+
+    실패 시 422 + detail = {"code": str, "message": str, "site_name": str | None}
+    code 값으로 프론트가 적절한 안내 UI 분기.
+    """
     try:
         result = await fetch_job_text(req.url)
     except URLFetchError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": e.code,
+                "message": str(e),
+                "site_name": e.site_name,
+            },
+        )
     return FetchUrlResponse(**result)
 
 

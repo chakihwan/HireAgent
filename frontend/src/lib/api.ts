@@ -7,7 +7,8 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 export interface OllamaModel {
   name: string;
   size: number;
-  modified_at: string;
+  parameter_size: string;
+  quantization_level: string;
 }
 
 export interface OllamaModelsResponse {
@@ -36,6 +37,81 @@ export async function getOllamaModels(): Promise<OllamaModelsResponse> {
   const res = await fetch(`${API_BASE}/api/v1/ollama/models`);
   if (!res.ok) throw new Error(`Failed to fetch models: ${res.statusText}`);
   return res.json();
+}
+
+export async function deleteOllamaModel(name: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/v1/ollama/models/${encodeURIComponent(name)}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail ?? res.statusText);
+  }
+}
+
+export interface OllamaPullProgress {
+  status: string;
+  total: number;
+  completed: number;
+  percent: number;
+  detail?: string;
+}
+
+/**
+ * Ollama 모델 pull (SSE 스트리밍, 진행률 콜백).
+ * @returns 다운로드를 취소할 수 있는 abort 함수
+ */
+export function pullOllamaModel(
+  model: string,
+  onProgress: (p: OllamaPullProgress) => void,
+  onDone: (ok: boolean, error?: string) => void,
+): () => void {
+  const controller = new AbortController();
+  (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/ollama/pull`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model }),
+        signal: controller.signal,
+      });
+      if (!res.ok || !res.body) {
+        onDone(false, `HTTP ${res.status}`);
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const event = JSON.parse(line.slice(6)) as OllamaPullProgress;
+            onProgress(event);
+            if (event.status === "success") {
+              onDone(true);
+              return;
+            }
+            if (event.status === "error") {
+              onDone(false, event.detail);
+              return;
+            }
+          } catch { /* ignore parse errors */ }
+        }
+      }
+      onDone(true);
+    } catch (e) {
+      if ((e as Error).name === "AbortError") onDone(false, "취소됨");
+      else onDone(false, (e as Error).message);
+    }
+  })();
+  return () => controller.abort();
 }
 
 export async function testLLM(req: LLMTestRequest): Promise<LLMTestResponse> {
@@ -308,6 +384,24 @@ export async function searchProjects(query: string, limit = 5): Promise<SearchRe
 
 // ── URL fetch ─────────────────────────────────────────────────────────────────
 
+export type FetchUrlErrorCode =
+  | "spa_site"
+  | "bot_blocked"
+  | "login_required"
+  | "timeout"
+  | "bad_request";
+
+export class FetchUrlError extends Error {
+  code: FetchUrlErrorCode;
+  siteName: string | null;
+
+  constructor(message: string, code: FetchUrlErrorCode, siteName: string | null = null) {
+    super(message);
+    this.code = code;
+    this.siteName = siteName;
+  }
+}
+
 export async function fetchJobUrl(url: string): Promise<FetchUrlResponse> {
   const res = await fetch(`${API_BASE}/api/v1/jobs/fetch-url`, {
     method: "POST",
@@ -316,7 +410,19 @@ export async function fetchJobUrl(url: string): Promise<FetchUrlResponse> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error((err as { detail?: string }).detail ?? res.statusText);
+    const detail = (err as { detail?: unknown }).detail;
+    if (detail && typeof detail === "object" && "code" in detail) {
+      const d = detail as { code: string; message: string; site_name: string | null };
+      throw new FetchUrlError(
+        d.message,
+        d.code as FetchUrlErrorCode,
+        d.site_name,
+      );
+    }
+    throw new FetchUrlError(
+      typeof detail === "string" ? detail : res.statusText,
+      "bad_request",
+    );
   }
   return res.json();
 }
