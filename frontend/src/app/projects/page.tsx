@@ -82,6 +82,11 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [activeCard, setActiveCard] = useState<CardType | null>(null);
 
+  const [previewItem, setPreviewItem] = useState<{
+    name: string;
+    chunks: ProjectDocResponse[];
+  } | null>(null);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null);
@@ -192,9 +197,19 @@ export default function ProjectsPage() {
               grouped={grouped}
               onDeleteChunk={handleDeleteChunk}
               onDeleteProject={handleDeleteProject}
+              onPreview={(name, chunks) => setPreviewItem({ name, chunks })}
             />
           )}
         </>
+      )}
+
+      {/* ── 청크 미리보기 모달 ── */}
+      {previewItem && (
+        <ChunkPreviewModal
+          name={previewItem.name}
+          chunks={previewItem.chunks}
+          onClose={() => setPreviewItem(null)}
+        />
       )}
 
       {/* ── RAG 검색 ── */}
@@ -350,8 +365,11 @@ function AddFormPanel({
               <Input className="mt-1.5 h-8 text-sm" value={projectName} onChange={e => setProjectName(e.target.value)} placeholder="예: 사람인 이력서" />
             </div>
             <div>
-              <Label className="text-xs text-zinc-600">기술 스택 <span className="text-zinc-400">(쉼표 구분)</span></Label>
-              <Input className="mt-1.5 h-8 text-sm" value={techStack} onChange={e => setTechStack(e.target.value)} placeholder="Python, FastAPI" />
+              <Label className="text-xs text-zinc-600">
+                기술 스택 <span className="text-zinc-400">(자동 추출됨 · 추가만 입력)</span>
+              </Label>
+              <Input className="mt-1.5 h-8 text-sm" value={techStack} onChange={e => setTechStack(e.target.value)} placeholder="자동 인식 안 되는 기술만" />
+              <p className="text-xs text-zinc-400 mt-1">본문에서 Python·FastAPI 등 주요 기술은 자동으로 추출됩니다.</p>
             </div>
           </div>
         </div>
@@ -365,8 +383,11 @@ function AddFormPanel({
             <p className="text-xs text-zinc-400 mt-1">공개 레포만 지원 · 무인증 rate limit 60/h · 프로젝트명은 owner/repo로 자동 저장</p>
           </div>
           <div>
-            <Label className="text-xs text-zinc-600">기술 스택 <span className="text-zinc-400">(쉼표 구분, 선택)</span></Label>
-            <Input className="mt-1.5 h-8 text-sm" value={techStack} onChange={e => setTechStack(e.target.value)} placeholder="Python, FastAPI, LangGraph" />
+            <Label className="text-xs text-zinc-600">
+              기술 스택 <span className="text-zinc-400">(자동 추출됨 · 추가만 입력)</span>
+            </Label>
+            <Input className="mt-1.5 h-8 text-sm" value={techStack} onChange={e => setTechStack(e.target.value)} placeholder="자동 인식 안 되는 기술만" />
+            <p className="text-xs text-zinc-400 mt-1">README에서 Python·FastAPI 등 주요 기술은 자동으로 추출됩니다.</p>
           </div>
         </div>
       )}
@@ -429,15 +450,17 @@ function AddFormPanel({
 // ─── 디렉토리 뷰 ─────────────────────────────────────────────────────────────
 
 function DataDirectory({
-  grouped, onDeleteChunk, onDeleteProject,
+  grouped, onDeleteChunk, onDeleteProject, onPreview,
 }: {
   grouped: Record<CardType, ProjectDocResponse[]>;
   onDeleteChunk: (id: number) => void;
   onDeleteProject: (name: string) => void;
+  onPreview: (name: string, chunks: ProjectDocResponse[]) => void;
 }) {
   return (
     <div className="space-y-1">
       <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide mb-3">인덱싱된 데이터</p>
+      <p className="text-xs text-zinc-400 -mt-2 mb-3">항목을 클릭하면 청크 내용을 확인할 수 있습니다.</p>
       {(Object.keys(CARDS) as CardType[]).map(type => {
         const { title, icon: Icon } = CARDS[type];
         const items = Array.from(groupByProject(grouped[type]).entries());
@@ -449,6 +472,7 @@ function DataDirectory({
             items={items}
             onDeleteChunk={onDeleteChunk}
             onDeleteProject={onDeleteProject}
+            onPreview={onPreview}
           />
         );
       })}
@@ -457,13 +481,14 @@ function DataDirectory({
 }
 
 function DirectorySection({
-  title, icon: Icon, items, onDeleteChunk, onDeleteProject,
+  title, icon: Icon, items, onDeleteChunk, onDeleteProject, onPreview,
 }: {
   title: string;
   icon: React.ElementType;
   items: [string, ProjectDocResponse[]][];
   onDeleteChunk: (id: number) => void;
   onDeleteProject: (name: string) => void;
+  onPreview: (name: string, chunks: ProjectDocResponse[]) => void;
 }) {
   const [open, setOpen] = useState(true);
 
@@ -499,24 +524,28 @@ function DirectorySection({
               const isProject = first.project_name === key;
               const displayName = first.project_name ?? SOURCE_LABELS[first.source_type] ?? first.source_type;
               const totalChunks = chunks.length;
+              const totalChars = chunks.reduce((sum, c) => sum + c.content.length, 0);
 
               return (
                 <div
                   key={key}
-                  className="flex items-center gap-3 px-4 py-2.5 border-t border-zinc-100 hover:bg-zinc-50 group transition-colors"
+                  className="flex items-center gap-3 px-4 py-2.5 border-t border-zinc-100 hover:bg-zinc-50 group transition-colors cursor-pointer"
+                  onClick={() => onPreview(displayName, chunks)}
                 >
                   <FileText className="size-3.5 text-zinc-300 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <span className="text-sm text-zinc-700 truncate block">{displayName}</span>
-                    <span className="text-xs text-zinc-400">{totalChunks}청크 · {formatDate(first.indexed_at)}</span>
+                    <span className="text-xs text-zinc-400">
+                      {totalChunks}청크 · {totalChars.toLocaleString()}자 · {formatDate(first.indexed_at)}
+                    </span>
                   </div>
                   <button
                     className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded text-zinc-400 hover:text-red-500 hover:bg-red-50 shrink-0"
-                    onClick={() =>
-                      isProject && first.project_name
-                        ? onDeleteProject(first.project_name)
-                        : onDeleteChunk(first.id)
-                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isProject && first.project_name) onDeleteProject(first.project_name);
+                      else onDeleteChunk(first.id);
+                    }}
                   >
                     <Trash2 className="size-3.5" />
                   </button>
@@ -526,6 +555,103 @@ function DirectorySection({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── 청크 미리보기 모달 ──────────────────────────────────────────────────────
+
+function ChunkPreviewModal({
+  name, chunks, onClose,
+}: {
+  name: string;
+  chunks: ProjectDocResponse[];
+  onClose: () => void;
+}) {
+  // ESC 키로 닫기
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handler);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
+  const first = chunks[0];
+  const totalChars = chunks.reduce((sum, c) => sum + c.content.length, 0);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[85vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 헤더 */}
+        <div className="flex items-start justify-between p-5 border-b border-zinc-100">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base font-semibold text-zinc-900 truncate">{name}</h2>
+              <Badge variant="secondary" className="text-xs">
+                {SOURCE_LABELS[first.source_type] ?? first.source_type}
+              </Badge>
+            </div>
+            <p className="text-xs text-zinc-500 mt-1">
+              {chunks.length}개 청크 · 총 {totalChars.toLocaleString()}자 · 등록 {formatDate(first.indexed_at)}
+            </p>
+            {first.tech_stack.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {first.tech_stack.map(t => (
+                  <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
+                ))}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors shrink-0 ml-3"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* 안내 */}
+        <div className="px-5 pt-4 pb-2">
+          <p className="text-xs text-zinc-500 leading-relaxed bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+            💡 각 청크는 RAG 검색의 단위입니다. 자소서 생성 시 공고와 가장 유사한 청크가 LLM에 전달됩니다.
+            청크가 의미 단위로 잘 쪼개졌는지 확인하세요.
+          </p>
+        </div>
+
+        {/* 청크 목록 */}
+        <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
+          {chunks
+            .sort((a, b) => a.id - b.id)
+            .map((chunk, idx) => (
+              <div key={chunk.id} className="border border-zinc-100 rounded-lg overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2 bg-zinc-50 border-b border-zinc-100">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs font-mono">#{idx + 1}</Badge>
+                    <span className="text-xs text-zinc-500">청크 ID {chunk.id}</span>
+                  </div>
+                  <span className="text-xs text-zinc-400">{chunk.content.length.toLocaleString()}자</span>
+                </div>
+                <pre className="p-3 text-xs text-zinc-700 leading-relaxed whitespace-pre-wrap break-words font-sans">
+                  {chunk.content}
+                </pre>
+              </div>
+            ))}
+        </div>
+
+        {/* 푸터 */}
+        <div className="px-5 py-3 border-t border-zinc-100 flex justify-end">
+          <Button variant="outline" size="sm" onClick={onClose}>닫기</Button>
+        </div>
+      </div>
     </div>
   );
 }
