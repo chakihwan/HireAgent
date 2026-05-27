@@ -47,6 +47,8 @@ class ItemState(TypedDict):
 
     # RAG 검색 결과 (작성 에이전트가 참고)
     rag_context: list[str]
+    # 사용자가 실제로 다룬 기술 화이트리스트 (할루시네이션 방지)
+    tech_whitelist: list[str]
 
     content: str
     char_count: int

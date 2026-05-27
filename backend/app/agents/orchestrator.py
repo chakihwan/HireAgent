@@ -68,6 +68,8 @@ def _fan_out(state: EssayState) -> list[Send]:
 
 async def _process_item(item_state: ItemState) -> dict:
     """항목 서브그래프 실행 → EssayState.drafts/progress에 추가"""
+    from app.utils.text_cleaner import detect_output_issue
+
     result = await _item_graph.ainvoke(item_state)
     draft = Draft(
         category=result["item"]["category"],
@@ -79,13 +81,20 @@ async def _process_item(item_state: ItemState) -> dict:
     )
     rag_count = len(result.get("rag_context") or [])
     rag_note = f" [RAG {rag_count}개 참고]" if rag_count else ""
-    return {
-        "drafts": [draft],
-        "progress": [
-            f"✅ {draft['category']} 완료 "
-            f"({draft['char_count']}자, 평가 {draft['evaluation_score'] or '-'}점){rag_note}"
-        ],
-    }
+
+    # 출력 품질 검사 — 모델 폭주 / 다국어 혼용 감지
+    issue = detect_output_issue(result["content"])
+    progress_lines: list[str] = [
+        f"✅ {draft['category']} 완료 "
+        f"({draft['char_count']}자, 평가 {draft['evaluation_score'] or '-'}점){rag_note}"
+    ]
+    if issue:
+        progress_lines.append(
+            f"⚠️ {draft['category']} 품질 경고: {issue} — 작은 다국어 모델은 한국어가 약합니다. "
+            f"한국어 특화 모델(exaone3.5:7.8b 등) 사용을 권장합니다."
+        )
+
+    return {"drafts": [draft], "progress": progress_lines}
 
 
 def _build_main_graph() -> StateGraph:

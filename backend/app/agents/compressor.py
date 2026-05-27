@@ -45,4 +45,5 @@ async def compressor_node(state: ItemState) -> dict:
     return {
         "content": content,
         "char_count": count_chars(content),
+        "iteration": state.get("iteration", 0) + 1,
     }
