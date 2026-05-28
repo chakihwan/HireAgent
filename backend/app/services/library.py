@@ -12,23 +12,26 @@ async def save_essay(
 ) -> EssayLibraryItem:
     char_count = len(data.content)
 
-    # 같은 application + category 에 이미 항목이 있으면 version 증가
+    # 같은 user + application + category 에 이미 항목이 있으면 version 증가
+    # application_id가 None(자유 작성)인 경우도 user+category 단위로 버전 관리
+    where_clause = [
+        EssayLibraryItem.user_id == user_id,
+        EssayLibraryItem.category == data.category,
+    ]
     if data.application_id is not None:
-        stmt = (
-            select(EssayLibraryItem.version)
-            .where(
-                EssayLibraryItem.user_id == user_id,
-                EssayLibraryItem.application_id == data.application_id,
-                EssayLibraryItem.category == data.category,
-            )
-            .order_by(EssayLibraryItem.version.desc())
-            .limit(1)
-        )
-        result = await db.execute(stmt)
-        last_version = result.scalar_one_or_none()
-        version = (last_version or 0) + 1
+        where_clause.append(EssayLibraryItem.application_id == data.application_id)
     else:
-        version = 1
+        where_clause.append(EssayLibraryItem.application_id.is_(None))
+
+    stmt = (
+        select(EssayLibraryItem.version)
+        .where(*where_clause)
+        .order_by(EssayLibraryItem.version.desc())
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    last_version = result.scalar_one_or_none()
+    version = (last_version or 0) + 1
 
     item = EssayLibraryItem(
         user_id=user_id,

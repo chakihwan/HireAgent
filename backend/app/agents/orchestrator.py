@@ -84,10 +84,22 @@ async def _process_item(item_state: ItemState) -> dict:
 
     # 출력 품질 검사 — 모델 폭주 / 다국어 혼용 감지
     issue = detect_output_issue(result["content"])
+    char_target = result["item"]["char_limit"]
+    char_count = draft["char_count"]
+    tolerance = 0.05
+    char_ok = int(char_target * (1 - tolerance)) <= char_count <= int(char_target * (1 + tolerance))
+
     progress_lines: list[str] = [
         f"✅ {draft['category']} 완료 "
-        f"({draft['char_count']}자, 평가 {draft['evaluation_score'] or '-'}점){rag_note}"
+        f"({char_count}자, 평가 {draft['evaluation_score'] or '-'}점){rag_note}"
     ]
+    if not char_ok:
+        diff = char_count - char_target
+        direction = "초과" if diff > 0 else "부족"
+        progress_lines.append(
+            f"⚠️ {draft['category']} 글자수 {direction}: 목표 {char_target}자 / 실제 {char_count}자 "
+            f"({abs(diff):+d}자) — 재생성하거나 직접 수정하세요."
+        )
     if issue:
         progress_lines.append(
             f"⚠️ {draft['category']} 품질 경고: {issue} — 작은 다국어 모델은 한국어가 약합니다. "
