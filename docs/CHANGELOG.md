@@ -11,6 +11,50 @@
 
 ---
 
+## [0.7.6] - 2026-05-29
+
+### 추가
+
+**결과 인라인 편집 (프론트엔드)**
+- `/generate` 결과 카드 Textarea `readOnly` 제거 → 직접 편집 가능
+- `editedContents: Record<string, string>` 상태 추가, 카테고리별 독립 편집
+- 글자수 Badge가 편집 중인 내용 기준으로 실시간 업데이트
+- "편집됨" 뱃지 표시 (원본과 달라졌을 때)
+- 저장·복사 시 편집된 내용 사용
+
+**지원 회사명 JD 자동 추출 → essay_writer 주입**
+- `jd_analyzer.py`: 출력 포맷에 `## 지원 회사명` 추가 + `_COMPANY_RE` 정규식 파싱
+- `state.py`: `EssayState.target_company`, `ItemState.target_company` 필드 추가
+- `essay_writer.py`: `[지원 회사 정보]` 섹션으로 목표 회사명 + 현직장 혼동 방지 주의 주입
+- 이력서에 등장하는 현직장 회사명이 지원동기에 노출되던 문제 방지
+
+### 수정 — 자소서 출력 품질
+
+**개인정보 노출 방지 (Critical)**
+- `text_cleaner.py`에 이메일/전화번호/주소/연락처 라벨/서명 제거 패턴 추가
+  - 이력서 RAG 청크에 포함된 연락처가 자소서 본문에 유입되던 문제
+  - `_EMAIL_RE`, `_PHONE_RE`, `_CONTACT_LABEL_LINE_RE`, `_ADDRESS_LINE_RE`, `_CLOSING_SIGNATURE_RE`
+
+**한국어 섹션 헤더 제거**
+- "기술 역량", "실행력과 협업", "연락처", "입사 후 계획" 등 소제목이 본문에 남던 문제
+- `_KOREAN_HEADER_RE` 추가 → `clean_llm_output()`에서 자동 제거
+
+**글자수 초과 개선**
+- `essay_writer.py`: `max_tokens = char_limit × 2` (기존 × 3) — 물리적 생성량 제한
+- 프롬프트에 허용 범위(min~max) 명시 + 초과 시 품질 저하 경고 강화
+- 프롬프트에 "맺음말 서명·소제목 금지" 명시
+- `compressor.py`: `max_tokens = target × 2` (기존 × 3), 허용 범위 명시
+
+### 테스트 — 실사용 데이터 1차 검증 (이력서 13청크 + 레포 39청크)
+
+발견된 이슈 및 수정:
+- ✅ 개인 연락처(이메일/전화/주소) 자소서 본문 노출 → text_cleaner로 해결
+- ✅ 한국어 섹션 헤더 잔존 → _KOREAN_HEADER_RE 추가
+- ✅ Kafka 할루시네이션 없음 (whitelist 정상 동작)
+- ⚠️ 글자수 초과 여전 (500자 목표 → 689자, 3회 압축 소진) — 프롬프트+max_tokens 강화로 부분 개선
+
+---
+
 ## [0.7.5] - 2026-05-28
 
 ### 수정

@@ -52,9 +52,11 @@ def _fan_out(state: EssayState) -> list[Send]:
             ItemState(
                 item=item,
                 jd_analysis=state["jd_analysis"],
+                target_company=state.get("target_company", "알 수 없음"),
                 agent_config=state["agent_config"],
                 user_id=state["user_id"],
                 rag_context=[],
+                tech_whitelist=[],
                 content="",
                 char_count=0,
                 iteration=0,

@@ -17,14 +17,17 @@ _SYSTEM = """당신은 한국어 자기소개서 작성 전문가입니다.
 4. 모든 수치·회사명·기술명·프로젝트명은 [경험 자료]에서만 인용하고, 새로 지어내지 마세요.
 
 작성 규칙:
-- 글자수(공백 포함)를 목표에 최대한 맞춰 작성
+- 글자수를 목표에 맞춰 작성. 목표 글자수를 **절대 크게 초과하지 말 것** — 압축 후처리가 있지만 초기 draft가 목표의 120% 이상이면 품질이 낮아짐
+- 목표 글자수 범위: 목표 × 0.95 ~ 목표 × 1.1 사이로 초안 작성
 - [경험 자료]를 그대로 복사하지 말고 항목 흐름에 맞게 자연스럽게 녹여낼 것
 - 경험 자료가 없거나 불충분하면 일반적인 강점·역량 중심으로 작성 (없는 사실 만들지 말 것)
 - [경험 자료], [참고 경험] 같은 출처 표현을 본문에 절대 노출하지 말 것 (1인칭 경험으로 자연스럽게 서술)
-- 마크다운 문법 사용 금지: **, *, #, -, 불릿, 볼드, 이탤릭 모두 금지
+- 마크다운 문법 사용 금지: **, *, #, -, 불릿, 볼드, 이탤릭, 섹션 헤더 모두 금지
+- "기술 역량", "실행력과 협업" 같은 소제목/헤더 금지 — 단락 구분 없는 흐르는 문장으로 작성
 - "###", "**400자**" 같은 메타 정보 출력 금지
+- 이메일, 전화번호, 주소 같은 개인 연락처를 본문에 절대 포함하지 말 것
 - 자연스러운 한국어 문어체 사용
-- 자소서 본문만 출력 (제목/설명/마크다운/불릿 없이 순수 텍스트 단락)"""
+- 자소서 본문만 출력 (제목/설명/마크다운/불릿/연락처 없이 순수 텍스트 단락)"""
 
 
 async def essay_writer_node(state: ItemState) -> dict:
@@ -54,24 +57,43 @@ async def essay_writer_node(state: ItemState) -> dict:
             f"{', '.join(tech_whitelist)}\n"
         )
 
+    char_limit = item['char_limit']
+    char_min = int(char_limit * 0.95)
+    char_max = int(char_limit * 1.10)
+
+    target_company = state.get("target_company") or "알 수 없음"
+    company_note = (
+        f"\n\n[지원 회사 정보]\n"
+        f"지원하는 회사: {target_company}\n"
+        f"⚠️ 이력서에 등장하는 현재/전 직장 회사명을 지원 회사로 혼동하지 마세요. "
+        f"지원동기·입사 후 포부 등에서 회사명을 언급할 때는 반드시 위의 지원 회사명 '{target_company}'를 사용하세요."
+        if target_company != "알 수 없음"
+        else ""
+    )
+
     prompt = f"""아래 공고 분석을 바탕으로 "{item['category']}" 항목의 자소서를 작성하세요.
 
 [공고 분석]
 {state['jd_analysis']}
-{rag_section}{whitelist_section}
+{rag_section}{whitelist_section}{company_note}
+
 [작성 조건]
 - 항목: {item['category']}
-- 목표 글자수: {item['char_limit']}자 (공백 포함, ±5% 허용)
+- 목표 글자수: {char_limit}자 (공백 포함)
+- 허용 범위: {char_min}자 ~ {char_max}자 → 이 범위를 벗어나면 안 됩니다
 - 톤: {tone}
 - 페르소나: {persona}
 
-자소서 본문만 출력하세요."""
+⚠️ 글자수 주의: {char_limit}자를 크게 초과하면 압축 처리되어 품질이 낮아집니다. {char_max}자 이하로 작성하세요.
+
+자소서 본문만 출력하세요 (제목·소제목·마크다운·연락처 없이)."""
 
     llm = LLMFactory.create(provider, model, api_key)
+    # max_tokens를 목표 × 2로 제한 — 물리적으로 목표 2배 이상 못 생성하게
     result = await llm.generate(
         prompt=prompt,
         system=_SYSTEM,
-        max_tokens=min(item["char_limit"] * 3, 3000),
+        max_tokens=min(item["char_limit"] * 2, 2000),
         temperature=0.7,
     )
     content = clean_llm_output(result.content)

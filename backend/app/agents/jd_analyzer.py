@@ -1,10 +1,15 @@
+import re
+
 from app.agents.state import EssayState
 from app.llm.factory import LLMFactory
 
 _SYSTEM = """당신은 채용 공고 분석 전문가입니다.
 채용 공고를 읽고 아래 항목을 간결하게 추출하세요.
 
-출력 형식 (마크다운 헤더 사용):
+출력 형식 (마크다운 헤더 사용, 순서 유지):
+## 지원 회사명
+(공고에서 찾은 회사명 한 줄. 모르면 "알 수 없음")
+
 ## 회사 인재상
 (2~3문장)
 
@@ -18,6 +23,11 @@ _SYSTEM = """당신은 채용 공고 분석 전문가입니다.
 
 ## 직무 핵심 요약
 (1~2문장)"""
+
+_COMPANY_RE = re.compile(
+    r"##\s*지원\s*회사명\s*\n+([^\n#]+)",
+    re.IGNORECASE,
+)
 
 
 def _looks_like_url(text: str) -> bool:
@@ -47,8 +57,15 @@ async def jd_analyzer_node(state: EssayState) -> dict:
         max_tokens=800,
         temperature=0.3,
     )
-    progress.append("✅ 공고 분석 완료")
+    analysis_text = result.content
+    m = _COMPANY_RE.search(analysis_text)
+    target_company = m.group(1).strip() if m else "알 수 없음"
+    if target_company == "알 수 없음":
+        progress.append("ℹ️ 공고에서 회사명을 찾지 못했습니다.")
+    else:
+        progress.append(f"✅ 공고 분석 완료 — 지원 회사: {target_company}")
     return {
-        "jd_analysis": result.content,
+        "jd_analysis": analysis_text,
+        "target_company": target_company,
         "progress": progress,
     }

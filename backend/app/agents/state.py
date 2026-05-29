@@ -27,6 +27,7 @@ class EssayState(TypedDict):
 
     # ── 중간 상태 ──
     jd_analysis: str            # JD 분석 에이전트 결과
+    target_company: str         # JD에서 추출한 지원 회사명
 
     # ── 병렬 노드 출력 (reducer로 리스트에 누적) ──
     drafts: Annotated[list[Draft], operator.add]
@@ -42,6 +43,7 @@ class ItemState(TypedDict):
     """개별 항목 처리 서브그래프용 상태"""
     item: EssayItem
     jd_analysis: str
+    target_company: str
     agent_config: dict
     user_id: str
 

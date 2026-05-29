@@ -43,10 +43,6 @@ type LogEntry = {
 
 // ── Helper ───────────────────────────────────────────────────────────────────
 
-function charRatio(count: number, target: number): string {
-  return `${count.toLocaleString()}/${target.toLocaleString()}자`;
-}
-
 function scoreColor(score: number | null): string {
   if (score === null) return "text-zinc-400";
   if (score >= 8) return "text-emerald-600";
@@ -100,6 +96,7 @@ export default function GeneratePage() {
   const logEndRef = useRef<HTMLDivElement>(null);
   const [savedIds, setSavedIds] = useState<Record<string, number>>({});  // category → library id
   const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const [editedContents, setEditedContents] = useState<Record<string, string>>({});
 
   // ── Derived ──────────────────────────────────────────────────────────────
 
@@ -136,6 +133,7 @@ export default function GeneratePage() {
     setLog([]);
     setResults([]);
     setGenError(null);
+    setEditedContents({});
 
     const settings = loadSettings();
     const agentConfig = buildAgentConfig(settings);
@@ -503,21 +501,23 @@ export default function GeneratePage() {
         </Card>
       )}
 
-      {results.map((draft) => (
+      {results.map((draft) => {
+        const currentContent = editedContents[draft.category] ?? draft.content;
+        const currentCharCount = currentContent.length;
+        const isEdited = draft.category in editedContents;
+        const charOk = Math.abs(currentCharCount - draft.char_target) / draft.char_target < 0.05;
+        return (
         <Card key={draft.category}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <CardTitle className="text-base">{draft.category}</CardTitle>
-                <Badge
-                  variant={
-                    Math.abs(draft.char_count - draft.char_target) / draft.char_target < 0.05
-                      ? "default"
-                      : "outline"
-                  }
-                >
-                  {charRatio(draft.char_count, draft.char_target)}
+                <Badge variant={charOk ? "default" : "outline"}>
+                  {currentCharCount}자 / {draft.char_target}자
                 </Badge>
+                {isEdited && (
+                  <Badge variant="secondary" className="text-xs">편집됨</Badge>
+                )}
                 {draft.iteration > 1 && (
                   <Badge variant="secondary">{draft.iteration}회 조정</Badge>
                 )}
@@ -528,7 +528,7 @@ export default function GeneratePage() {
                     ★ {draft.evaluation_score.toFixed(1)}
                   </span>
                 )}
-                <CopyButton text={draft.content} />
+                <CopyButton text={currentContent} />
                 {savedIds[draft.category] ? (
                   <Badge variant="secondary" className="text-xs">저장됨</Badge>
                 ) : (
@@ -541,7 +541,7 @@ export default function GeneratePage() {
                       try {
                         const item = await saveToLibrary({
                           category: draft.category,
-                          content: draft.content,
+                          content: currentContent,
                           char_target: draft.char_target,
                           generation_metadata: {
                             evaluation_score: draft.evaluation_score,
@@ -565,10 +565,12 @@ export default function GeneratePage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <Textarea
-              value={draft.content}
-              readOnly
+              value={currentContent}
+              onChange={(e) =>
+                setEditedContents((prev) => ({ ...prev, [draft.category]: e.target.value }))
+              }
               rows={8}
-              className="resize-none text-sm leading-relaxed bg-zinc-50"
+              className="resize-y text-sm leading-relaxed"
             />
             {draft.evaluation_feedback && (
               <p className="text-xs text-zinc-500 leading-relaxed border-l-2 border-zinc-200 pl-3">
@@ -577,7 +579,8 @@ export default function GeneratePage() {
             )}
           </CardContent>
         </Card>
-      ))}
+        );
+      })}
 
       {/* Progress log summary */}
       {log.length > 0 && (
