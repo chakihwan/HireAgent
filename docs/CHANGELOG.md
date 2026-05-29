@@ -9,6 +9,18 @@
 
 ## [Unreleased]
 
+### 추가 — RAG source_type 가중 검색
+
+- `retriever.py`: `source_weights` 파라미터 + `source_weights_for_category()` 헬퍼
+  - 후보 풀(limit × 4)을 받아 source_type별 가중치를 거리에 곱해 재랭킹
+  - 기본 가중치: project_readme(0.80)·project_doc(0.85) 우대, resume(1.0) 중립
+  - 동기 항목(지원동기/입사/포부): essay(0.75)·resume(0.90) 우대
+- `rag_retriever_node`: 카테고리별 가중치 적용 + `rag_sources` (source_type 분포) 반환
+- `orchestrator`: 진행 로그에 `[RAG N개 참고: project_readme 5]` 형태로 분포 노출
+- **해결한 문제**: 이력서의 무관 경력(운전면허·자격증·전 직무)이 프로젝트 경험과
+  동등하게 검색돼 자소서에 섞이던 문제 (feedback.md 2026-05-29 "이력서 내용 섞임")
+- **검증**: 직무경험 → project_readme 5 / 지원동기 → resume 4, project_readme 1 (대비 확인)
+
 ---
 
 ## [0.7.6] - 2026-05-29

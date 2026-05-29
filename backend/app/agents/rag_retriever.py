@@ -10,7 +10,7 @@ from sqlalchemy import select
 from app.agents.state import ItemState
 from app.db import AsyncSessionLocal
 from app.models.career_document import CareerDocument
-from app.rag.retriever import search
+from app.rag.retriever import search, source_weights_for_category
 from app.rag.tech_extractor import merge_tech_stacks
 
 _MAX_RESULTS = 5
@@ -26,12 +26,13 @@ async def rag_retriever_node(state: ItemState) -> dict:
 
     try:
         async with AsyncSessionLocal() as db:
-            # 1) RAG 검색
+            # 1) RAG 검색 — 카테고리별 source_type 가중 재랭킹
             results = await search(
                 db,
                 query=query,
                 user_id=state["user_id"],
                 limit=_MAX_RESULTS,
+                source_weights=source_weights_for_category(category),
             )
 
             # 2) 사용자의 전체 기술 화이트리스트 (모든 문서의 tech_stack 합집합)
@@ -44,7 +45,17 @@ async def rag_retriever_node(state: ItemState) -> dict:
         # RAG 실패해도 자소서 생성은 계속 진행
         return {"rag_context": [], "tech_whitelist": []}
 
-    relevant = [doc.content for doc, dist in results if dist < _DISTANCE_THRESHOLD]
+    relevant = [(doc, dist) for doc, dist in results if dist < _DISTANCE_THRESHOLD]
+    rag_context = [doc.content for doc, _ in relevant]
     tech_whitelist = merge_tech_stacks(*all_tech_lists)
 
-    return {"rag_context": relevant, "tech_whitelist": tech_whitelist}
+    # source_type 분포 (관찰용 — 어떤 자료가 채택됐는지)
+    source_counts: dict[str, int] = {}
+    for doc, _ in relevant:
+        source_counts[doc.source_type] = source_counts.get(doc.source_type, 0) + 1
+
+    return {
+        "rag_context": rag_context,
+        "tech_whitelist": tech_whitelist,
+        "rag_sources": source_counts,
+    }

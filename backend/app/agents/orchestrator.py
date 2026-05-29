@@ -56,6 +56,7 @@ def _fan_out(state: EssayState) -> list[Send]:
                 agent_config=state["agent_config"],
                 user_id=state["user_id"],
                 rag_context=[],
+                rag_sources={},
                 tech_whitelist=[],
                 content="",
                 char_count=0,
@@ -82,7 +83,14 @@ async def _process_item(item_state: ItemState) -> dict:
         evaluation_feedback=result.get("evaluation_feedback"),
     )
     rag_count = len(result.get("rag_context") or [])
-    rag_note = f" [RAG {rag_count}개 참고]" if rag_count else ""
+    rag_sources = result.get("rag_sources") or {}
+    if rag_count and rag_sources:
+        breakdown = ", ".join(f"{k} {v}" for k, v in rag_sources.items())
+        rag_note = f" [RAG {rag_count}개 참고: {breakdown}]"
+    elif rag_count:
+        rag_note = f" [RAG {rag_count}개 참고]"
+    else:
+        rag_note = ""
 
     # 출력 품질 검사 — 모델 폭주 / 다국어 혼용 감지
     issue = detect_output_issue(result["content"])

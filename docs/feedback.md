@@ -47,7 +47,7 @@
 
 **현상**: 학교 프로젝트(YOLO, Jetson) + 회사 프로젝트(LangGraph, FastAPI) + Apple 수리 경험이 자소서에 무작위로 혼합  
 **원인**: RAG가 source_type/category 구분 없이 최근접 벡터 5개 반환 → 모든 경험이 동등하게 취급됨  
-**조치 대기**: source_type 또는 career_period 기반 가중치 검색 필요 (2순위 개발 예정)
+**조치**: source_type 가중 검색 추가 ✅ (v0.7.6) — `source_weights_for_category()`로 카테고리별 재랭킹. 직무경험은 project_readme 우대, 지원동기는 resume/essay 우대. 검증: 직무경험 → project_readme 5 / 지원동기 → resume 4, project_readme 1
 
 ---
 
