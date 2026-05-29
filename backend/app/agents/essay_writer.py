@@ -64,9 +64,12 @@ async def essay_writer_node(state: ItemState) -> dict:
     target_company = state.get("target_company") or "알 수 없음"
     company_note = (
         f"\n\n[지원 회사 정보]\n"
-        f"지원하는 회사: {target_company}\n"
-        f"⚠️ 이력서에 등장하는 현재/전 직장 회사명을 지원 회사로 혼동하지 마세요. "
-        f"지원동기·입사 후 포부 등에서 회사명을 언급할 때는 반드시 위의 지원 회사명 '{target_company}'를 사용하세요."
+        f"지원하는 회사: {target_company} (아직 입사하지 않은, 지금 지원 중인 회사)\n"
+        f"⚠️ 회사명 사용 규칙:\n"
+        f"- '{target_company}'는 앞으로 입사하고 싶은 회사입니다. 이미 다닌 것처럼 쓰지 마세요. "
+        f"(❌ '{target_company}에서 ~를 개발했습니다' / ✅ '{target_company}에서 ~에 기여하고 싶습니다')\n"
+        f"- 본인의 과거 경력·프로젝트 경험은 [경험 자료]에 있는 실제 회사/프로젝트로만 서술하세요.\n"
+        f"- 이력서에 등장하는 현재/전 직장 회사명을 지원 회사 '{target_company}'와 혼동하지 마세요."
         if target_company != "알 수 없음"
         else ""
     )
