@@ -9,6 +9,15 @@
 
 ## [Unreleased]
 
+### 추가 — pytest 단위 테스트 셋업
+
+- `backend/tests/` 신규 — 결정적 유틸 함수 회귀 테스트 38건 (전부 통과)
+  - `test_char_counter.py`: count/validate/diff (ADR-001 Python len 기반) 8건
+  - `test_text_cleaner.py`: 마크다운·개인정보(이메일/전화/주소)·한국어헤더·서명·폭주 19건
+  - `test_tech_extractor.py`: 키워드 추출·병합·한국어 인접 boundary 7건
+  - `test_retriever_weights.py`: source_type 가중치 카테고리 선택 4건
+- 실행: `docker compose exec backend python -m pytest tests/ -q`
+
 ### 추가 — RAG source_type 가중 검색
 
 - `retriever.py`: `source_weights` 파라미터 + `source_weights_for_category()` 헬퍼

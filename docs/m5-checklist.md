@@ -76,10 +76,13 @@
 - [ ] F-7.1: 프로젝트 카드 자동 요약 (Phase 2 영역이긴 함)
 
 ### 품질
-- [ ] `backend/tests/` 디렉토리 + pytest 셋업
-  - API smoke test (jobs/library/projects CRUD)
-  - RAG 검색 (인덱싱 → 검색 결과 distance)
-  - 글자수 검증 함수 단위 테스트
+- [진행중] `backend/tests/` 디렉토리 + pytest 셋업 (2026-05-29, v0.7.6)
+  - [완료] 글자수 검증 함수 단위 테스트 (char_counter 8건)
+  - [완료] text_cleaner 단위 테스트 (마크다운/개인정보/한국어헤더/서명/폭주 19건)
+  - [완료] tech_extractor 단위 테스트 (추출/병합 7건)
+  - [완료] RAG source_type 가중치 선택 로직 테스트 (4건) — 총 38건 통과
+  - [ ] API smoke test (jobs/library/projects CRUD) — DB fixture 필요
+  - [ ] RAG 검색 통합 테스트 (인덱싱 → distance) — 임베딩+DB 필요
 - [ ] structlog 도입 (구조화된 로깅)
 - [ ] 백엔드 헬스체크 강화 (DB 연결 + Ollama 응답 + KURE-v1 로드 상태)
 
