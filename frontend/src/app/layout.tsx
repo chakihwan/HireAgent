@@ -31,10 +31,13 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-zinc-50">
         <header className="border-b border-zinc-200 bg-white">
           <div className="mx-auto max-w-4xl px-6 h-14 flex items-center justify-between">
-            <Link href="/generate" className="text-base font-semibold text-zinc-900 hover:text-zinc-700 transition-colors">
+            <Link href="/" className="text-base font-semibold text-zinc-900 hover:text-zinc-700 transition-colors">
               HireAgent
             </Link>
             <nav className="flex items-center gap-4">
+              <Link href="/" className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors">
+                홈
+              </Link>
               <Link href="/generate" className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors">
                 자소서 생성
               </Link>
