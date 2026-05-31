@@ -58,6 +58,7 @@ def _fan_out(state: EssayState) -> list[Send]:
                 rag_context=[],
                 rag_sources={},
                 tech_whitelist=[],
+                node_events=[],
                 content="",
                 char_count=0,
                 iteration=0,
@@ -116,7 +117,8 @@ async def _process_item(item_state: ItemState) -> dict:
             f"한국어 특화 모델(exaone3.5:7.8b 등) 사용을 권장합니다."
         )
 
-    return {"drafts": [draft], "progress": progress_lines}
+    node_events = result.get("node_events") or []
+    return {"drafts": [draft], "progress": progress_lines, "node_events": node_events}
 
 
 def _build_main_graph() -> StateGraph:

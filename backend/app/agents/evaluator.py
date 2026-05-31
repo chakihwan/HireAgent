@@ -51,4 +51,8 @@ JSON만 출력하세요."""
     return {
         "evaluation_score": score,
         "evaluation_feedback": suggestion,
+        "node_events": [
+            {"node": "evaluate", "category": item["category"], "phase": "done",
+             "detail": f"★ {score:.1f}점"},
+        ],
     }

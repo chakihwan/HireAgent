@@ -42,11 +42,14 @@ async def rag_retriever_node(state: ItemState) -> dict:
             db_result = await db.execute(stmt)
             all_tech_lists = [row[0] for row in db_result.all() if row[0]]
     except Exception:
-        # RAG 실패해도 자소서 생성은 계속 진행
-        return {"rag_context": [], "tech_whitelist": []}
+        return {
+            "rag_context": [], "tech_whitelist": [], "rag_sources": {},
+            "node_events": [{"node": "rag", "category": category, "phase": "error", "detail": "RAG 검색 실패"}],
+        }
 
     relevant = [(doc, dist) for doc, dist in results if dist < _DISTANCE_THRESHOLD]
     rag_context = [doc.content for doc, _ in relevant]
+    rag_count = len(rag_context)
     tech_whitelist = merge_tech_stacks(*all_tech_lists)
 
     # source_type 분포 (관찰용 — 어떤 자료가 채택됐는지)
@@ -58,4 +61,8 @@ async def rag_retriever_node(state: ItemState) -> dict:
         "rag_context": rag_context,
         "tech_whitelist": tech_whitelist,
         "rag_sources": source_counts,
+        "node_events": [
+            {"node": "rag", "category": category, "phase": "done",
+             "detail": f"{rag_count}개 참고"},
+        ],
     }

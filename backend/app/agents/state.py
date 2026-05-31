@@ -1,6 +1,10 @@
 import operator
 from typing import Annotated, TypedDict
 
+# 노드 이벤트 타입 — 프론트엔드 그래프 뷰 실시간 업데이트용
+# {"node": "rag|write|compress|evaluate", "category": "직무경험", "phase": "start|done|error", "detail": "..."}
+NodeEvent = dict
+
 
 class EssayItem(TypedDict):
     category: str       # "자기소개" | "지원동기" | "성장과정" | ...
@@ -35,6 +39,9 @@ class EssayState(TypedDict):
     # ── 진행 로그 (SSE 스트리밍용) ──
     progress: Annotated[list[str], operator.add]
 
+    # ── sub-node 이벤트 (그래프 뷰 실시간 업데이트) ──
+    node_events: Annotated[list[NodeEvent], operator.add]
+
     # ── 오류 ──
     errors: Annotated[list[str], operator.add]
 
@@ -53,6 +60,8 @@ class ItemState(TypedDict):
     rag_sources: dict[str, int]
     # 사용자가 실제로 다룬 기술 화이트리스트 (할루시네이션 방지)
     tech_whitelist: list[str]
+    # sub-node 이벤트 — 프론트엔드 그래프 뷰 실시간 업데이트용
+    node_events: Annotated[list[NodeEvent], operator.add]
 
     content: str
     char_count: int

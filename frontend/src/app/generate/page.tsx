@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { CheckCircle, XCircle, Loader2, Copy, Check, ChevronRight, AlertTriangle, Download } from "lucide-react";
+import { AgentGraph, type GraphEvent } from "@/components/features/AgentGraph";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -97,6 +98,8 @@ export default function GeneratePage() {
   const [savedIds, setSavedIds] = useState<Record<string, number>>({});  // category → library id
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [editedContents, setEditedContents] = useState<Record<string, string>>({});
+  const [graphEvents, setGraphEvents] = useState<GraphEvent[]>([]);
+  const graphCategoriesRef = useRef<string[]>([]);
 
   // ── Derived ──────────────────────────────────────────────────────────────
 
@@ -134,6 +137,8 @@ export default function GeneratePage() {
     setResults([]);
     setGenError(null);
     setEditedContents({});
+    graphCategoriesRef.current = selectedItems.map((i) => i.category);
+    setGraphEvents([{ node: "jd_analyzer", phase: "start" }]);
 
     const settings = loadSettings();
     const agentConfig = buildAgentConfig(settings);
@@ -158,6 +163,15 @@ export default function GeneratePage() {
         } else if (event === "progress") {
           const d = data as { node: string; message: string };
           appendLog("progress", d.message);
+          // JD 분석 완료 메시지 감지 → 그래프 이벤트 주입
+          if (d.node === "jd_analyzer" && d.message.includes("공고 분석 완료")) {
+            setGraphEvents((prev) => [...prev, { node: "jd_analyzer", phase: "done", detail: "" }]);
+            graphCategoriesRef.current.forEach((cat) => {
+              setGraphEvents((prev) => [...prev, { node: "rag", category: cat, phase: "start" }]);
+            });
+          }
+        } else if (event === "node_event") {
+          setGraphEvents((prev) => [...prev, data as GraphEvent]);
         } else if (event === "error") {
           const d = data as { message: string };
           appendLog("error", d.message);
@@ -436,12 +450,20 @@ export default function GeneratePage() {
           </Card>
         )}
 
+        {/* 에이전트 파이프라인 그래프 */}
+        {graphCategoriesRef.current.length > 0 && (
+          <AgentGraph
+            categories={graphCategoriesRef.current}
+            events={graphEvents}
+          />
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-zinc-700">진행 상황</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-1.5 max-h-96 overflow-y-auto pr-1">
+            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
               {log.map((entry) => (
                 <div key={entry.id} className="flex items-start gap-2 text-sm">
                   {entry.type === "error" ? (

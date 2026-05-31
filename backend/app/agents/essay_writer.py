@@ -100,11 +100,16 @@ async def essay_writer_node(state: ItemState) -> dict:
         temperature=0.7,
     )
     content = clean_llm_output(result.content)
+    iteration = state.get("iteration", 0) + 1
     return {
         "content": content,
         "char_count": count_chars(content),
-        "iteration": state.get("iteration", 0) + 1,
+        "iteration": iteration,
         "evaluation_score": None,
         "evaluation_feedback": None,
+        "node_events": [
+            {"node": "write", "category": item["category"], "phase": "done",
+             "detail": f"{count_chars(content)}자 초안", "iteration": iteration},
+        ],
     }
 

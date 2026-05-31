@@ -49,8 +49,13 @@ async def compressor_node(state: ItemState) -> dict:
         temperature=0.3,
     )
     content = clean_llm_output(result.content)
+    iteration = state.get("iteration", 0) + 1
     return {
         "content": content,
         "char_count": count_chars(content),
-        "iteration": state.get("iteration", 0) + 1,
+        "iteration": iteration,
+        "node_events": [
+            {"node": "compress", "category": item["category"], "phase": "done",
+             "detail": f"{count_chars(content)}자", "iteration": iteration},
+        ],
     }

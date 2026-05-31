@@ -65,6 +65,7 @@ async def _stream_generation(
         target_company="",
         drafts=[],
         progress=[],
+        node_events=[],
         errors=[],
     )
 
@@ -86,6 +87,8 @@ async def _stream_generation(
                 yield _sse("error", {"message": err})
             for draft in node_output.get("drafts", []):
                 accumulated_drafts.append(draft)
+            for ne in node_output.get("node_events", []):
+                yield _sse("node_event", ne)
 
     char_targets = {item.category: item.char_limit for item in req.items}
     drafts = [
@@ -174,6 +177,7 @@ async def generate_essays_sync(req: EssayGenerateRequest) -> EssayGenerateRespon
         target_company="",
         drafts=[],
         progress=[],
+        node_events=[],
         errors=[],
     )
 
