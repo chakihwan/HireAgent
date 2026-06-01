@@ -61,3 +61,6 @@ select = ["E", "F", "I", "UP"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# 모든 async 테스트가 같은 event loop 공유 → DB engine pool이 닫힌 loop 참조하는 문제 방지
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"

@@ -9,6 +9,15 @@
 
 ## [Unreleased]
 
+### 추가 — API smoke test + RAG 통합 테스트 (M5 품질)
+
+- `tests/conftest.py`: httpx ASGITransport 기반 `client` fixture (실제 app + 실제 PostgreSQL)
+  - `asyncio_default_*_loop_scope = session`으로 DB engine pool ↔ event loop 충돌 해결
+- `test_api_smoke.py` (6건): health, jobs CRUD 사이클, 잘못된 status 422, library CRUD+버전증가,
+  projects 조회, ollama/models fit 응답 구조 — 모두 self-cleanup(생성→삭제)
+- `test_rag_integration.py` (2건): KURE-v1 인덱싱 → 검색 → distance(<0.8) 검증, source_type 필터
+- 전체 테스트 38 → **46건** (단위 38 + smoke 6 + RAG 2), 전부 통과
+
 ### 수정 — GPU 예약을 override 파일로 분리 (Mac/CPU 호환)
 
 - `docker-compose.yml`에서 NVIDIA GPU 예약 제거 → `docker-compose.gpu.yml`로 분리

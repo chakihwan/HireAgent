@@ -33,8 +33,6 @@
 - [ ] CORS 화이트리스트 환경별 분기 (`config.py`)
 
 ### 품질
-- [ ] API smoke test (jobs/library/projects CRUD) — DB fixture 필요
-- [ ] RAG 검색 통합 테스트 (인덱싱 → distance)
 - [ ] structlog 구조화 로깅
 - [ ] 백엔드 헬스체크 강화 (DB + Ollama + KURE-v1 로드 상태)
 
