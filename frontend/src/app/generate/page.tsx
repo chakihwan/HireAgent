@@ -260,18 +260,7 @@ export default function GeneratePage() {
             ]);
           }
         } else if (event === "node_event") {
-          const ne = data as PipelineEvent;
-          const NEXT: Record<string, PipelineEvent["node"]> = {
-            rag: "write", write: "compress",
-          };
-          const nextNode = ne.phase === "done" ? NEXT[ne.node] : undefined;
-          setPipelineEvents((prev) => {
-            const next = [...prev, ne];
-            if (nextNode && ne.category) {
-              next.push({ node: nextNode, category: ne.category, phase: "start" });
-            }
-            return next;
-          });
+          setPipelineEvents((prev) => [...prev, data as PipelineEvent]);
         } else if (event === "error") {
           const d = data as { message: string };
           appendLog("error", d.message);

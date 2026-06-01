@@ -83,9 +83,8 @@ const PROVIDER_LABEL: Record<string, string> = {
 // ── 공통 모델 설정 UI ─────────────────────────────────────────────
 
 function ModelConfig({
-  nodeId, agentKey, config, editable, ollamaModels, onChange,
+  agentKey, config, editable, ollamaModels, onChange,
 }: {
-  nodeId: string;
   agentKey?: AgentKey;
   config?: ProviderConfig;
   editable: boolean;
@@ -95,7 +94,14 @@ function ModelConfig({
   if (!config || !agentKey) {
     return <div style={{ fontSize: 10, color: "#a1a1aa", padding: "2px 0 4px" }}>KURE-v1 벡터 검색</div>;
   }
-  const listId = `ml-${nodeId}`;
+
+  const modelOptions = config.provider === "ollama"
+    ? (ollamaModels.length ? ollamaModels : [config.model])
+    : (CLOUD_MODELS[config.provider] ?? [config.model]);
+
+  // 현재 값이 목록에 없으면 추가 (직접 입력한 커스텀 모델)
+  const allOptions = modelOptions.includes(config.model) ? modelOptions : [config.model, ...modelOptions];
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
       <div>
@@ -118,22 +124,16 @@ function ModelConfig({
       <div>
         <div style={{ fontSize: 9, fontWeight: 700, color: "#a1a1aa", letterSpacing: "0.07em", marginBottom: 2 }}>MODEL</div>
         {editable ? (
-          <>
-            <input
-              className="nodrag nopan"
-              list={listId}
-              value={config.model}
-              onChange={(e) => onChange?.("model", e.target.value)}
-              placeholder="모델명 입력 또는 선택"
-              style={{ width: "100%", padding: "4px 6px", borderRadius: 6, border: "1.5px solid #e4e4e7", fontSize: 10, fontFamily: "monospace", background: "#fafafa", outline: "none", boxSizing: "border-box" }}
-            />
-            <datalist id={listId}>
-              {(config.provider === "ollama"
-                ? (ollamaModels.length ? ollamaModels : [config.model])
-                : (CLOUD_MODELS[config.provider] ?? [])
-              ).map((m) => <option key={m} value={m} />)}
-            </datalist>
-          </>
+          <select
+            className="nodrag nopan"
+            value={config.model}
+            onChange={(e) => onChange?.("model", e.target.value)}
+            style={{ width: "100%", padding: "4px 6px", borderRadius: 6, border: "1.5px solid #e4e4e7", fontSize: 10, fontFamily: "monospace", background: "#fafafa", cursor: "pointer", outline: "none" }}
+          >
+            {allOptions.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
         ) : (
           <div style={{ fontSize: 10, color: "#52525b", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{config.model}</div>
         )}
@@ -192,7 +192,6 @@ function ConfigNode({ data: d }: NodeProps) {
       </div>
       <div style={{ padding: "10px 14px 12px" }}>
         <ModelConfig
-          nodeId={`cfg-${data.agentKey ?? "rag"}`}
           agentKey={data.agentKey} config={data.config}
           editable={data.editable} ollamaModels={data.ollamaModels}
           onChange={data.agentKey
@@ -237,7 +236,6 @@ function ItemAgentNode({ data: d }: NodeProps) {
           </div>
         )}
         <ModelConfig
-          nodeId={`${data.category}-${data.stepKey}`}
           agentKey={data.agentKey} config={data.config}
           editable={data.editable} ollamaModels={data.ollamaModels}
           onChange={data.onItemConfigChange}
@@ -373,24 +371,89 @@ function buildParallelGraph(
   return { nodes, edges };
 }
 
-// ── 이벤트 → 노드 ID 매핑 ────────────────────────────────────────
+// ── SSE 이벤트 배치 처리 (순수 함수) ────────────────────────────
 
 const SSE_TO_STEP: Record<string, string> = {
   rag: "rag", write: "write", compress: "compress", evaluate: "evaluate",
 };
 
-// ── 노드 데이터 업데이트 헬퍼 ────────────────────────────────────
+// done 이후 자동으로 running 으로 전환할 다음 스텝
+const NEXT_STEP: Record<string, string> = {
+  rag: "write", write: "compress",
+  // compress → compress (반복) or evaluate는 백엔드 이벤트로 직접 처리
+};
 
-function patchNodeData<T extends object>(prev: Node[], id: string, patch: Partial<T>): Node[] {
-  return prev.map((nd) => nd.id === id ? { ...nd, data: { ...(nd.data as T), ...patch } } : nd);
+function patchNode<T extends object>(nodes: Node[], id: string, patch: Partial<T>): Node[] {
+  return nodes.map((nd) => nd.id === id ? { ...nd, data: { ...(nd.data as T), ...patch } } : nd);
 }
 
-function patchEdgeStyle(prev: Edge[], targetId: string, color: string, animated: boolean): Edge[] {
-  return prev.map((e) =>
-    e.target === targetId
-      ? { ...e, animated, style: { stroke: color, strokeWidth: 2 }, markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color } }
-      : e,
-  );
+function applyNodeEvent(nodes: Node[], ev: PipelineEvent, isParallel: boolean): Node[] {
+  if (ev.node === "jd_analyzer") {
+    const phase: NodePhase = ev.phase === "start" ? "running" : ev.phase === "done" ? "done" : "error";
+    return patchNode<ConfigNodeData>(nodes, "jd_analyzer", { phase, detail: ev.detail ?? "" });
+  }
+
+  const stepKey = SSE_TO_STEP[ev.node];
+  if (!stepKey) return nodes;
+
+  if (!isParallel) {
+    const nid = ev.node === "write" ? "essay_writer" : ev.node === "compress" ? "compressor" : ev.node === "evaluate" ? "evaluator" : ev.node;
+    const phase: NodePhase = ev.phase === "start" ? "running" : ev.phase === "done" ? "done" : "error";
+    return patchNode<ConfigNodeData>(nodes, nid, { phase, detail: ev.detail ?? "", iterations: ev.iteration ?? 0 });
+  }
+
+  if (!ev.category) return nodes;
+  const nid = `${ev.category}:${stepKey}`;
+  const phase: NodePhase = ev.phase === "start" ? "running" : ev.phase === "done" ? "done" : "error";
+  const detail = ev.phase !== "start" ? (ev.detail ?? "") : "";
+  let updated = patchNode<ItemAgentNodeData>(nodes, nid, { phase, detail, iterations: ev.iteration ?? 0 });
+
+  // done → 다음 스텝 자동 running (같은 배치에서 즉시 반영)
+  if (ev.phase === "done") {
+    const nextStep = NEXT_STEP[ev.node];
+    if (nextStep) {
+      const nextNid = `${ev.category}:${nextStep}`;
+      updated = patchNode<ItemAgentNodeData>(updated, nextNid, { phase: "running", detail: "", iterations: 0 });
+    }
+  }
+  return updated;
+}
+
+function applyEdgeEvent(edges: Edge[], ev: PipelineEvent, isParallel: boolean): Edge[] {
+  const mkStyle = (color: string, animated: boolean) => ({
+    animated,
+    style: { stroke: color, strokeWidth: 2 },
+    markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color },
+  });
+
+  if (ev.node === "jd_analyzer" && ev.phase === "done") {
+    const color = "#22c55e";
+    return edges.map((e) => e.source === "jd_analyzer" ? { ...e, ...mkStyle(color, false) } : e);
+  }
+
+  const stepKey = SSE_TO_STEP[ev.node];
+  if (!stepKey) return edges;
+
+  if (!isParallel) {
+    const nid = ev.node === "write" ? "essay_writer" : ev.node === "compress" ? "compressor" : ev.node === "evaluate" ? "evaluator" : ev.node;
+    const color = ev.phase === "start" ? "#3b82f6" : ev.phase === "done" ? "#22c55e" : "#ef4444";
+    return edges.map((e) => e.target === nid ? { ...e, ...mkStyle(color, ev.phase === "start") } : e);
+  }
+
+  if (!ev.category) return edges;
+  const nid = `${ev.category}:${stepKey}`;
+  const color = ev.phase === "start" ? "#3b82f6" : ev.phase === "done" ? "#22c55e" : "#ef4444";
+  let updated = edges.map((e) => e.target === nid ? { ...e, ...mkStyle(color, ev.phase === "start") } : e);
+
+  // done → 다음 스텝 엣지 파랑으로
+  if (ev.phase === "done") {
+    const nextStep = NEXT_STEP[ev.node];
+    if (nextStep) {
+      const nextNid = `${ev.category}:${nextStep}`;
+      updated = updated.map((e) => e.target === nextNid ? { ...e, ...mkStyle("#3b82f6", true) } : e);
+    }
+  }
+  return updated;
 }
 
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────
@@ -428,9 +491,11 @@ export function WorkflowCanvas({ categories, configs, itemConfigs, events, edita
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initEdges);
+  const processedRef = useRef(0);  // 처리 완료된 이벤트 수
 
   // 그래프 구조 재빌드 (categories / editable 변경)
   useEffect(() => {
+    processedRef.current = 0;  // 이벤트 카운터 리셋
     const { nodes: n, edges: e } = isParallel
       ? buildParallelGraph(categories, configs, itemConfigs, editable, ollamaModels, stableChange, stableItemChange)
       : buildAbstractGraph(configs, editable, ollamaModels, stableChange);
@@ -458,51 +523,24 @@ export function WorkflowCanvas({ categories, configs, itemConfigs, events, edita
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configs, itemConfigs, editable, ollamaModels]);
 
-  // SSE 이벤트 → 노드·엣지 실시간 업데이트
+  // SSE 이벤트 → 배치 처리 (미처리 이벤트 전부 순서대로 적용)
   useEffect(() => {
-    const last = events[events.length - 1];
-    if (!last) return;
+    const newEvents = events.slice(processedRef.current);
+    if (!newEvents.length) return;
+    processedRef.current = events.length;
 
-    if (last.node === "jd_analyzer") {
-      const phase: NodePhase = last.phase === "start" ? "running" : last.phase === "done" ? "done" : "error";
-      setNodes((prev) => patchNodeData<ConfigNodeData>(prev, "jd_analyzer", { phase, detail: last.detail ?? "" }));
-      if (last.phase !== "start") {
-        const color = phase === "done" ? "#22c55e" : "#ef4444";
-        setEdges((prev) => prev.map((e) =>
-          e.source === "jd_analyzer" ? { ...e, animated: false, style: { stroke: color, strokeWidth: 2 }, markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color } } : e,
-        ));
-      }
-      return;
-    }
-
-    const stepKey = SSE_TO_STEP[last.node];
-    if (!stepKey) return;
-
-    // done 이벤트 → 다음 스텝 running으로 자동 전환
-    const NEXT_STEP: Record<string, string> = {
-      rag: "write", write: "compress", compress: "compress", // compress는 반복 가능
-    };
-
-    // 추상 그래프 모드
-    if (!isParallel) {
-      const nodeId = last.node === "write" ? "essay_writer" : last.node === "compress" ? "compressor" : last.node === "evaluate" ? "evaluator" : last.node;
-      const phase: NodePhase = last.phase === "start" ? "running" : last.phase === "done" ? "done" : "error";
-      setNodes((prev) => patchNodeData<ConfigNodeData>(prev, nodeId, { phase, detail: last.detail ?? "", iterations: last.iteration ?? 0 }));
-      const color = last.phase === "start" ? "#3b82f6" : phase === "done" ? "#22c55e" : "#ef4444";
-      setEdges((prev) => patchEdgeStyle(prev, nodeId, color, last.phase === "start"));
-      return;
-    }
-
-    // 병렬 그래프 모드 — category 필수
-    if (!last.category) return;
-    const nodeId = `${last.category}:${stepKey}`;
-    const phase: NodePhase = last.phase === "start" ? "running" : last.phase === "done" ? "done" : "error";
-    const detail = last.phase !== "start" ? (last.detail ?? "") : "";
-    setNodes((prev) => patchNodeData<ItemAgentNodeData>(prev, nodeId, { phase, detail, iterations: last.iteration ?? 0 }));
-    const color = last.phase === "start" ? "#3b82f6" : phase === "done" ? "#22c55e" : "#ef4444";
-    setEdges((prev) => patchEdgeStyle(prev, nodeId, color, last.phase === "start"));
+    setNodes((prev) => {
+      let nodes = prev;
+      for (const ev of newEvents) nodes = applyNodeEvent(nodes, ev, isParallel);
+      return nodes;
+    });
+    setEdges((prev) => {
+      let edges = prev;
+      for (const ev of newEvents) edges = applyEdgeEvent(edges, ev, isParallel);
+      return edges;
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [events]);
+  }, [events.length]);
 
   return (
     <ReactFlow

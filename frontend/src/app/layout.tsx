@@ -50,6 +50,9 @@ export default function RootLayout({
               <Link href="/jobs" className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors">
                 지원 관리
               </Link>
+              <Link href="/models" className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors flex items-center gap-1">
+                🤖 모델 관리
+              </Link>
               <Link href="/settings" className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors">
                 설정
               </Link>
