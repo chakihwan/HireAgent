@@ -39,6 +39,32 @@ def _build_agent_config(req: EssayGenerateRequest) -> dict:
     return config
 
 
+def _build_items(req: EssayGenerateRequest, global_config: dict) -> list[EssayItem]:
+    """요청의 items 리스트를 EssayItem으로 변환. 항목별 agent_config 오버라이드 처리."""
+    items: list[EssayItem] = []
+    for item in req.items:
+        essay_item = EssayItem(
+            category=item.category,
+            char_limit=item.char_limit,
+            tone=item.tone,
+            persona=item.persona,
+        )
+        if item.agent_config:
+            item_cfg: dict = {}
+            for agent_name, assignment in item.agent_config.items():
+                api_key = assignment.api_key
+                if assignment.provider == "ollama" and not api_key:
+                    api_key = settings.ollama_base_url
+                item_cfg[agent_name] = {
+                    "provider": assignment.provider,
+                    "model": assignment.model,
+                    "api_key": api_key or "",
+                }
+            essay_item["agent_config"] = {**global_config, **item_cfg}
+        items.append(essay_item)
+    return items
+
+
 async def _stream_generation(
     req: EssayGenerateRequest,
     save: bool = False,
@@ -46,15 +72,7 @@ async def _stream_generation(
     db: AsyncSession | None = None,
 ) -> AsyncGenerator[str, None]:
     agent_config = _build_agent_config(req)
-    items: list[EssayItem] = [
-        EssayItem(
-            category=item.category,
-            char_limit=item.char_limit,
-            tone=item.tone,
-            persona=item.persona,
-        )
-        for item in req.items
-    ]
+    items = _build_items(req, agent_config)
 
     initial_state = EssayState(
         job_description=req.job_description,
@@ -158,15 +176,7 @@ async def generate_essays(
 async def generate_essays_sync(req: EssayGenerateRequest) -> EssayGenerateResponse:
     """자소서 생성 (동기 응답, 테스트/디버깅용)."""
     agent_config = _build_agent_config(req)
-    items: list[EssayItem] = [
-        EssayItem(
-            category=item.category,
-            char_limit=item.char_limit,
-            tone=item.tone,
-            persona=item.persona,
-        )
-        for item in req.items
-    ]
+    items = _build_items(req, agent_config)
 
     initial_state = EssayState(
         job_description=req.job_description,

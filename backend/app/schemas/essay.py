@@ -1,17 +1,21 @@
 from pydantic import BaseModel, Field
 
 
-class EssayItemRequest(BaseModel):
-    category: str = Field(..., description="자기소개 | 지원동기 | 성장과정 | 직무경험 | ...")
-    char_limit: int = Field(..., ge=100, le=5000, description="목표 글자수 (공백 포함)")
-    tone: str | None = Field(default="공식적", description="공식적 | 친근함 | 도전적")
-    persona: str | None = Field(default="경력직", description="신입 | 경력 | 전환")
-
-
 class AgentAssignment(BaseModel):
     provider: str = Field(default="ollama")
     model: str = Field(default="exaone3.5:7.8b")
     api_key: str | None = Field(default=None, description="Ollama는 생략 시 서버 설정 사용")
+
+
+class EssayItemRequest(BaseModel):
+    category: str = Field(..., description="자기소개 | 지원동기 | 성장과정 | 직무경험 | ...")
+    char_limit: int = Field(..., ge=50, le=5000, description="목표 글자수 (공백 포함)")
+    tone: str | None = Field(default="공식적", description="공식적 | 친근함 | 도전적")
+    persona: str | None = Field(default="경력직", description="신입 | 경력 | 전환")
+    agent_config: dict[str, AgentAssignment] | None = Field(
+        default=None,
+        description="항목별 에이전트 설정 (없으면 전역 agent_config 사용)",
+    )
 
 
 class EssayGenerateRequest(BaseModel):

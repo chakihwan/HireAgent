@@ -39,11 +39,13 @@ type ItemAgentNodeData = {
   kind: "itemAgent";
   label: string; role: string; icon: string;
   category: string; stepKey: string;
-  agentKey?: AgentKey;        // null이면 RAG (no LLM)
-  config?: ProviderConfig;
+  agentKey?: AgentKey;
+  config?: ProviderConfig;       // 이미 항목별 오버라이드 적용된 config
+  isOverridden: boolean;         // 전역과 다른 설정이면 true
   phase: NodePhase; detail: string; iterations: number;
   editable: boolean; ollamaModels: string[];
-  onConfigChange?: (key: AgentKey, field: keyof ProviderConfig, value: string) => void;
+  // 항목별 config 변경 콜백 (category + agentKey 이미 바인딩)
+  onItemConfigChange?: (field: keyof ProviderConfig, value: string) => void;
 };
 
 type AnyNodeData = ConfigNodeData | ItemAgentNodeData;
@@ -81,17 +83,19 @@ const PROVIDER_LABEL: Record<string, string> = {
 // ── 공통 모델 설정 UI ─────────────────────────────────────────────
 
 function ModelConfig({
-  agentKey, config, editable, ollamaModels, onConfigChange,
+  nodeId, agentKey, config, editable, ollamaModels, onChange,
 }: {
+  nodeId: string;
   agentKey?: AgentKey;
   config?: ProviderConfig;
   editable: boolean;
   ollamaModels: string[];
-  onConfigChange?: (key: AgentKey, field: keyof ProviderConfig, value: string) => void;
+  onChange?: (field: keyof ProviderConfig, value: string) => void;
 }) {
   if (!config || !agentKey) {
     return <div style={{ fontSize: 10, color: "#a1a1aa", padding: "2px 0 4px" }}>KURE-v1 벡터 검색</div>;
   }
+  const listId = `ml-${nodeId}`;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
       <div>
@@ -100,7 +104,7 @@ function ModelConfig({
           <select
             className="nodrag nopan"
             value={config.provider}
-            onChange={(e) => onConfigChange?.(agentKey, "provider", e.target.value)}
+            onChange={(e) => onChange?.("provider", e.target.value)}
             style={{ width: "100%", padding: "4px 6px", borderRadius: 6, border: "1.5px solid #e4e4e7", fontSize: 11, background: "#fafafa", cursor: "pointer", outline: "none" }}
           >
             {["ollama","anthropic","openai","google"].map((p) => (
@@ -117,13 +121,13 @@ function ModelConfig({
           <>
             <input
               className="nodrag nopan"
-              list={`ml-${agentKey}`}
+              list={listId}
               value={config.model}
-              onChange={(e) => onConfigChange?.(agentKey, "model", e.target.value)}
+              onChange={(e) => onChange?.("model", e.target.value)}
               placeholder="모델명 입력 또는 선택"
               style={{ width: "100%", padding: "4px 6px", borderRadius: 6, border: "1.5px solid #e4e4e7", fontSize: 10, fontFamily: "monospace", background: "#fafafa", outline: "none", boxSizing: "border-box" }}
             />
-            <datalist id={`ml-${agentKey}`}>
+            <datalist id={listId}>
               {(config.provider === "ollama"
                 ? (ollamaModels.length ? ollamaModels : [config.model])
                 : (CLOUD_MODELS[config.provider] ?? [])
@@ -188,9 +192,12 @@ function ConfigNode({ data: d }: NodeProps) {
       </div>
       <div style={{ padding: "10px 14px 12px" }}>
         <ModelConfig
+          nodeId={`cfg-${data.agentKey ?? "rag"}`}
           agentKey={data.agentKey} config={data.config}
           editable={data.editable} ollamaModels={data.ollamaModels}
-          onConfigChange={data.onConfigChange}
+          onChange={data.agentKey
+            ? (field, value) => data.onConfigChange?.(data.agentKey!, field as keyof ProviderConfig, value)
+            : undefined}
         />
         <StatusRow phase={data.phase} detail={data.detail} iterations={data.iterations} />
       </div>
@@ -224,10 +231,16 @@ function ItemAgentNode({ data: d }: NodeProps) {
         </div>
       </div>
       <div style={{ padding: "8px 12px 10px" }}>
+        {data.isOverridden && data.editable && (
+          <div style={{ fontSize: 9, color: "#7c3aed", fontWeight: 700, marginBottom: 4, background: "#f5f3ff", borderRadius: 4, padding: "1px 5px", display: "inline-block" }}>
+            ★ 항목 전용 설정
+          </div>
+        )}
         <ModelConfig
+          nodeId={`${data.category}-${data.stepKey}`}
           agentKey={data.agentKey} config={data.config}
           editable={data.editable} ollamaModels={data.ollamaModels}
-          onConfigChange={data.onConfigChange}
+          onChange={data.onItemConfigChange}
         />
         <StatusRow phase={data.phase} detail={data.detail} iterations={data.iterations} />
       </div>
@@ -293,8 +306,10 @@ function buildAbstractGraph(
 function buildParallelGraph(
   categories: string[],
   configs: Record<AgentKey, ProviderConfig>,
+  itemConfigs: Record<string, Partial<Record<AgentKey, ProviderConfig>>>,
   editable: boolean, ollamaModels: string[],
   onChange?: (key: AgentKey, field: keyof ProviderConfig, value: string) => void,
+  onItemChange?: (category: string, key: AgentKey, field: keyof ProviderConfig, value: string) => void,
 ): { nodes: Node[]; edges: Edge[] } {
   const n = categories.length;
   const totalH = n * ITEM_ROW_H;
@@ -323,6 +338,11 @@ function buildParallelGraph(
       const nodeId = `${cat}:${step.key}`;
       const x = ITEM_START_X + si * (ITEM_W + ITEM_GAP_X);
 
+      const globalCfg = step.agentKey ? configs[step.agentKey] : undefined;
+      const itemOverride = step.agentKey ? (itemConfigs[cat]?.[step.agentKey]) : undefined;
+      const effectiveCfg = itemOverride ?? globalCfg;
+      const isOverridden = !!itemOverride;
+
       nodes.push({
         id: nodeId, type: "itemAgentNode",
         position: { x, y: rowY },
@@ -331,9 +351,13 @@ function buildParallelGraph(
           label: step.label, icon: step.icon,
           category: cat, stepKey: step.key,
           agentKey: step.agentKey,
-          config: step.agentKey ? configs[step.agentKey] : undefined,
+          config: effectiveCfg,
+          isOverridden,
           phase: "idle", detail: "", iterations: 0,
-          editable, ollamaModels, onConfigChange: onChange,
+          editable, ollamaModels,
+          onItemConfigChange: step.agentKey
+            ? (field, value) => onItemChange?.(cat, step.agentKey!, field as keyof ProviderConfig, value)
+            : undefined,
         } as ItemAgentNodeData,
       });
 
@@ -373,24 +397,33 @@ function patchEdgeStyle(prev: Edge[], targetId: string, color: string, animated:
 
 type Props = {
   categories: string[];
-  configs: Record<AgentKey, ProviderConfig>;
+  configs: Record<AgentKey, ProviderConfig>;                          // 전역 기본 설정
+  itemConfigs: Record<string, Partial<Record<AgentKey, ProviderConfig>>>;  // 항목별 오버라이드
   events: PipelineEvent[];
   editable: boolean;
   ollamaModels: string[];
   onConfigChange?: (key: AgentKey, field: keyof ProviderConfig, value: string) => void;
+  onItemConfigChange?: (category: string, key: AgentKey, field: keyof ProviderConfig, value: string) => void;
 };
 
-export function WorkflowCanvas({ categories, configs, events, editable, ollamaModels, onConfigChange }: Props) {
+export function WorkflowCanvas({ categories, configs, itemConfigs, events, editable, ollamaModels, onConfigChange, onItemConfigChange }: Props) {
   const onChangeRef = useRef(onConfigChange);
   onChangeRef.current = onConfigChange;
+  const onItemChangeRef = useRef(onItemConfigChange);
+  onItemChangeRef.current = onItemConfigChange;
+
   const stableChange = useCallback(
     (key: AgentKey, field: keyof ProviderConfig, value: string) => onChangeRef.current?.(key, field, value),
+    [],
+  );
+  const stableItemChange = useCallback(
+    (cat: string, key: AgentKey, field: keyof ProviderConfig, value: string) => onItemChangeRef.current?.(cat, key, field, value),
     [],
   );
 
   const isParallel = categories.length > 0;
   const { nodes: initNodes, edges: initEdges } = isParallel
-    ? buildParallelGraph(categories, configs, editable, ollamaModels, stableChange)
+    ? buildParallelGraph(categories, configs, itemConfigs, editable, ollamaModels, stableChange, stableItemChange)
     : buildAbstractGraph(configs, editable, ollamaModels, stableChange);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initNodes);
@@ -399,13 +432,13 @@ export function WorkflowCanvas({ categories, configs, events, editable, ollamaMo
   // 그래프 구조 재빌드 (categories / editable 변경)
   useEffect(() => {
     const { nodes: n, edges: e } = isParallel
-      ? buildParallelGraph(categories, configs, editable, ollamaModels, stableChange)
+      ? buildParallelGraph(categories, configs, itemConfigs, editable, ollamaModels, stableChange, stableItemChange)
       : buildAbstractGraph(configs, editable, ollamaModels, stableChange);
     setNodes(n); setEdges(e);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categories.join(","), editable]);
 
-  // configs / ollamaModels 변경 → config 데이터 업데이트
+  // configs / itemConfigs / ollamaModels 변경 → config 데이터 업데이트
   useEffect(() => {
     setNodes((prev) => prev.map((nd) => {
       const d = nd.data as AnyNodeData;
@@ -415,12 +448,15 @@ export function WorkflowCanvas({ categories, configs, events, editable, ollamaMo
       }
       if (d.kind === "itemAgent") {
         const id = d as ItemAgentNodeData;
-        return { ...nd, data: { ...id, config: id.agentKey ? configs[id.agentKey] : undefined, editable, ollamaModels, onConfigChange: stableChange } };
+        if (!id.agentKey) return nd;
+        const override = itemConfigs[id.category]?.[id.agentKey];
+        const effectiveCfg = override ?? configs[id.agentKey];
+        return { ...nd, data: { ...id, config: effectiveCfg, isOverridden: !!override, editable, ollamaModels, onItemConfigChange: (field: keyof ProviderConfig, value: string) => stableItemChange(id.category, id.agentKey!, field, value) } };
       }
       return nd;
     }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [configs, editable, ollamaModels]);
+  }, [configs, itemConfigs, editable, ollamaModels]);
 
   // SSE 이벤트 → 노드·엣지 실시간 업데이트
   useEffect(() => {
@@ -441,6 +477,11 @@ export function WorkflowCanvas({ categories, configs, events, editable, ollamaMo
 
     const stepKey = SSE_TO_STEP[last.node];
     if (!stepKey) return;
+
+    // done 이벤트 → 다음 스텝 running으로 자동 전환
+    const NEXT_STEP: Record<string, string> = {
+      rag: "write", write: "compress", compress: "compress", // compress는 반복 가능
+    };
 
     // 추상 그래프 모드
     if (!isParallel) {

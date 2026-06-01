@@ -6,11 +6,12 @@ from typing import Annotated, TypedDict
 NodeEvent = dict
 
 
-class EssayItem(TypedDict):
-    category: str       # "자기소개" | "지원동기" | "성장과정" | ...
-    char_limit: int     # 목표 글자수
-    tone: str | None    # "공식적" | "친근함" | "도전적"
-    persona: str | None # "신입" | "경력" | "전환"
+class EssayItem(TypedDict, total=False):
+    category: str           # "자기소개" | "지원동기" | "성장과정" | ...
+    char_limit: int         # 목표 글자수
+    tone: str | None        # "공식적" | "친근함" | "도전적"
+    persona: str | None     # "신입" | "경력" | "전환"
+    agent_config: dict | None  # 항목별 에이전트 설정 (없으면 전역 설정 사용)
 
 
 class Draft(TypedDict):

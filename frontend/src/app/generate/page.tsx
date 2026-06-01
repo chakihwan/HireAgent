@@ -87,6 +87,8 @@ export default function GeneratePage() {
   const [agentConfigs, setAgentConfigs] = useState<AppSettings["agents"]>(
     () => loadSettings().agents,
   );
+  // 항목별 agent config 오버라이드 (없으면 전역 agentConfigs 사용)
+  const [itemAgentConfigs, setItemAgentConfigs] = useState<Record<string, Partial<Record<AgentKey, ProviderConfig>>>>({});
 
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
 
@@ -130,6 +132,22 @@ export default function GeneratePage() {
       const next = { ...prev, [key]: updated };
       saveSettings({ agents: next });
       return next;
+    });
+  }
+
+  function handleItemAgentConfigChange(category: string, key: AgentKey, field: keyof ProviderConfig, value: string) {
+    setItemAgentConfigs((prev) => {
+      const baseCfg = prev[category]?.[key] ?? agentConfigs[key];
+      const updated: ProviderConfig = { ...baseCfg, [field]: value };
+      if (field === "provider") {
+        updated.model =
+          value === "ollama" ? (ollamaModels[0] ?? "exaone3.5:7.8b")
+          : value === "anthropic" ? "claude-haiku-4-5-20251001"
+          : value === "openai" ? "gpt-4.1-mini"
+          : "gemini-2.0-flash";
+        updated.apiKey = "";
+      }
+      return { ...prev, [category]: { ...prev[category], [key]: updated } };
     });
   }
 
@@ -204,12 +222,22 @@ export default function GeneratePage() {
 
     const request = {
       job_description: jd,
-      items: selectedItems.map((item) => ({
-        category: item.category,
-        char_limit: item.charLimit,
-        tone: item.tone,
-        persona: item.persona,
-      })),
+      items: selectedItems.map((item) => {
+        const overrides = itemAgentConfigs[item.category];
+        const itemCfg: Record<string, { provider: string; model: string; api_key: string }> | undefined =
+          overrides && Object.keys(overrides).length > 0
+            ? Object.fromEntries(
+                Object.entries(overrides).map(([k, v]) => [k, { provider: v!.provider, model: v!.model, api_key: v!.apiKey ?? "" }]),
+              )
+            : undefined;
+        return {
+          category: item.category,
+          char_limit: item.charLimit,
+          tone: item.tone,
+          persona: item.persona,
+          ...(itemCfg ? { agent_config: itemCfg } : {}),
+        };
+      }),
       user_id: "local",
       agent_config: agentConfig,
     };
@@ -232,7 +260,18 @@ export default function GeneratePage() {
             ]);
           }
         } else if (event === "node_event") {
-          setPipelineEvents((prev) => [...prev, data as PipelineEvent]);
+          const ne = data as PipelineEvent;
+          const NEXT: Record<string, PipelineEvent["node"]> = {
+            rag: "write", write: "compress",
+          };
+          const nextNode = ne.phase === "done" ? NEXT[ne.node] : undefined;
+          setPipelineEvents((prev) => {
+            const next = [...prev, ne];
+            if (nextNode && ne.category) {
+              next.push({ node: nextNode, category: ne.category, phase: "start" });
+            }
+            return next;
+          });
         } else if (event === "error") {
           const d = data as { message: string };
           appendLog("error", d.message);
@@ -474,10 +513,12 @@ export default function GeneratePage() {
           <WorkflowCanvas
             categories={selectedItems.map((i) => i.category)}
             configs={agentConfigs}
+            itemConfigs={itemAgentConfigs}
             events={pipelineEvents}
             editable={!isGenerating}
             ollamaModels={ollamaModels}
             onConfigChange={handleConfigChange}
+            onItemConfigChange={handleItemAgentConfigChange}
           />
         </div>
 
