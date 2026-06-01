@@ -103,7 +103,25 @@ export default function GeneratePage() {
 
   useEffect(() => {
     getOllamaModels()
-      .then((r) => setOllamaModels(r.models.map((m) => m.name)))
+      .then((r) => {
+        const names = r.models.map((m) => m.name);
+        setOllamaModels(names);
+        // localStorage에 설치 안 된 Ollama 모델이 있으면 첫 번째 설치 모델로 교체
+        if (names.length > 0) {
+          setAgentConfigs((prev) => {
+            let changed = false;
+            const next = { ...prev };
+            for (const key of Object.keys(next) as AgentKey[]) {
+              if (next[key].provider === "ollama" && !names.includes(next[key].model)) {
+                next[key] = { ...next[key], model: names[0] };
+                changed = true;
+              }
+            }
+            if (changed) saveSettings({ agents: next });
+            return changed ? next : prev;
+          });
+        }
+      })
       .catch(() => {/* Ollama 미응답 시 무시 */});
   }, []);
 
@@ -169,6 +187,19 @@ export default function GeneratePage() {
   }
 
   const handleGenerate = useCallback(async () => {
+    // Ollama 모델 사전 검증 — 설치 안 된 모델이 있으면 생성 전에 차단
+    if (ollamaModels.length > 0) {
+      const badAgents = Object.entries(agentConfigs)
+        .filter(([, cfg]) => cfg.provider === "ollama" && !ollamaModels.includes(cfg.model))
+        .map(([key, cfg]) => `${key} (${cfg.model})`);
+      if (badAgents.length > 0) {
+        setGenError(
+          `설치되지 않은 Ollama 모델이 있습니다:\n${badAgents.join(", ")}\n\n설치된 모델: ${ollamaModels.join(", ")}`,
+        );
+        return;
+      }
+    }
+
     setStep("generating");
     setLog([]);
     setResults([]);
@@ -375,6 +406,19 @@ export default function GeneratePage() {
           ollamaModels={ollamaModels}
           onConfigChange={handleConfigChange}
         />
+
+        {genError && (
+          <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3">
+            <p className="text-sm font-medium text-red-700 mb-1">생성 불가</p>
+            <p className="text-sm text-red-600 whitespace-pre-line">{genError}</p>
+            <button
+              className="mt-2 text-xs text-red-500 underline"
+              onClick={() => setGenError(null)}
+            >
+              닫기
+            </button>
+          </div>
+        )}
 
         <div className="flex gap-3">
           <Button variant="outline" onClick={() => setStep("jd")}>
