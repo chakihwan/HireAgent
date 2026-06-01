@@ -438,7 +438,8 @@ class UserLLMConfig(Base):
 - **항목별 독립 모델 설정** (ADR-025): `EssayItem.agent_config`로 항목마다 다른 LLM
 - **모델 관리 페이지** (`/models`): Ollama 다운로드/삭제, 추천 모델 10종
 - **인프라**: Ollama named volume(재시작 모델 유지), SSR hydration 수정
-- **알려진 제약**: VRAM 초과 모델(gemma4:e4b 9.6GB > RTX 5060 7.1GB) 선택 시 runner 종료 (feedback.md)
+- **VRAM 사전 경고** (`app/utils/gpu.py`): nvidia-ml-py 런타임 조회 → over 모델 생성 차단 (graceful: GPU 없으면 비활성화)
+- **GPU 실행 분리**: NVIDIA는 `docker-compose.gpu.yml` 병합 (`.env`의 `COMPOSE_FILE`로 자동화), Mac/CPU는 base만으로 동작
 
 ---
 

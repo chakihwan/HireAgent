@@ -1,0 +1,37 @@
+# NVIDIA GPU 가속 override (NVIDIA GPU + nvidia-container-toolkit 필요)
+#
+# 사용법:
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+#
+# 이 파일은 base docker-compose.yml에 GPU 예약을 "추가"한다.
+# - ollama: 모델 추론 GPU 가속 (compute)
+# - backend: VRAM 조회용 NVML (utility) — VRAM 초과 모델 사전 경고 기능
+#
+# Mac(Apple Silicon)·AMD·CPU 환경에서는 이 파일을 빼고 base만 실행:
+#   docker compose up -d
+#   → Ollama는 CPU 모드(느리지만 동작), VRAM 경고는 자동 비활성화(graceful)
+#
+# 참고: Mac은 Docker Desktop이 GPU(Metal) passthrough를 지원하지 않으므로,
+#       네이티브 Ollama 설치(Metal 가속) + 브라우저 직접 호출 권장 (ADR-014)
+
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  backend:
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: utility   # NVML(nvidia-ml-py) VRAM 조회용
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, utility]

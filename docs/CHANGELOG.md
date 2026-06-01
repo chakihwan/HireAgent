@@ -9,6 +9,15 @@
 
 ## [Unreleased]
 
+### 수정 — GPU 예약을 override 파일로 분리 (Mac/CPU 호환)
+
+- `docker-compose.yml`에서 NVIDIA GPU 예약 제거 → `docker-compose.gpu.yml`로 분리
+  - **문제**: base에 GPU 예약이 있으면 Mac(Metal passthrough 미지원)·AMD·CPU 환경에서 컨테이너 기동 실패
+  - **해결**: base는 GPU 없이 동작(Ollama CPU 모드), NVIDIA 사용자만 override 병합
+- NVIDIA 사용자: `docker compose -f docker-compose.yml -f docker-compose.gpu.yml up`
+  - 또는 `.env`에 `COMPOSE_FILE=docker-compose.yml:docker-compose.gpu.yml` → `docker compose up`만으로 자동 병합
+- Mac/CPU 사용자: `docker compose up` (GPU 경고 자동 비활성화, ADR-014 네이티브 Ollama 권장)
+
 ### 추가 — VRAM 초과 모델 사전 경고 (런타임 GPU 조회)
 
 - `app/utils/gpu.py`: nvidia-ml-py(NVML)로 실제 GPU VRAM 조회 — 하드코딩 없이 어떤 하드웨어든 대응
