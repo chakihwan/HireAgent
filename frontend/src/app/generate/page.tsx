@@ -224,8 +224,12 @@ export default function GeneratePage() {
           appendLog("progress", d.message);
           // JD 분석 완료 메시지 감지 → 그래프 이벤트 주입
           if (d.node === "jd_analyzer" && d.message.includes("공고 분석 완료")) {
-            setPipelineEvents((prev) => [...prev, { node: "jd_analyzer", phase: "done" }]);
-            setPipelineEvents((prev) => [...prev, { node: "rag", phase: "start" }]);
+            setPipelineEvents((prev) => [
+              ...prev,
+              { node: "jd_analyzer", phase: "done", detail: d.message.split("—")[1]?.trim() ?? "" },
+              // 항목별 RAG start 이벤트 (category 포함해야 병렬 노드 매핑됨)
+              ...selectedItems.map((item) => ({ node: "rag" as const, category: item.category, phase: "start" as const })),
+            ]);
           }
         } else if (event === "node_event") {
           setPipelineEvents((prev) => [...prev, data as PipelineEvent]);
