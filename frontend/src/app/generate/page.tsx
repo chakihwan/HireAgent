@@ -17,8 +17,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { generateEssays, saveToLibrary, fetchJobUrl, FetchUrlError } from "@/lib/api";
-import { loadSettings, buildAgentConfig } from "@/lib/settings-store";
-import type { DraftResult, EssayTone, EssayPersona, ItemConfig, SseDoneEvent } from "@/lib/types";
+import { loadSettings, saveSettings } from "@/lib/settings-store";
+import type { DraftResult, EssayTone, EssayPersona, ItemConfig, SseDoneEvent, AgentKey, ProviderConfig, AppSettings } from "@/lib/types";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -90,6 +90,19 @@ export default function GeneratePage() {
   const [customLimit, setCustomLimit] = useState(500);
   const [useCustom, setUseCustom] = useState(false);
 
+  // Agent config (그래프 노드에서 직접 편집)
+  const [agentConfigs, setAgentConfigs] = useState<AppSettings["agents"]>(
+    () => loadSettings().agents,
+  );
+
+  function handleConfigChange(key: AgentKey, field: keyof ProviderConfig, value: string) {
+    setAgentConfigs((prev) => {
+      const next = { ...prev, [key]: { ...prev[key], [field]: value } };
+      saveSettings({ agents: next });
+      return next;
+    });
+  }
+
   // Generation state
   const [log, setLog] = useState<LogEntry[]>([]);
   const [results, setResults] = useState<DraftResult[]>([]);
@@ -140,8 +153,11 @@ export default function GeneratePage() {
     graphCategoriesRef.current = selectedItems.map((i) => i.category);
     setGraphEvents([{ node: "jd_analyzer", phase: "start" }]);
 
-    const settings = loadSettings();
-    const agentConfig = buildAgentConfig(settings);
+    // 그래프 노드 설정을 API 포맷으로 변환
+    const agentConfig: Record<string, { provider: string; model: string; api_key: string }> = {};
+    for (const [key, cfg] of Object.entries(agentConfigs)) {
+      agentConfig[key] = { provider: cfg.provider, model: cfg.model, api_key: cfg.apiKey };
+    }
 
     const request = {
       job_description: jd,
@@ -411,6 +427,20 @@ export default function GeneratePage() {
           </div>
         )}
 
+        {/* 에이전트 파이프라인 설정 */}
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-zinc-700">에이전트 파이프라인</p>
+          <p className="text-xs text-zinc-400">각 노드에서 프로바이더와 모델을 선택하세요. 설정은 자동 저장됩니다.</p>
+          <div className="relative">
+            <AgentGraph
+              configs={agentConfigs}
+              events={[]}
+              editable={true}
+              onConfigChange={handleConfigChange}
+            />
+          </div>
+        </div>
+
         <div className="flex gap-3">
           <Button variant="outline" onClick={() => setStep("jd")}>
             공고 수정
@@ -450,13 +480,12 @@ export default function GeneratePage() {
           </Card>
         )}
 
-        {/* 에이전트 파이프라인 그래프 */}
-        {graphCategoriesRef.current.length > 0 && (
-          <AgentGraph
-            categories={graphCategoriesRef.current}
-            events={graphEvents}
-          />
-        )}
+        {/* 에이전트 파이프라인 실시간 모니터링 */}
+        <AgentGraph
+          configs={agentConfigs}
+          events={graphEvents}
+          editable={false}
+        />
 
         <Card>
           <CardHeader>
