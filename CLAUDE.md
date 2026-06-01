@@ -59,12 +59,15 @@ hireagent/
 ├── README.md
 │
 ├── docs/                      # 살아있는 문서 (계속 업데이트)
-│   ├── requirements.md        # 요구사항 명세 (v0.2)
-│   ├── M1_execution_guide.md  # M1 실행 가이드
-│   ├── architecture.md        # 시스템 아키텍처 + M2 구현 매핑
-│   ├── CHANGELOG.md           # 매일 변경사항 기록
+│   ├── requirements.md        # 요구사항 명세 (변하지 않는 스펙)
+│   ├── ROADMAP.md             # 마일스톤 + 앞으로 할 일 (미완료만)
+│   ├── CHANGELOG.md           # 완료된 변경사항 (시간순 단일 소스)
+│   ├── architecture.md        # 시스템 아키텍처 + 구현 매핑
 │   ├── erd.md                 # 데이터 모델 ERD (Mermaid)
-│   └── adr/                   # 아키텍처 의사결정 기록 (001~020)
+│   ├── feedback.md            # 실사용 피드백 로그
+│   ├── test-scenarios.md      # 테스트 시나리오
+│   ├── M1_execution_guide.md  # M1 실행 가이드
+│   └── adr/                   # 아키텍처 의사결정 기록 (001~025)
 │
 ├── backend/
 │   ├── Dockerfile
@@ -162,7 +165,9 @@ def validate_chars(text: str, target: int, tolerance: float = 0.05):
 ### 6. 살아있는 문서 워크플로우
 - 코드 변경 시 관련 문서도 동시 업데이트
 - 큰 결정은 `docs/adr/`에 ADR 작성
-- `docs/CHANGELOG.md`에 변경사항 기록 (매일 또는 PR 단위)
+- **완료 = `docs/CHANGELOG.md`에 기록 (단일 소스)**. 같은 완료 사실을 여러 문서에 중복 기록 금지.
+- **할 일 = `docs/ROADMAP.md`**. 완료되면 ROADMAP에서 제거하고 CHANGELOG로 졸업 → 항상 "남은 일"만 보이게.
+- 실사용 이슈는 `docs/feedback.md` (현상·원인·조치)
 
 ---
 
@@ -371,75 +376,22 @@ class UserLLMConfig(Base):
 
 ---
 
-## ✅ M1 완료 (2026-05-24)
+## 📍 마일스톤 현황
 
-- Docker Compose + FastAPI + PostgreSQL(pgvector) + Ollama(GPU) + Next.js 16
-- LLM Factory: Anthropic / Ollama / OpenAI stub / Google stub
-- Next.js 테스트 페이지: Ollama 모델 선택 → 프롬프트 → 응답 확인
-- RTX 5060 GPU passthrough → ~82 tokens/sec (exaone3.5:7.8b)
+> 완료 작업 **상세는 [docs/CHANGELOG.md](docs/CHANGELOG.md)**, 앞으로 할 일은 **[docs/ROADMAP.md](docs/ROADMAP.md)**.
+> 아래는 작업 시 맥락 파악용 핵심 요약만.
 
----
+- **M1** ✅ 인프라 — Docker Compose, FastAPI, PostgreSQL(pgvector), Ollama(GPU), Next.js, LLM Factory
+- **M2** ✅ 백엔드 핵심 — SQLAlchemy async, DB 모델 4종, LangGraph `Send` fan-out 파이프라인, SSE 스트리밍
+- **M3** ✅ 기본 UI — 생성 플로우, 에이전트별 설정(localStorage)
+- **M4** ✅ 라이브러리·지원관리·RAG(KURE-v1 1024-dim, pgvector cosine), URL 페칭
+- **M5** ✅ 실사용·피드백 — 출력 다층 방어(ADR-022), RAG 가중검색, 회사명 추출, pytest 38건
+  - 후반 UI 고도화(v0.7.7): 대시보드 홈, 풀스크린 워크플로우 빌더(ADR-024), 항목별 모델(ADR-025),
+    모델 관리 페이지, VRAM 사전 경고(`app/utils/gpu.py`), GPU 실행 분리(`docker-compose.gpu.yml`)
+- **M6** 🚧 UI 고도화 (다크모드·Toast·페이지별 기능) — 다음 마일스톤, ROADMAP 참조
 
-## ✅ M2 완료 (2026-05-24)
-
-- SQLAlchemy 2.0 async + asyncpg, Alembic 마이그레이션 (ADR-016)
-- DB 모델: CareerDocument(pgvector), JobApplication, EssayLibraryItem, UserLLMConfig
-- LangGraph 파이프라인: JD분석 → Send API 동적 fan-out → ItemState 서브그래프
-  - 서브그래프: write → validate(Python len()) → compress(≤3회) → evaluate
-- `POST /api/v1/essays/generate` SSE 스트리밍 (ADR-012)
-- E2E 검증: exaone3.5:7.8b → 지원동기 307자, 평가 8점
-
----
-
-## ✅ M3 완료 (2026-05-24)
-
-- `GET /generate`: 4단계 자소서 생성 플로우
-  1. 공고 붙여넣기 → 2. 항목/글자수/톤/페르소나 선택 → 3. SSE 진행상황 → 4. 결과 확인
-- `GET /settings`: 에이전트별 프로바이더/모델/API 키 설정 (localStorage 저장)
-- 복사 버튼, 평가 점수, 글자수 배지, 생성 로그 접기 등 UI 완성
-- `lib/types.ts` + `lib/settings-store.ts` 공유 유틸
-
----
-
-## ✅ M4 완료 (2026-05-24)
-
-- 자소서 라이브러리 API + UI (`/library`): 저장/조회/최종 토글/삭제, 같은 application+category 자동 version 증가
-- 지원 관리 API + UI (`/jobs`): 회사/포지션/상태 머신/자소서 연결
-- RAG 파이프라인 (ADR-017):
-  - `app/rag/embeddings.py`: KURE-v1 (한국어 SOTA, 1024-dim), lazy load + `asyncio.to_thread`
-  - `app/rag/loaders/text.py`: RecursiveCharacterTextSplitter (한국어 separators)
-  - `app/rag/indexer.py` + `retriever.py`: 청킹/임베딩/INSERT/pgvector cosine 검색
-  - `/projects` 페이지: 데이터 등록 + 검색 테스트 + 청크 관리
-- LangGraph 통합: ItemState에 `rag_context`, `rag_retriever_node` 추가 → `retrieve → write → ...`
-- URL 페칭 보조 입력 (ADR-018): `POST /jobs/fetch-url` (httpx + BeautifulSoup), 차단/로그인/JS 렌더링 케이스별 안내
-- essay_writer 출력 후처리: 마크다운 헤더/메타/코드펜스 제거
-
----
-
-## ✅ M5 진행 중 (2026-05-26~)
-
-**목표**: 본인 실사용 + 피드백 반영
-
-### M5 버그 수정 (2026-05-26)
-- **`clean_llm_output()` 공통 유틸 분리** (`app/utils/text_cleaner.py`)
-  - essay_writer + compressor 모두 적용
-  - 볼드(`**text**`), 불릿(`- `, `* `), 출처레이블(`[참고 경험 N]`), 글자수메타 제거
-- **근본 원인**: `_clean_output`이 볼드 제거 → 글자수 줄어 compress 트리거 → compressor가 볼드 재도입하는 연쇄 버그
-- **RAG context 포맷 개선**: `[참고 경험 N]` 번호 레이블 제거, `[경험 자료]`로 섹션명 통일
-- **시스템 프롬프트 강화**: 경험 자료 외 수치/회사명/기술명 생성 금지, 마크다운 금지 명시
-- **RAG 인용 E2E 검증**: mock README → 고유 수치 정확 인용, 레이블 누출 없음 ✅
-
-### M5 UI 고도화 (2026-05-29 ~ 06-01, v0.7.7)
-- **대시보드 홈** (`/`): 통계 카드 + 최근 활동 타임라인 + 빠른 시작 (리다이렉트 제거)
-- **풀스크린 워크플로우 빌더** (`/generate`, ADR-024): React Flow 기반, 4-step 위저드 폐기
-  - JD분석 → 항목별 병렬 파이프라인(fan-out) 시각화, 노드 인라인 모델 설정
-  - SSE `node_event` 실시간 상태 체인 (대기→실행→완료, N회차 뱃지)
-  - 컴포넌트: `components/features/WorkflowCanvas.tsx`
-- **항목별 독립 모델 설정** (ADR-025): `EssayItem.agent_config`로 항목마다 다른 LLM
-- **모델 관리 페이지** (`/models`): Ollama 다운로드/삭제, 추천 모델 10종
-- **인프라**: Ollama named volume(재시작 모델 유지), SSR hydration 수정
-- **VRAM 사전 경고** (`app/utils/gpu.py`): nvidia-ml-py 런타임 조회 → over 모델 생성 차단 (graceful: GPU 없으면 비활성화)
-- **GPU 실행 분리**: NVIDIA는 `docker-compose.gpu.yml` 병합 (`.env`의 `COMPOSE_FILE`로 자동화), Mac/CPU는 base만으로 동작
+**핵심 컴포넌트**: 워크플로우 UI는 `frontend/src/components/features/WorkflowCanvas.tsx` (React Flow).
+생성 파이프라인은 `backend/app/agents/orchestrator.py` (`Send` fan-out → ItemState 서브그래프).
 
 ---
 
