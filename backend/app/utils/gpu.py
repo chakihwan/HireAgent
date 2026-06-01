@@ -4,6 +4,10 @@
 - 하드코딩 금지 — 런타임에 실제 GPU VRAM을 조회하므로 어떤 하드웨어에서든 그 사양 기준 판정.
 - graceful degradation — GPU 없거나 NVML 로드 실패 시 None 반환 → 경고 비활성화(모든 모델 허용).
 - nvidia-ml-py(NVML)는 NVIDIA GPU만 지원. AMD/Apple/CPU 환경은 None.
+
+NOTE (추후 과제): Apple Silicon은 Metal GPU + 통합 메모리로 LLM 가속이 강력하지만
+NVML로는 감지 불가. Mac 통합 메모리 기반 경고는 Phase 3에서 별도 구현 예정
+(네이티브 Ollama 전제 + psutil/sysctl 또는 Ollama /api/ps size_vram 활용). feedback.md 참조.
 """
 from __future__ import annotations
 

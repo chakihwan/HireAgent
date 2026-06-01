@@ -130,6 +130,7 @@
 - [ ] **지원 연결 드롭다운** (저장 시 application_id 선택)
 - [ ] **JD 분석 결과 미리보기** (요구역량/인재상 추출 단계 결과 표시)
 - [완료] **VRAM 초과 모델 사전 경고** (2026-06-01) — nvidia-ml-py 런타임 GPU 조회, over 모델 생성 차단 (gemma4:e4b 등)
+  - [추후] Mac(Apple Silicon) 통합 메모리 대응 — Metal GPU 강력하나 NVML 미지원, Phase 3 배포 시 (feedback.md)
 
 ### `/library` 페이지
 - [ ] **검색** (제목/내용 풀텍스트)

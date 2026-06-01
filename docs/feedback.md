@@ -108,10 +108,18 @@ gpu memory available="7.1 GiB" / total needed="9.8 GiB"
 error="llama runner process has terminated"
 ```
 **조치**: ✅ **해결 (v0.7.7)** — 런타임 GPU 조회 기반 사전 경고
-- `app/utils/gpu.py`: nvidia-ml-py(NVML)로 실제 VRAM 조회 (하드코딩 X → 어떤 하드웨어도 대응)
+- `app/utils/gpu.py`: nvidia-ml-py(NVML)로 실제 VRAM 조회 (하드코딩 X → 어떤 NVIDIA 하드웨어도 대응)
 - `/ollama/models`가 모델별 fit(ok/tight/over) 판정 반환, `/generate` 생성 전 over 모델 차단
-- graceful: GPU 없으면 경고 비활성화 (CPU/AMD/배포 환경)
+- graceful: GPU 없으면 경고 비활성화 (CPU/AMD/Mac/배포 환경)
 - 검증: RTX 5060 8GB → gemma4:e4b(9.8GB 필요) over 정확 판정, exaone/qwen 등 ok
+
+**추후 과제 — Mac(Apple Silicon) 통합 메모리 대응**:
+- M칩은 Metal GPU + 통합 메모리(RAM=VRAM)로 LLM 가속이 강력함 ("Mac=GPU 없음"은 오해)
+- 단 ① Docker Desktop이 Metal passthrough 미지원 → 컨테이너 Ollama는 CPU. ② NVML이 Apple 미지원
+- 정확 대응하려면: 네이티브 Ollama(Metal) 전제 + 메모리 조회 경로 필요
+  - 백엔드가 Docker Linux 컨테이너면 호스트 Mac 메모리 못 봄 → `sysctl hw.memsize`/`psutil` 무의미
+  - 대안: Ollama `/api/ps`의 `size_vram`로 **사후** 판정, 또는 백엔드 네이티브 실행 시 psutil
+- 우선순위: 낮음 — 실제 Mac 사용자 생기는 Phase 3 배포 시점에 처리
 
 ---
 

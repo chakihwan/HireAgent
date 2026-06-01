@@ -11,8 +11,9 @@
 #   docker compose up -d
 #   → Ollama는 CPU 모드(느리지만 동작), VRAM 경고는 자동 비활성화(graceful)
 #
-# 참고: Mac은 Docker Desktop이 GPU(Metal) passthrough를 지원하지 않으므로,
-#       네이티브 Ollama 설치(Metal 가속) + 브라우저 직접 호출 권장 (ADR-014)
+# 참고: Mac M칩은 Metal GPU + 통합 메모리로 LLM 가속이 강력하지만,
+#       Docker Desktop이 Metal passthrough를 지원하지 않아 컨테이너에선 못 씀.
+#       → Mac은 네이티브 Ollama 설치(Metal 가속) + 브라우저 직접 호출 권장 (ADR-014)
 
 services:
   ollama:
