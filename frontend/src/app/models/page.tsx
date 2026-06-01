@@ -188,7 +188,10 @@ export default function ModelsPage() {
         <p className="text-xs text-zinc-400 mb-4">한국어 자소서 작성 기준 · RTX 5060 (8GB VRAM) — 7B까지 GPU 전체 탑재 가능</p>
 
         <div className="grid gap-2">
-          {RECOMMENDED.map((m) => {
+          {/* 미설치 모델을 위로 정렬 (다운로드 유도), 설치됨은 아래로 */}
+          {[...RECOMMENDED]
+            .sort((a, b) => Number(installedNames.has(a.name)) - Number(installedNames.has(b.name)))
+            .map((m) => {
             const installed_ = installedNames.has(m.name);
             const isPulling = pulling.has(m.name);
             const pullInfo = pulling.get(m.name);
@@ -254,20 +257,23 @@ const CLOUD_PROVIDERS: { id: Provider; label: string; placeholder: string; help:
 ];
 
 function CloudKeysSection() {
-  const [keys, setKeys] = useState<Partial<Record<Provider, string>>>({});
-  const [saved, setSaved] = useState<Provider | null>(null);
+  const [keys, setKeysState] = useState<Partial<Record<Provider, string>>>({});  // 편집 중
+  const [savedKeys, setSavedKeys] = useState<Partial<Record<Provider, string>>>({});  // 저장된 값
+  const [justSaved, setJustSaved] = useState<Provider | null>(null);
 
   useEffect(() => {
-    setKeys(loadSettings().providerKeys);
+    const pk = loadSettings().providerKeys;
+    setKeysState(pk);
+    setSavedKeys(pk);
   }, []);
 
-  function handleSave(provider: Provider, value: string) {
-    const next = { ...keys, [provider]: value };
-    setKeys(next);
-    const settings = loadSettings();
-    saveSettings({ ...settings, providerKeys: next });
-    setSaved(provider);
-    setTimeout(() => setSaved((p) => (p === provider ? null : p)), 1500);
+  function handleSave(provider: Provider) {
+    const value = keys[provider] ?? "";
+    const next = { ...savedKeys, [provider]: value };
+    saveSettings({ ...loadSettings(), providerKeys: next });
+    setSavedKeys(next);
+    setJustSaved(provider);
+    setTimeout(() => setJustSaved((p) => (p === provider ? null : p)), 1500);
   }
 
   return (
@@ -278,7 +284,9 @@ function CloudKeysSection() {
       </p>
       <div className="grid gap-2">
         {CLOUD_PROVIDERS.map((p) => {
-          const hasKey = !!keys[p.id];
+          const current = keys[p.id] ?? "";
+          const isDirty = current !== (savedKeys[p.id] ?? "");
+          const hasSaved = !!savedKeys[p.id];
           return (
             <div key={p.id} className="rounded-xl border border-zinc-200 px-4 py-3">
               <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -288,20 +296,26 @@ function CloudKeysSection() {
               <div className="flex items-center gap-2">
                 <input
                   type="password"
-                  value={keys[p.id] ?? ""}
-                  onChange={(e) => setKeys((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                  onBlur={(e) => handleSave(p.id, e.target.value)}
+                  value={current}
+                  onChange={(e) => setKeysState((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                  onKeyDown={(e) => { if (e.key === "Enter" && isDirty) handleSave(p.id); }}
                   placeholder={p.placeholder}
                   className="flex-1 text-sm border border-zinc-200 rounded-md px-2 py-1.5 outline-none focus:border-zinc-400 font-mono"
                 />
-                {saved === p.id ? (
-                  <span className="text-xs text-emerald-600 flex items-center gap-1 shrink-0">
-                    <CheckCircle2 className="size-3.5" /> 저장됨
-                  </span>
-                ) : hasKey ? (
-                  <span className="text-xs text-zinc-400 shrink-0">설정됨</span>
-                ) : null}
+                <button
+                  onClick={() => handleSave(p.id)}
+                  disabled={!isDirty}
+                  className="text-xs font-medium px-3 py-1.5 rounded-md transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ background: isDirty ? "#18181b" : "#e4e4e7", color: isDirty ? "#fff" : "#a1a1aa" }}
+                >
+                  {justSaved === p.id ? "✓ 저장됨" : "저장"}
+                </button>
               </div>
+              {hasSaved && !isDirty && justSaved !== p.id && (
+                <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                  <CheckCircle2 className="size-3" /> 키 설정됨
+                </p>
+              )}
             </div>
           );
         })}
