@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle, XCircle, Loader2, Copy, Check, ChevronRight, AlertTriangle, Download } from "lucide-react";
 import { AgentPipeline, ItemSection, type PipelineEvent } from "@/components/features/PipelineView";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { generateEssays, saveToLibrary, fetchJobUrl, FetchUrlError } from "@/lib/api";
+import { generateEssays, saveToLibrary, fetchJobUrl, FetchUrlError, getOllamaModels } from "@/lib/api";
 import { loadSettings, saveSettings } from "@/lib/settings-store";
 import type { DraftResult, EssayTone, EssayPersona, ItemConfig, SseDoneEvent, AgentKey, ProviderConfig, AppSettings } from "@/lib/types";
 
@@ -99,9 +99,28 @@ export default function GeneratePage() {
     () => loadSettings().agents,
   );
 
+  const [ollamaModels, setOllamaModels] = useState<string[]>([]);
+
+  useEffect(() => {
+    getOllamaModels()
+      .then((r) => setOllamaModels(r.models.map((m) => m.name)))
+      .catch(() => {/* Ollama 미응답 시 무시 */});
+  }, []);
+
   function handleConfigChange(key: AgentKey, field: keyof ProviderConfig, value: string) {
     setAgentConfigs((prev) => {
-      const next = { ...prev, [key]: { ...prev[key], [field]: value } };
+      const updated = { ...prev[key], [field]: value };
+      // 프로바이더 변경 시 모델도 첫 번째 항목으로 초기화
+      if (field === "provider") {
+        const firstModel =
+          value === "ollama" ? (ollamaModels[0] ?? "exaone3.5:7.8b")
+          : value === "anthropic" ? "claude-haiku-4-5-20251001"
+          : value === "openai" ? "gpt-4.1-mini"
+          : value === "google" ? "gemini-2.0-flash"
+          : "";
+        updated.model = firstModel;
+      }
+      const next = { ...prev, [key]: updated };
       saveSettings({ agents: next });
       return next;
     });
@@ -353,6 +372,7 @@ export default function GeneratePage() {
           configs={agentConfigs}
           events={[]}
           editable={true}
+          ollamaModels={ollamaModels}
           onConfigChange={handleConfigChange}
         />
 
@@ -400,6 +420,7 @@ export default function GeneratePage() {
           configs={agentConfigs}
           events={pipelineEvents}
           editable={false}
+          ollamaModels={ollamaModels}
         />
 
         <Card>

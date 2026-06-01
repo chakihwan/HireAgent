@@ -43,10 +43,10 @@ const PROVIDER_LABEL: Record<Provider, string> = {
   ollama: "Ollama", anthropic: "Anthropic", openai: "OpenAI", google: "Google",
 };
 
-const PROVIDER_MODELS: Record<Provider, string[]> = {
-  ollama:    ["exaone3.5:7.8b", "gemma4:e4b", "llama3.1:8b", "qwen2.5:7b"],
+// Ollama는 동적으로 주입 (설치된 모델만 표시). 클라우드는 최신 stable 목록.
+const CLOUD_MODELS: Partial<Record<Provider, string[]>> = {
   anthropic: ["claude-haiku-4-5-20251001", "claude-sonnet-4-6", "claude-opus-4-8"],
-  openai:    ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini"],
+  openai:    ["gpt-4.1-mini", "gpt-4o-mini", "gpt-4.1", "gpt-4o", "o4-mini"],
   google:    ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.5-pro"],
 };
 
@@ -215,10 +215,11 @@ type PipelineProps = {
   configs: Record<AgentKey, ProviderConfig>;
   events: PipelineEvent[];
   editable: boolean;
+  ollamaModels?: string[];   // 실제 설치된 Ollama 모델 목록 (동적)
   onConfigChange?: (key: AgentKey, field: keyof ProviderConfig, value: string) => void;
 };
 
-export function AgentPipeline({ configs, events, editable, onConfigChange }: PipelineProps) {
+export function AgentPipeline({ configs, events, editable, ollamaModels = [], onConfigChange }: PipelineProps) {
   // 노드 상태 집계
   const phases: Record<string, NodePhase> = {};
   const details: Record<string, string> = {};
@@ -301,7 +302,10 @@ export function AgentPipeline({ configs, events, editable, onConfigChange }: Pip
                             className="w-full rounded-md outline-none"
                             style={{ fontSize: 11, padding: "4px 6px", border: "1px solid #e4e4e7", background: "#fafafa", cursor: "pointer", fontFamily: "monospace" }}
                           >
-                            {(PROVIDER_MODELS[cfg.provider as Provider] ?? [cfg.model]).map((m) => (
+                            {(cfg.provider === "ollama"
+                              ? (ollamaModels.length > 0 ? ollamaModels : [cfg.model])
+                              : (CLOUD_MODELS[cfg.provider as Provider] ?? [cfg.model])
+                            ).map((m) => (
                               <option key={m} value={m}>{m}</option>
                             ))}
                           </select>
