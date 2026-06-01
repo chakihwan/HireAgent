@@ -5,6 +5,8 @@ import { Download, Trash2, Loader2, CheckCircle2, RefreshCw, X } from "lucide-re
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { getOllamaModels, pullOllamaModel, deleteOllamaModel, type OllamaModel, type GpuInfo } from "@/lib/api";
+import { loadSettings, saveSettings } from "@/lib/settings-store";
+import type { Provider } from "@/lib/types";
 
 // ── 추천 모델 목록 ────────────────────────────────────────────────
 
@@ -236,6 +238,77 @@ export default function ModelsPage() {
           VRAM 부족 시 더 작은 모델을 쓰거나 Anthropic/OpenAI 클라우드 API를 사용하세요.
         </p>
       </section>
+
+      {/* 클라우드 API 키 */}
+      <CloudKeysSection />
     </div>
+  );
+}
+
+// ── 클라우드 프로바이더 API 키 ────────────────────────────────────
+
+const CLOUD_PROVIDERS: { id: Provider; label: string; placeholder: string; help: string }[] = [
+  { id: "anthropic", label: "Anthropic (Claude)", placeholder: "sk-ant-...", help: "console.anthropic.com" },
+  { id: "openai", label: "OpenAI (GPT)", placeholder: "sk-...", help: "platform.openai.com" },
+  { id: "google", label: "Google (Gemini)", placeholder: "AIza...", help: "aistudio.google.com" },
+];
+
+function CloudKeysSection() {
+  const [keys, setKeys] = useState<Partial<Record<Provider, string>>>({});
+  const [saved, setSaved] = useState<Provider | null>(null);
+
+  useEffect(() => {
+    setKeys(loadSettings().providerKeys);
+  }, []);
+
+  function handleSave(provider: Provider, value: string) {
+    const next = { ...keys, [provider]: value };
+    setKeys(next);
+    const settings = loadSettings();
+    saveSettings({ ...settings, providerKeys: next });
+    setSaved(provider);
+    setTimeout(() => setSaved((p) => (p === provider ? null : p)), 1500);
+  }
+
+  return (
+    <section>
+      <h2 className="text-sm font-semibold text-zinc-700 mb-1">클라우드 API 키</h2>
+      <p className="text-xs text-zinc-400 mb-4">
+        프로바이더당 한 번만 입력하면 모든 에이전트가 공유합니다. 키는 브라우저 localStorage에만 저장되며 서버로 전송되지 않습니다.
+      </p>
+      <div className="grid gap-2">
+        {CLOUD_PROVIDERS.map((p) => {
+          const hasKey = !!keys[p.id];
+          return (
+            <div key={p.id} className="rounded-xl border border-zinc-200 px-4 py-3">
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span className="text-sm font-medium text-zinc-800">{p.label}</span>
+                <span className="text-xs text-zinc-400">{p.help}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="password"
+                  value={keys[p.id] ?? ""}
+                  onChange={(e) => setKeys((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                  onBlur={(e) => handleSave(p.id, e.target.value)}
+                  placeholder={p.placeholder}
+                  className="flex-1 text-sm border border-zinc-200 rounded-md px-2 py-1.5 outline-none focus:border-zinc-400 font-mono"
+                />
+                {saved === p.id ? (
+                  <span className="text-xs text-emerald-600 flex items-center gap-1 shrink-0">
+                    <CheckCircle2 className="size-3.5" /> 저장됨
+                  </span>
+                ) : hasKey ? (
+                  <span className="text-xs text-zinc-400 shrink-0">설정됨</span>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-xs text-zinc-400 mt-3">
+        모델 선택은 <strong>자소서 생성</strong> 화면의 각 노드에서 합니다. 여기서는 키만 등록하세요.
+      </p>
+    </section>
   );
 }

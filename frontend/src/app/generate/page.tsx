@@ -120,7 +120,7 @@ export default function GeneratePage() {
                 changed = true;
               }
             }
-            if (changed) saveSettings({ agents: next });
+            if (changed) saveSettings({ ...loadSettings(), agents: next });
             return changed ? next : prev;
           });
         }
@@ -142,7 +142,7 @@ export default function GeneratePage() {
         updated.model = firstModel;
       }
       const next = { ...prev, [key]: updated };
-      saveSettings({ agents: next });
+      saveSettings({ ...loadSettings(), agents: next });
       return next;
     });
   }
@@ -244,10 +244,14 @@ export default function GeneratePage() {
     setEditedContents({});
     setPipelineEvents([{ node: "jd_analyzer", phase: "start" }]);
 
-    // 그래프 노드 설정을 API 포맷으로 변환
+    // 프로바이더별 API 키 (/models에서 입력, providerKeys에 저장)
+    const providerKeys = loadSettings().providerKeys;
+    const keyFor = (p: string) => providerKeys[p as keyof typeof providerKeys] ?? "";
+
+    // 그래프 노드 설정을 API 포맷으로 변환 (키는 프로바이더별로 주입)
     const agentConfig: Record<string, { provider: string; model: string; api_key: string }> = {};
     for (const [key, cfg] of Object.entries(agentConfigs)) {
-      agentConfig[key] = { provider: cfg.provider, model: cfg.model, api_key: cfg.apiKey };
+      agentConfig[key] = { provider: cfg.provider, model: cfg.model, api_key: keyFor(cfg.provider) };
     }
 
     const request = {
@@ -257,7 +261,7 @@ export default function GeneratePage() {
         const itemCfg: Record<string, { provider: string; model: string; api_key: string }> | undefined =
           overrides && Object.keys(overrides).length > 0
             ? Object.fromEntries(
-                Object.entries(overrides).map(([k, v]) => [k, { provider: v!.provider, model: v!.model, api_key: v!.apiKey ?? "" }]),
+                Object.entries(overrides).map(([k, v]) => [k, { provider: v!.provider, model: v!.model, api_key: keyFor(v!.provider) }]),
               )
             : undefined;
         return {

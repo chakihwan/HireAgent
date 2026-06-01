@@ -51,10 +51,7 @@ export default function RootLayout({
                 지원 관리
               </Link>
               <Link href="/models" className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors flex items-center gap-1">
-                🤖 모델 관리
-              </Link>
-              <Link href="/settings" className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors">
-                설정
+                🤖 모델 & API
               </Link>
             </nav>
           </div>

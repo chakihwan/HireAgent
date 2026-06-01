@@ -1,4 +1,4 @@
-import type { AgentKey, AppSettings, ProviderConfig } from "./types";
+import type { AgentKey, AppSettings, Provider, ProviderConfig } from "./types";
 
 const SETTINGS_KEY = "hireagent_settings";
 
@@ -15,6 +15,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     compressor: { ...DEFAULT_AGENT },
     evaluator: { ...DEFAULT_AGENT },
   },
+  providerKeys: {},
 };
 
 export function loadSettings(): AppSettings {
@@ -23,12 +24,16 @@ export function loadSettings(): AppSettings {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return structuredClone(DEFAULT_SETTINGS);
     const parsed = JSON.parse(raw) as Partial<AppSettings>;
-    return {
-      agents: {
-        ...DEFAULT_SETTINGS.agents,
-        ...(parsed.agents ?? {}),
-      },
-    };
+    const agents = { ...DEFAULT_SETTINGS.agents, ...(parsed.agents ?? {}) };
+
+    // 마이그레이션: 기존 에이전트별 apiKey → providerKeys로 흡수
+    const providerKeys: Partial<Record<Provider, string>> = { ...(parsed.providerKeys ?? {}) };
+    for (const cfg of Object.values(agents)) {
+      if (cfg.apiKey && cfg.provider !== "ollama" && !providerKeys[cfg.provider]) {
+        providerKeys[cfg.provider] = cfg.apiKey;
+      }
+    }
+    return { agents, providerKeys };
   } catch {
     return structuredClone(DEFAULT_SETTINGS);
   }
@@ -38,7 +43,7 @@ export function saveSettings(settings: AppSettings): void {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
 
-/** Convert AppSettings agents to the agent_config format expected by the API. */
+/** AppSettings → API agent_config 포맷. 키는 providerKeys에서 프로바이더별로 주입. */
 export function buildAgentConfig(
   settings: AppSettings,
 ): Record<AgentKey, { provider: string; model: string; api_key: string }> {
@@ -47,7 +52,7 @@ export function buildAgentConfig(
     result[key as AgentKey] = {
       provider: cfg.provider,
       model: cfg.model,
-      api_key: cfg.apiKey,
+      api_key: settings.providerKeys[cfg.provider] ?? "",
     };
   }
   return result;

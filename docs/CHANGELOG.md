@@ -9,6 +9,16 @@
 
 ## [Unreleased]
 
+### 변경 — 모델/설정 메뉴 통합 (`/settings` → `/models`)
+
+- 중복 제거: Ollama 다운로드가 `/settings`·`/models` 양쪽에 있던 것 → `/models` 단일화
+- 에이전트별 모델 선택은 `/generate` 워크플로우 노드(ADR-025)가 담당 → `/settings` 탭 잉여 제거
+- `/models` = "모델 & API" 허브로 확장: GPU/VRAM + Ollama 다운로드 + **클라우드 API 키 입력**
+- **API 키를 에이전트별 → 프로바이더별(`providerKeys`)로 단순화**
+  - 같은 Anthropic 키를 4개 에이전트에 중복 저장하던 것 → 프로바이더당 1키 공유
+  - `loadSettings()` 마이그레이션: 기존 에이전트별 `apiKey`를 `providerKeys`로 자동 흡수 (하위호환)
+- `/settings` → `/models` 307 리다이렉트 (기존 북마크 보호), 네비 "🤖 모델 & API"로 통합
+
 ### 추가 — API smoke test + RAG 통합 테스트 (M5 품질)
 
 - `tests/conftest.py`: httpx ASGITransport 기반 `client` fixture (실제 app + 실제 PostgreSQL)

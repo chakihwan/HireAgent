@@ -46,14 +46,18 @@ export const AGENT_LABELS: Record<AgentKey, string> = {
   evaluator: "평가",
 };
 
+export type Provider = "ollama" | "anthropic" | "openai" | "google";
+
 export type ProviderConfig = {
-  provider: "ollama" | "anthropic" | "openai" | "google";
+  provider: Provider;
   model: string;
-  apiKey: string;
+  apiKey: string;  // 레거시 — providerKeys로 대체됨 (마이그레이션 유지용)
 };
 
 export type AppSettings = {
   agents: Record<AgentKey, ProviderConfig>;
+  // 프로바이더별 API 키 (한 번 입력 → 같은 프로바이더 쓰는 모든 에이전트가 공유)
+  providerKeys: Partial<Record<Provider, string>>;
 };
 
 export const PROVIDER_DEFAULT_MODELS: Record<string, string> = {
