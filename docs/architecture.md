@@ -140,7 +140,7 @@ class EssayState(TypedDict):
 
 | 파이프라인 단계 | 파일 | 비고 |
 |----------------|------|------|
-| State 정의 | `backend/app/agents/state.py` | `EssayState` (메인) / `ItemState` (`+tech_whitelist` v0.7.4) |
+| State 정의 | `backend/app/agents/state.py` | `EssayState` / `ItemState` (`+tech_whitelist` v0.7.4, `+node_events`·`EssayItem.agent_config` v0.7.7) |
 | JD 분석 | `backend/app/agents/jd_analyzer.py` | 인재상/요구역량/직무요약 추출 |
 | 항목별 작성 | `backend/app/agents/essay_writer.py` | 톤/페르소나 + tech_whitelist 명시 (v0.7.4, ADR-022) |
 | 글자수 검증 | `backend/app/utils/char_counter.py` | `validate_chars()` Python 순수 함수 (ADR-001) |
@@ -149,8 +149,9 @@ class EssayState(TypedDict):
 | LLM 출력 후처리 | `backend/app/utils/text_cleaner.py` | `clean_llm_output()` + `detect_output_issue()` (v0.7.4, ADR-022) |
 | 기술 키워드 자동 추출 | `backend/app/rag/tech_extractor.py` | ~150 패턴 매칭, 한국어 안전 boundary (v0.7.4, ADR-021) |
 | RAG 검색 노드 | `backend/app/agents/rag_retriever.py` | KURE-v1 + pgvector cosine + tech_whitelist 수집 (v0.7.4) |
-| 오케스트레이션 | `backend/app/agents/orchestrator.py` | `Send` fan-out + SSE 품질 경고 (v0.7.4) |
-| API 엔드포인트 | `backend/app/api/v1/essays.py` | SSE (`/generate`) + 동기 (`/generate/sync`) |
+| 오케스트레이션 | `backend/app/agents/orchestrator.py` | `Send` fan-out (`item.agent_config` 우선) + SSE 품질 경고 + node_events 전달 (v0.7.7) |
+| API 엔드포인트 | `backend/app/api/v1/essays.py` | SSE (`/generate`, `node_event` 포함) + 동기 (`/generate/sync`), 항목별 config 빌드 |
+| 워크플로우 UI | `frontend/src/components/features/WorkflowCanvas.tsx` | React Flow 풀스크린 그래프, 병렬 시각화 + 노드 인라인 설정 (v0.7.7, ADR-024) |
 
 **그래프 구조 (실제 구현):**
 - **메인 그래프** (`EssayState`): `jd_analyzer → Send 분기 → _process_item (병렬, 결과 + 품질 경고) → END`

@@ -99,6 +99,29 @@
 
 ---
 
+### [2026-06-01] VRAM 초과 모델 선택 시 runner 종료 (network error)
+
+**현상**: 초안 작성 노드에 `gemma4:e4b`(9.6GB) 지정 → "network error", 백엔드 500  
+**원인**: RTX 5060 VRAM 7.1GB < 모델 9.8GB → Ollama llama runner 강제 종료
+```
+gpu memory available="7.1 GiB" / total needed="9.8 GiB"
+error="llama runner process has terminated"
+```
+**조치**: 
+- 생성 전 미설치 모델 차단은 있으나, **설치됐지만 VRAM 초과** 케이스는 미차단 ⚠️
+- 안전 모델: exaone3.5:7.8b(4.8GB)·qwen2.5:7b(4.7GB) ✅ / gemma4:e2b(7.2GB) 경계 / gemma4:e4b(9.6GB) ❌
+**개선 대기**: 모델 크기 vs VRAM 사전 경고 (3순위) — `/api/ps` + GPU 메모리 조회로 추정 가능
+
+---
+
+### [2026-06-01] SSR hydration mismatch (해결됨)
+
+**현상**: `/generate` 콘솔에 hydration 에러 — select 옵션 값 불일치  
+**원인**: `agentConfigs`를 `useState(loadSettings())`로 초기화 → 서버=DEFAULT, 클라=localStorage 불일치  
+**조치**: `useEffect`로 마운트 후 localStorage 지연 로드 ✅ (v0.7.7)
+
+---
+
 ## 요청/아이디어
 
 - [ ] 결과 인라인 편집 + 글자수 실시간 카운터 (가장 급함)

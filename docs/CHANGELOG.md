@@ -9,6 +9,37 @@
 
 ## [Unreleased]
 
+---
+
+## [0.7.7] - 2026-06-01
+
+### 추가 — 풀스크린 워크플로우 빌더 (`/generate` 전면 재설계, ADR-024)
+
+- **React Flow(@xyflow/react v12) 기반 풀스크린 캔버스** — 기존 4-step 위저드 → 사이드바 + 캔버스 레이아웃
+  - 왼쪽 사이드바: 공고 입력 / 항목 선택(카드 토글) / 톤·페르소나 / 진행 로그 / 생성 버튼
+  - 오른쪽 캔버스: 드래그·줌·미니맵·컨트롤 지원하는 에이전트 파이프라인 그래프
+  - 하단 결과 패널: 생성 완료 시 슬라이드업 (인라인 편집 + 라이브러리 저장)
+- **병렬 처리 시각화** — JD 분석 노드에서 항목별로 fan-out
+  - 항목 선택 후: `JD분석 → [항목별: RAG→초안→압축→평가]` N개 행이 병렬 표시
+  - 항목 미선택 시: 5-노드 추상 파이프라인(설정 가능)
+- **노드 인라인 에이전트 설정** — 각 노드 카드에서 provider·model 직접 선택
+  - React Flow 노드 내부 인터랙션은 `nodrag nopan` 클래스로 드래그/팬 충돌 방지
+  - 모델은 `<select>` 드롭다운 (Ollama=설치 모델 동적, 클라우드=최신 목록)
+- **항목별 독립 모델 설정** (ADR-025) — 자기소개는 Claude, 지원동기는 로컬 모델처럼 항목마다 다른 LLM 지정
+  - 백엔드: `EssayItem.agent_config` + `EssayItemRequest.agent_config`, `_fan_out`에서 항목별 우선 적용
+  - 프론트: 전역과 다른 설정 노드에 `★ 항목 전용 설정` 뱃지
+  - E2E 검증: 자기소개=exaone3.5:7.8b / 지원동기=qwen2.5:7b 각각 정상 처리
+- **실시간 상태 체인** — SSE `node_event`로 노드 상태 실시간 업데이트
+  - `processedRef` 기반 배치 처리 → 동시 추가 이벤트(done + 다음 start) 누락 방지
+  - 노드 색상: 대기(회색) → 실행(파랑 pulse) → 완료(초록) / 오류(빨강), 엣지도 동기화
+  - 압축 반복 시 `N회차` 황색 뱃지 표시
+
+### 추가 — LLM 모델 관리 페이지 (`/models`)
+
+- Ollama 로컬 모델 다운로드·삭제 전용 페이지 (설정 페이지에서 분리, 네비에 "🤖 모델 관리" 추가)
+- 설치된 모델 목록 + 추천 모델 10종(exaone/qwen/gemma/llama/deepseek) 다운로드 버튼·진행률
+- 클라우드 모델 최신화: gpt-4.1/o4-mini, gemini-2.5-flash/pro, claude-opus-4-8
+
 ### 추가 — 대시보드 홈 페이지 (UI 고도화 시작)
 
 - `/` 리다이렉트(`→ /generate`) 제거 → 실제 대시보드 페이지로 교체
@@ -40,6 +71,15 @@
 - **해결한 문제**: 이력서의 무관 경력(운전면허·자격증·전 직무)이 프로젝트 경험과
   동등하게 검색돼 자소서에 섞이던 문제 (feedback.md 2026-05-29 "이력서 내용 섞임")
 - **검증**: 직무경험 → project_readme 5 / 지원동기 → resume 4, project_readme 1 (대비 확인)
+
+### 수정 — 인프라 · 안정성
+
+- **Ollama named volume** (`ollama_data`) — `${HOME}/.ollama` 바인드 마운트가 WSL2에서
+  `/.ollama`로 잘못 해석돼 재시작 시 모델이 사라지던 문제 해결 (docker-compose.yml)
+- **SSR hydration mismatch 수정** — `/generate`의 `agentConfigs`가 서버(DEFAULT)와
+  클라이언트(localStorage)에서 달라 select 옵션 불일치 → `useEffect` 지연 로드로 첫 렌더 일치
+- **Ollama 미설치 모델 사전 차단** — 생성 전 설치 여부 검증 + 페이지 로드 시 미설치 모델 자동 교체
+  - 알려진 제약: `gemma4:e4b`(9.6GB) 등 VRAM(RTX 5060 7.1GB) 초과 모델은 runner 종료 → feedback.md 참조
 
 ---
 

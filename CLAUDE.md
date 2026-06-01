@@ -244,6 +244,11 @@ export function EssayForm({ onSubmit }: { onSubmit: (item: EssayItem) => void })
 | 018 | URL 페칭 보조 입력 (httpx + BeautifulSoup) | ADR-009 보조 옵션 구체 구현, 드래그 금지 사이트 우회 |
 | 019 | GitHub 공개 레포 자동 인덱싱 (무인증 API) | 요구사항 §1.4 프로젝트 문서 RAG 차별점 구현 |
 | 020 | 이력서 파일 업로드 (PDF/DOCX/MD/TXT) | 요구사항 F-1.1/F-1.2, OCR 미지원 (텍스트 변환 권유) |
+| 021 | tech_stack 자동 추출 (정규식 사전) | LLM 미사용 빠른 추출, 화이트리스트 정확도 담보 |
+| 022 | 자소서 출력 다층 방어 (L1 프롬프트+L2 화이트리스트+L3 후처리+검사) | 할루시네이션/마크다운/다국어/폭주 복합 방어 |
+| 023 | SPA 사이트 URL 정책 (북마클릿 + Ctrl+P 우회) | 사람인 등 iframe 보호 공고 대응 |
+| 024 | 자소서 생성 UI를 React Flow 워크플로우 빌더로 전환 | 멀티에이전트 병렬 처리 시각화 + 노드 인라인 설정 |
+| 025 | 항목별 독립 에이전트 설정 | 자기소개=Claude/지원동기=로컬 등 항목마다 다른 LLM |
 
 상세 내용: `docs/adr/` 폴더 + `docs/architecture.md`
 
@@ -423,6 +428,17 @@ class UserLLMConfig(Base):
 - **RAG context 포맷 개선**: `[참고 경험 N]` 번호 레이블 제거, `[경험 자료]`로 섹션명 통일
 - **시스템 프롬프트 강화**: 경험 자료 외 수치/회사명/기술명 생성 금지, 마크다운 금지 명시
 - **RAG 인용 E2E 검증**: mock README → 고유 수치 정확 인용, 레이블 누출 없음 ✅
+
+### M5 UI 고도화 (2026-05-29 ~ 06-01, v0.7.7)
+- **대시보드 홈** (`/`): 통계 카드 + 최근 활동 타임라인 + 빠른 시작 (리다이렉트 제거)
+- **풀스크린 워크플로우 빌더** (`/generate`, ADR-024): React Flow 기반, 4-step 위저드 폐기
+  - JD분석 → 항목별 병렬 파이프라인(fan-out) 시각화, 노드 인라인 모델 설정
+  - SSE `node_event` 실시간 상태 체인 (대기→실행→완료, N회차 뱃지)
+  - 컴포넌트: `components/features/WorkflowCanvas.tsx`
+- **항목별 독립 모델 설정** (ADR-025): `EssayItem.agent_config`로 항목마다 다른 LLM
+- **모델 관리 페이지** (`/models`): Ollama 다운로드/삭제, 추천 모델 10종
+- **인프라**: Ollama named volume(재시작 모델 유지), SSR hydration 수정
+- **알려진 제약**: VRAM 초과 모델(gemma4:e4b 9.6GB > RTX 5060 7.1GB) 선택 시 runner 종료 (feedback.md)
 
 ---
 
