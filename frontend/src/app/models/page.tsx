@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Download, Trash2, Loader2, CheckCircle2, RefreshCw, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { getOllamaModels, pullOllamaModel, deleteOllamaModel, type OllamaModel, type GpuInfo } from "@/lib/api";
-import { loadSettings, saveSettings } from "@/lib/settings-store";
+import { useSettingsStore } from "@/lib/settings-store";
 import type { Provider } from "@/lib/types";
 
 // ── 추천 모델 목록 ────────────────────────────────────────────────
@@ -73,7 +74,7 @@ export default function ModelsPage() {
   async function handleDelete(name: string) {
     if (!confirm(`"${name}"를 삭제할까요? 디스크에서 완전히 제거됩니다.`)) return;
     try { await deleteOllamaModel(name); refresh(); }
-    catch (e) { alert(e instanceof Error ? e.message : String(e)); }
+    catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
   }
 
   return (
@@ -257,21 +258,18 @@ const CLOUD_PROVIDERS: { id: Provider; label: string; placeholder: string; help:
 ];
 
 function CloudKeysSection() {
+  // 저장된 키는 Zustand store에서 직접 구독 (반응형)
+  const savedKeys = useSettingsStore((s) => s.settings.providerKeys);
+  const setProviderKey = useSettingsStore((s) => s.setProviderKey);
   const [keys, setKeysState] = useState<Partial<Record<Provider, string>>>({});  // 편집 중
-  const [savedKeys, setSavedKeys] = useState<Partial<Record<Provider, string>>>({});  // 저장된 값
   const [justSaved, setJustSaved] = useState<Provider | null>(null);
 
   useEffect(() => {
-    const pk = loadSettings().providerKeys;
-    setKeysState(pk);
-    setSavedKeys(pk);
-  }, []);
+    setKeysState(savedKeys);
+  }, [savedKeys]);
 
   function handleSave(provider: Provider) {
-    const value = keys[provider] ?? "";
-    const next = { ...savedKeys, [provider]: value };
-    saveSettings({ ...loadSettings(), providerKeys: next });
-    setSavedKeys(next);
+    setProviderKey(provider, keys[provider] ?? "");
     setJustSaved(provider);
     setTimeout(() => setJustSaved((p) => (p === provider ? null : p)), 1500);
   }
