@@ -6,7 +6,7 @@ import { WorkflowCanvas } from "@/components/features/WorkflowCanvas";
 import type { PipelineEvent } from "@/components/features/PipelineView";
 import { Button } from "@/components/ui/button";
 import { generateEssays, saveToLibrary, fetchJobUrl, FetchUrlError, getOllamaModels } from "@/lib/api";
-import { loadSettings, saveSettings } from "@/lib/settings-store";
+import { loadSettings, saveSettings, DEFAULT_SETTINGS } from "@/lib/settings-store";
 import type { DraftResult, EssayTone, EssayPersona, ItemConfig, SseDoneEvent, AgentKey, ProviderConfig, AppSettings } from "@/lib/types";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -84,13 +84,19 @@ export default function GeneratePage() {
   }
 
   // Agent config (그래프 노드에서 직접 편집)
+  // SSR/CSR hydration 불일치 방지: 서버에선 DEFAULT_SETTINGS, 클라이언트 마운트 후 localStorage 반영
   const [agentConfigs, setAgentConfigs] = useState<AppSettings["agents"]>(
-    () => loadSettings().agents,
+    DEFAULT_SETTINGS.agents,
   );
   // 항목별 agent config 오버라이드 (없으면 전역 agentConfigs 사용)
   const [itemAgentConfigs, setItemAgentConfigs] = useState<Record<string, Partial<Record<AgentKey, ProviderConfig>>>>({});
 
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
+
+  // 클라이언트 마운트 후 localStorage 설정 적용 (SSR hydration mismatch 방지)
+  useEffect(() => {
+    setAgentConfigs(loadSettings().agents);
+  }, []);
 
   useEffect(() => {
     getOllamaModels()
