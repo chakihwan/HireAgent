@@ -18,11 +18,19 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { AgentKey, ProviderConfig } from "@/lib/types";
-import type { PipelineEvent } from "./PipelineView";
 
 // ── 타입 ──────────────────────────────────────────────────────────
 
 export type NodePhase = "idle" | "running" | "done" | "error";
+
+// 백엔드 SSE node_event 이벤트 (그래프 실시간 업데이트용)
+export type PipelineEvent = {
+  node: "jd_analyzer" | "rag" | "write" | "compress" | "evaluate";
+  category?: string;
+  phase: "start" | "done" | "error";
+  detail?: string;
+  iteration?: number;
+};
 
 type ConfigNodeData = {
   kind: "config";

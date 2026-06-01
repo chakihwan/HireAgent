@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Copy, Check, AlertTriangle } from "lucide-react";
-import { WorkflowCanvas } from "@/components/features/WorkflowCanvas";
-import type { PipelineEvent } from "@/components/features/PipelineView";
+import { WorkflowCanvas, type PipelineEvent } from "@/components/features/WorkflowCanvas";
 import { Button } from "@/components/ui/button";
 import { generateEssays, saveToLibrary, fetchJobUrl, FetchUrlError, getOllamaModels } from "@/lib/api";
 import { loadSettings, saveSettings, DEFAULT_SETTINGS } from "@/lib/settings-store";
