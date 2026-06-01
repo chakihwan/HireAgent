@@ -9,6 +9,14 @@
 
 ## [Unreleased]
 
+### 추가/수정 — 보안·운영 (리뷰 2026-06-02 후속)
+
+- **ENCRYPTION_KEY startup 검증** (Rule #2) — `config.py` field_validator로 기본값·빈값·
+  유효하지 않은 Fernet 키면 백엔드 기동 차단 (`"change-me-in-production"`은 Fernet 키로도 invalid → 일괄 차단)
+- **CORS 환경변수 분기** — 하드코딩 → `settings.cors_origins`(콤마 구분), 배포 시 도메인 지정
+- **readiness 헬스체크 추가** — `/health/ready`가 DB(SELECT 1)·Ollama(/api/tags) 연결 확인
+  - `/health`는 liveness(빠름) 유지, `/health/ready`는 `{status, checks}` 반환
+
 ### 추가 — 시니어 리뷰 문서 + 모델 페이지 UX 개선
 
 - `docs/review-2026-06-02.md`: 화면(UX) + 코드(아키텍처/보안/품질/테스트) 시니어 리뷰

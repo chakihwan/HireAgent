@@ -28,9 +28,7 @@
 - [ ] 기존 자소서가 있다면 텍스트 업로드 → `source_type=essay` 인덱싱
 
 ### 보안 (CLAUDE.md Rule #2) — 🔴 리뷰 2026-06-02 High
-- [ ] **`ENCRYPTION_KEY` startup 검증** (default 값이면 에러) — 30분, 즉효
 - [ ] **API 키 DB 암호화 연결** — `crypto.py`(Fernet) 미사용 상태 / `UserLLMConfig` 연결, 또는 "localStorage 평문·단일사용자 전제" 문서 명시
-- [ ] CORS 화이트리스트 환경별 분기 (`config.py`)
 
 ### 아키텍처 정합성 — 🟡 리뷰 2026-06-02 (포트폴리오)
 - [ ] **React Query/Zustand 결정**: 선언(requirements)했으나 미사용(전부 useState+fetch) → 도입 or 문서 정정
@@ -39,7 +37,7 @@
 
 ### 품질
 - [ ] structlog 구조화 로깅
-- [ ] 백엔드 헬스체크 강화 (DB + Ollama + KURE-v1 로드 상태)
+- [ ] 헬스체크에 KURE-v1 로드 상태 추가 (현재 `/health/ready`는 DB+Ollama만)
 
 ---
 
