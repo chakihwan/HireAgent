@@ -4,15 +4,27 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 // ── Legacy test-page types (kept for the /dev page) ──────────────────────────
 
+export type ModelFit = "ok" | "tight" | "over" | "unknown";
+
 export interface OllamaModel {
   name: string;
   size: number;
   parameter_size: string;
   quantization_level: string;
+  fit: ModelFit;
+  required_gb: number;
+  fit_message: string | null;
+}
+
+export interface GpuInfo {
+  name: string;
+  total_gb: number;
+  free_gb: number;
 }
 
 export interface OllamaModelsResponse {
   models: OllamaModel[];
+  gpu: GpuInfo | null;
 }
 
 export interface LLMTestRequest {

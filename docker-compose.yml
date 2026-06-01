@@ -48,6 +48,8 @@ services:
       DATABASE_URL: postgresql://hireagent:${POSTGRES_PASSWORD:-changeme}@postgres:5432/hireagent
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change-me-in-production}
       OLLAMA_BASE_URL: http://ollama:11434    # Docker 내부 네트워크로 직접 연결
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: utility   # NVML(nvidia-ml-py)로 VRAM 조회용 (compute 아님)
     volumes:
       - ./backend:/app
     depends_on:
@@ -55,6 +57,13 @@ services:
         condition: service_healthy
       ollama:
         condition: service_healthy
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, utility]   # utility = NVML/nvidia-smi 접근
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Download, Trash2, Loader2, CheckCircle2, RefreshCw, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { getOllamaModels, pullOllamaModel, deleteOllamaModel, type OllamaModel } from "@/lib/api";
+import { getOllamaModels, pullOllamaModel, deleteOllamaModel, type OllamaModel, type GpuInfo } from "@/lib/api";
 
 // ── 추천 모델 목록 ────────────────────────────────────────────────
 
@@ -37,6 +37,7 @@ function formatSize(bytes: number): string {
 
 export default function ModelsPage() {
   const [installed, setInstalled] = useState<OllamaModel[] | null>(null);
+  const [gpu, setGpu] = useState<GpuInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pulling, setPulling] = useState<Map<string, { percent: number; status: string; cancel: () => void }>>(new Map());
   const [pullError, setPullError] = useState<string | null>(null);
@@ -46,6 +47,7 @@ export default function ModelsPage() {
     try {
       const r = await getOllamaModels();
       setInstalled(r.models);
+      setGpu(r.gpu);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setInstalled([]);
@@ -81,6 +83,22 @@ export default function ModelsPage() {
         </p>
       </div>
 
+      {/* GPU 정보 배너 */}
+      {gpu ? (
+        <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 flex items-center gap-3 text-sm">
+          <span className="text-lg">🎮</span>
+          <div className="flex-1">
+            <span className="font-semibold text-zinc-800">{gpu.name}</span>
+            <span className="text-zinc-500 ml-2">VRAM {gpu.total_gb}GB (가용 {gpu.free_gb}GB)</span>
+          </div>
+          <span className="text-xs text-zinc-400">모델 크기가 VRAM을 넘으면 경고가 표시됩니다</span>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-400">
+          GPU를 감지하지 못했습니다 (NVIDIA GPU 없음 또는 CPU 환경) — VRAM 경고가 비활성화됩니다.
+        </div>
+      )}
+
       {/* 설치된 모델 */}
       <section>
         <div className="flex items-center justify-between mb-3">
@@ -106,20 +124,34 @@ export default function ModelsPage() {
           <div className="rounded-xl border border-zinc-200 divide-y divide-zinc-100 overflow-hidden">
             {installed.map((m) => {
               const isPulling = pulling.has(m.name);
+              const fitBadge =
+                m.fit === "over" ? { color: "#b91c1c", bg: "#fef2f2", label: "VRAM 초과" }
+                : m.fit === "tight" ? { color: "#d97706", bg: "#fffbeb", label: "VRAM 빠듯" }
+                : null;
               return (
-                <div key={m.name} className="flex items-center gap-3 px-4 py-3 hover:bg-zinc-50 group">
-                  <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm font-mono text-zinc-800">{m.name}</span>
-                    <span className="text-xs text-zinc-400 ml-2">{m.parameter_size} · {formatSize(m.size)}</span>
+                <div key={m.name} className="px-4 py-3 hover:bg-zinc-50 group">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
+                    <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-mono text-zinc-800">{m.name}</span>
+                      <span className="text-xs text-zinc-400">{m.parameter_size} · {formatSize(m.size)}</span>
+                      {fitBadge && (
+                        <span className="text-xs font-semibold rounded px-1.5 py-0.5" style={{ color: fitBadge.color, background: fitBadge.bg }}>
+                          ⚠️ {fitBadge.label}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => handleDelete(m.name)}
+                      disabled={isPulling}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-400 hover:text-red-500 p-1.5 rounded-md hover:bg-red-50"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleDelete(m.name)}
-                    disabled={isPulling}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-400 hover:text-red-500 p-1.5 rounded-md hover:bg-red-50"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
+                  {m.fit_message && (
+                    <p className="text-xs mt-1.5 ml-7" style={{ color: fitBadge?.color ?? "#a1a1aa" }}>{m.fit_message}</p>
+                  )}
                 </div>
               );
             })}

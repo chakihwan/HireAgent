@@ -91,6 +91,8 @@ export default function GeneratePage() {
   const [itemAgentConfigs, setItemAgentConfigs] = useState<Record<string, Partial<Record<AgentKey, ProviderConfig>>>>({});
 
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
+  // VRAM 초과(over) 모델 → 생성 전 차단용 (런타임 GPU 조회 기반)
+  const [overModels, setOverModels] = useState<Record<string, string>>({});
 
   // 클라이언트 마운트 후 localStorage 설정 적용 (SSR hydration mismatch 방지)
   useEffect(() => {
@@ -102,6 +104,11 @@ export default function GeneratePage() {
       .then((r) => {
         const names = r.models.map((m) => m.name);
         setOllamaModels(names);
+        setOverModels(
+          Object.fromEntries(
+            r.models.filter((m) => m.fit === "over" && m.fit_message).map((m) => [m.name, m.fit_message!]),
+          ),
+        );
         // localStorage에 설치 안 된 Ollama 모델이 있으면 첫 번째 설치 모델로 교체
         if (names.length > 0) {
           setAgentConfigs((prev) => {
@@ -199,17 +206,35 @@ export default function GeneratePage() {
   }
 
   const handleGenerate = useCallback(async () => {
-    // Ollama 모델 사전 검증 — 설치 안 된 모델이 있으면 생성 전에 차단
+    // 실제 사용될 ollama 모델 수집 (전역 + 항목별 오버라이드)
+    const usedOllamaModels = new Set<string>();
+    for (const cfg of Object.values(agentConfigs)) {
+      if (cfg.provider === "ollama") usedOllamaModels.add(cfg.model);
+    }
+    for (const overrides of Object.values(itemAgentConfigs)) {
+      for (const cfg of Object.values(overrides)) {
+        if (cfg?.provider === "ollama") usedOllamaModels.add(cfg.model);
+      }
+    }
+
+    // 사전 검증 1 — 설치 안 된 모델 차단
     if (ollamaModels.length > 0) {
-      const badAgents = Object.entries(agentConfigs)
-        .filter(([, cfg]) => cfg.provider === "ollama" && !ollamaModels.includes(cfg.model))
-        .map(([key, cfg]) => `${key} (${cfg.model})`);
-      if (badAgents.length > 0) {
+      const notInstalled = [...usedOllamaModels].filter((m) => !ollamaModels.includes(m));
+      if (notInstalled.length > 0) {
         setGenError(
-          `설치되지 않은 Ollama 모델이 있습니다:\n${badAgents.join(", ")}\n\n설치된 모델: ${ollamaModels.join(", ")}`,
+          `설치되지 않은 Ollama 모델: ${notInstalled.join(", ")}\n\n설치된 모델: ${ollamaModels.join(", ")}\n("🤖 모델 관리"에서 다운로드하세요)`,
         );
         return;
       }
+    }
+
+    // 사전 검증 2 — VRAM 초과 모델 차단 (런타임 GPU 조회 기반)
+    const overUsed = [...usedOllamaModels].filter((m) => overModels[m]);
+    if (overUsed.length > 0) {
+      setGenError(
+        `GPU VRAM이 부족한 모델이 선택됐습니다:\n${overUsed.map((m) => `• ${m}: ${overModels[m]}`).join("\n")}\n\n더 작은 모델로 변경하거나 "🤖 모델 관리"에서 확인하세요.`,
+      );
+      return;
     }
 
     setStep("generating");

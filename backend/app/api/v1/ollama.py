@@ -6,7 +6,13 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
 from app.config import settings
-from app.schemas.ollama import OllamaModel, OllamaModelsResponse, OlamaPullRequest
+from app.schemas.ollama import (
+    GpuInfoSchema,
+    OllamaModel,
+    OllamaModelsResponse,
+    OlamaPullRequest,
+)
+from app.utils.gpu import assess_model_fit, get_gpu_info
 
 router = APIRouter(prefix="/ollama", tags=["ollama"])
 
@@ -19,7 +25,7 @@ def _ollama_url(path: str) -> str:
 
 @router.get("/models", response_model=OllamaModelsResponse)
 async def list_models() -> OllamaModelsResponse:
-    """설치된 Ollama 모델 목록 반환."""
+    """설치된 Ollama 모델 목록 + GPU 적합성 판정 반환."""
     async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
         try:
             resp = await client.get(_ollama_url("/api/tags"))
@@ -27,16 +33,38 @@ async def list_models() -> OllamaModelsResponse:
         except httpx.ConnectError:
             raise HTTPException(status_code=503, detail="Ollama 서비스에 연결할 수 없습니다")
 
-    models = [
-        OllamaModel(
-            name=m["name"],
-            size=m["size"],
-            parameter_size=m["details"].get("parameter_size", ""),
-            quantization_level=m["details"].get("quantization_level", ""),
+    gpu = get_gpu_info()  # 런타임 VRAM 조회 (없으면 None → fit=unknown)
+
+    models = []
+    for m in resp.json().get("models", []):
+        fit = assess_model_fit(m["size"], gpu)
+        models.append(
+            OllamaModel(
+                name=m["name"],
+                size=m["size"],
+                parameter_size=m["details"].get("parameter_size", ""),
+                quantization_level=m["details"].get("quantization_level", ""),
+                fit=fit["fit"],
+                required_gb=fit["required_gb"],
+                fit_message=fit["message"],
+            )
         )
-        for m in resp.json().get("models", [])
-    ]
-    return OllamaModelsResponse(models=models)
+
+    gpu_schema = (
+        GpuInfoSchema(name=gpu.name, total_gb=gpu.total_gb, free_gb=gpu.free_gb)
+        if gpu
+        else None
+    )
+    return OllamaModelsResponse(models=models, gpu=gpu_schema)
+
+
+@router.get("/gpu", response_model=GpuInfoSchema | None)
+async def gpu_info() -> GpuInfoSchema | None:
+    """현재 GPU VRAM 정보 (NVIDIA 전용, 없으면 null)."""
+    gpu = get_gpu_info()
+    if not gpu:
+        return None
+    return GpuInfoSchema(name=gpu.name, total_gb=gpu.total_gb, free_gb=gpu.free_gb)
 
 
 @router.post("/pull")
