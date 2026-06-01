@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Trash2, Star, StarOff, Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -140,7 +141,7 @@ export default function LibraryPage() {
       const updated = await updateLibraryItem(id, { is_final: !current });
       setItems((prev) => prev.map((i) => (i.id === id ? updated : i)));
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      toast.error(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -150,7 +151,7 @@ export default function LibraryPage() {
       await deleteLibraryItem(id);
       setItems((prev) => prev.filter((i) => i.id !== id));
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      toast.error(e instanceof Error ? e.message : String(e));
     }
   }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import {
   Trash2, Search, Loader2, FolderGit2, FolderOpen,
   Upload, Type, ChevronDown, ChevronUp, CheckCircle2, X, FileText,
@@ -124,7 +125,7 @@ export default function ProjectsPage() {
     if (searchQuery.trim().length < 2) return;
     setSearching(true);
     try { setSearchResults(await searchProjects(searchQuery.trim(), 5)); }
-    catch (e) { alert(e instanceof Error ? e.message : String(e)); }
+    catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
     finally { setSearching(false); }
   }
 

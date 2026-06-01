@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { Plus, Trash2, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -91,7 +92,7 @@ export default function JobsPage() {
       const updated = await updateJob(id, { status });
       setJobs((prev) => prev.map((j) => (j.id === id ? updated : j)));
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      toast.error(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -101,7 +102,7 @@ export default function JobsPage() {
       await deleteJob(id);
       setJobs((prev) => prev.filter((j) => j.id !== id));
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      toast.error(e instanceof Error ? e.message : String(e));
     }
   }
 
