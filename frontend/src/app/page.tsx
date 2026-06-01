@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   FileText,
@@ -15,14 +14,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  listJobs,
-  listLibrary,
-  listProjects,
-  type JobResponse,
-  type LibraryItemResponse,
-  type ProjectDocResponse,
-} from "@/lib/api";
+import { useJobs, useLibrary, useProjects } from "@/lib/queries";
 
 // jobs 페이지와 동일한 상태 라벨 (중복이지만 import 의존 줄이려 로컬 정의)
 const STATUS_LABELS: Record<string, string> = {
@@ -86,31 +78,16 @@ function StatCard({
 }
 
 export default function DashboardPage() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [jobs, setJobs] = useState<JobResponse[]>([]);
-  const [library, setLibrary] = useState<LibraryItemResponse[]>([]);
-  const [projects, setProjects] = useState<ProjectDocResponse[]>([]);
+  // React Query로 3개 서버 상태 병렬 페칭 (캐싱·중복제거 자동)
+  const jobsQ = useJobs();
+  const libraryQ = useLibrary();
+  const projectsQ = useProjects();
 
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const [j, l, p] = await Promise.all([listJobs(), listLibrary(), listProjects()]);
-        if (!alive) return;
-        setJobs(j);
-        setLibrary(l);
-        setProjects(p);
-      } catch (e) {
-        if (alive) setError(e instanceof Error ? e.message : String(e));
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, []);
+  const loading = jobsQ.isLoading || libraryQ.isLoading || projectsQ.isLoading;
+  const error = jobsQ.error || libraryQ.error || projectsQ.error;
+  const jobs = jobsQ.data ?? [];
+  const library = libraryQ.data ?? [];
+  const projects = projectsQ.data ?? [];
 
   // ── 통계 집계 ──
   const decided = jobs.filter((j) => j.status !== "draft" && j.status !== "withdrawn");
@@ -158,7 +135,7 @@ export default function DashboardPage() {
       {error && (
         <Card className="border-red-200 bg-red-50">
           <CardContent className="p-4 text-sm text-red-600">
-            데이터를 불러오지 못했습니다: {error}
+            데이터를 불러오지 못했습니다: {error instanceof Error ? error.message : String(error)}
           </CardContent>
         </Card>
       )}
