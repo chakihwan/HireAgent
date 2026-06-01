@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Copy, Check, AlertTriangle } from "lucide-react";
-import { WorkflowCanvas, type PipelineEvent } from "@/components/features/WorkflowCanvas";
+import { WorkflowCanvas } from "@/components/features/WorkflowCanvas";
 import { Button } from "@/components/ui/button";
-import { generateEssays, saveToLibrary, fetchJobUrl, FetchUrlError, getOllamaModels } from "@/lib/api";
+import { saveToLibrary, fetchJobUrl, FetchUrlError, getOllamaModels } from "@/lib/api";
 import { loadSettings, saveSettings, DEFAULT_SETTINGS } from "@/lib/settings-store";
-import type { DraftResult, EssayTone, EssayPersona, ItemConfig, SseDoneEvent, AgentKey, ProviderConfig, AppSettings } from "@/lib/types";
+import { useEssayGeneration } from "@/hooks/useEssayGeneration";
+import type { EssayTone, EssayPersona, ItemConfig, AgentKey, ProviderConfig, AppSettings } from "@/lib/types";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -23,12 +25,6 @@ const PRESET_CATEGORIES: Array<{ name: string; defaultLimit: number }> = [
 
 const TONES: EssayTone[] = ["공식적", "친근함", "도전적"];
 const PERSONAS: EssayPersona[] = ["신입", "경력직", "전환"];
-
-type LogEntry = {
-  id: string;
-  type: "start" | "progress" | "error";
-  message: string;
-};
 
 // ── Helper ───────────────────────────────────────────────────────────────────
 
@@ -163,15 +159,12 @@ export default function GeneratePage() {
     });
   }
 
-  // Generation state
-  const [log, setLog] = useState<LogEntry[]>([]);
-  const [results, setResults] = useState<DraftResult[]>([]);
-  const [genError, setGenError] = useState<string | null>(null);
-  const logEndRef = useRef<HTMLDivElement>(null);
-  const [savedIds, setSavedIds] = useState<Record<string, number>>({});  // category → library id
-  const [saving, setSaving] = useState<Record<string, boolean>>({});
-  const [editedContents, setEditedContents] = useState<Record<string, string>>({});
-  const [pipelineEvents, setPipelineEvents] = useState<PipelineEvent[]>([]);
+  // Generation state — useEssayGeneration 훅으로 분리 (SSE + 결과 상태)
+  const gen = useEssayGeneration();
+  const {
+    log, results, genError, pipelineEvents, savedIds, saving, editedContents, logEndRef,
+    setSavedIds, setSaving, setEditedContents,
+  } = gen;
 
   // ── Derived ──────────────────────────────────────────────────────────────
 
@@ -200,11 +193,6 @@ export default function GeneratePage() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
-  function appendLog(type: LogEntry["type"], message: string) {
-    setLog((prev) => [...prev, { id: crypto.randomUUID(), type, message }]);
-    setTimeout(() => logEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
-  }
-
   const handleGenerate = useCallback(async () => {
     // 실제 사용될 ollama 모델 수집 (전역 + 항목별 오버라이드)
     const usedOllamaModels = new Set<string>();
@@ -221,7 +209,7 @@ export default function GeneratePage() {
     if (ollamaModels.length > 0) {
       const notInstalled = [...usedOllamaModels].filter((m) => !ollamaModels.includes(m));
       if (notInstalled.length > 0) {
-        setGenError(
+        gen.fail(
           `설치되지 않은 Ollama 모델: ${notInstalled.join(", ")}\n\n설치된 모델: ${ollamaModels.join(", ")}\n("🤖 모델 관리"에서 다운로드하세요)`,
         );
         return;
@@ -231,18 +219,13 @@ export default function GeneratePage() {
     // 사전 검증 2 — VRAM 초과 모델 차단 (런타임 GPU 조회 기반)
     const overUsed = [...usedOllamaModels].filter((m) => overModels[m]);
     if (overUsed.length > 0) {
-      setGenError(
+      gen.fail(
         `GPU VRAM이 부족한 모델이 선택됐습니다:\n${overUsed.map((m) => `• ${m}: ${overModels[m]}`).join("\n")}\n\n더 작은 모델로 변경하거나 "🤖 모델 관리"에서 확인하세요.`,
       );
       return;
     }
 
     setStep("generating");
-    setLog([]);
-    setResults([]);
-    setGenError(null);
-    setEditedContents({});
-    setPipelineEvents([{ node: "jd_analyzer", phase: "start" }]);
 
     // 프로바이더별 API 키 (/models에서 입력, providerKeys에 저장)
     const providerKeys = loadSettings().providerKeys;
@@ -276,40 +259,10 @@ export default function GeneratePage() {
       agent_config: agentConfig,
     };
 
-    try {
-      await generateEssays(request, (event, data) => {
-        if (event === "start") {
-          const d = data as { message: string; total_items: number };
-          appendLog("start", `${d.message} (${d.total_items}개 항목)`);
-        } else if (event === "progress") {
-          const d = data as { node: string; message: string };
-          appendLog("progress", d.message);
-          // JD 분석 완료 메시지 감지 → 그래프 이벤트 주입
-          if (d.node === "jd_analyzer" && d.message.includes("공고 분석 완료")) {
-            setPipelineEvents((prev) => [
-              ...prev,
-              { node: "jd_analyzer", phase: "done", detail: d.message.split("—")[1]?.trim() ?? "" },
-              // 항목별 RAG start 이벤트 (category 포함해야 병렬 노드 매핑됨)
-              ...selectedItems.map((item) => ({ node: "rag" as const, category: item.category, phase: "start" as const })),
-            ]);
-          }
-        } else if (event === "node_event") {
-          setPipelineEvents((prev) => [...prev, data as PipelineEvent]);
-        } else if (event === "error") {
-          const d = data as { message: string };
-          appendLog("error", d.message);
-        } else if (event === "done") {
-          const d = data as SseDoneEvent;
-          setResults(d.drafts);
-          setStep("done");
-        }
-      });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setGenError(msg);
-    }
+    // SSE 실행은 훅에 위임. done 시 step 전환.
+    await gen.run(request, selectedItems.map((i) => i.category), () => setStep("done"));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jd, selectedItems]);
+  }, [jd, selectedItems, agentConfigs, itemAgentConfigs, ollamaModels, overModels]);
 
 
   // ── 풀스크린 레이아웃 ────────────────────────────────────────────
@@ -484,13 +437,13 @@ export default function GeneratePage() {
             <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2">
               <p className="text-xs font-medium text-red-700">생성 불가</p>
               <p className="text-xs text-red-600 whitespace-pre-line mt-0.5">{genError}</p>
-              <button onClick={() => setGenError(null)} className="text-xs text-red-500 underline mt-1">닫기</button>
+              <button onClick={() => gen.setGenError(null)} className="text-xs text-red-500 underline mt-1">닫기</button>
             </div>
           )}
           <div className="flex gap-2">
             {(isDone || isGenerating) && (
               <button
-                onClick={() => { setResults([]); setLog([]); setGenError(null); setPipelineEvents([]); }}
+                onClick={() => gen.reset()}
                 className="flex-1 py-2 rounded-lg border border-zinc-300 text-xs font-medium text-zinc-600 hover:bg-zinc-50 transition-colors"
                 disabled={isGenerating}
               >
@@ -591,7 +544,7 @@ export default function GeneratePage() {
                                     generation_metadata: { evaluation_score: draft.evaluation_score, evaluation_feedback: draft.evaluation_feedback, iterations: draft.iteration },
                                   });
                                   setSavedIds((p) => ({ ...p, [draft.category]: item.id }));
-                                } catch (e) { alert(e instanceof Error ? e.message : String(e)); }
+                                } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
                                 finally { setSaving((p) => ({ ...p, [draft.category]: false })); }
                               }}
                               className="text-xs bg-zinc-900 text-white px-2.5 py-1 rounded-md hover:bg-zinc-700 transition-colors disabled:opacity-50"
@@ -700,7 +653,7 @@ function SpaSiteGuide({
               ref={linkRef}
               onClick={(e) => {
                 e.preventDefault();
-                alert("이 버튼은 클릭이 아니라 북마크 바에 끌어다 놓으세요!\n\n북마크 바가 안 보이면 Ctrl+Shift+B로 표시하세요.");
+                toast.info("이 버튼은 클릭이 아니라 북마크 바에 끌어다 놓으세요! (북마크 바: Ctrl+Shift+B)");
               }}
               className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-md cursor-grab active:cursor-grabbing select-none"
               draggable
