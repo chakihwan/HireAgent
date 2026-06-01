@@ -296,19 +296,25 @@ export function AgentPipeline({ configs, events, editable, ollamaModels = [], on
                       <div>
                         <div className="text-zinc-400 mb-0.5" style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.05em" }}>MODEL</div>
                         {editable ? (
-                          <select
-                            value={cfg.model}
-                            onChange={(e) => onConfigChange?.(meta.key as AgentKey, "model", e.target.value)}
-                            className="w-full rounded-md outline-none"
-                            style={{ fontSize: 11, padding: "4px 6px", border: "1px solid #e4e4e7", background: "#fafafa", cursor: "pointer", fontFamily: "monospace" }}
-                          >
-                            {(cfg.provider === "ollama"
-                              ? (ollamaModels.length > 0 ? ollamaModels : [cfg.model])
-                              : (CLOUD_MODELS[cfg.provider as Provider] ?? [cfg.model])
-                            ).map((m) => (
-                              <option key={m} value={m}>{m}</option>
-                            ))}
-                          </select>
+                          <>
+                            <input
+                              list={`models-${meta.key}`}
+                              value={cfg.model}
+                              onChange={(e) => onConfigChange?.(meta.key as AgentKey, "model", e.target.value)}
+                              placeholder="모델명 입력 또는 선택"
+                              style={{
+                                width: "100%", padding: "4px 6px", borderRadius: 6,
+                                border: "1px solid #e4e4e7", fontSize: 11, background: "#fafafa",
+                                fontFamily: "monospace", outline: "none", boxSizing: "border-box",
+                              }}
+                            />
+                            <datalist id={`models-${meta.key}`}>
+                              {(cfg.provider === "ollama"
+                                ? (ollamaModels.length > 0 ? ollamaModels : [cfg.model])
+                                : (CLOUD_MODELS[cfg.provider as Provider] ?? [])
+                              ).map((m) => <option key={m} value={m} />)}
+                            </datalist>
+                          </>
                         ) : (
                           <div className="text-zinc-500" style={{ fontSize: 11, fontFamily: "monospace" }}>{cfg.model}</div>
                         )}
