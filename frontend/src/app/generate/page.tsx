@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { CheckCircle, XCircle, Loader2, Copy, Check, ChevronRight, AlertTriangle, Download } from "lucide-react";
-import { AgentGraph, type GraphEvent } from "@/components/features/AgentGraph";
+import { AgentPipeline, ItemSection, type PipelineEvent } from "@/components/features/PipelineView";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -79,16 +79,20 @@ export default function GeneratePage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [spaError, setSpaError] = useState<{ siteName: string | null; message: string } | null>(null);
 
-  // Item selection state
-  const [checkedPresets, setCheckedPresets] = useState<Record<string, boolean>>({});
-  const [itemLimits, setItemLimits] = useState<Record<string, number>>(() =>
-    Object.fromEntries(PRESET_CATEGORIES.map((c) => [c.name, c.defaultLimit])),
-  );
+  // Item selection state (PipelineView 통합)
+  const [itemSelections, setItemSelections] = useState<Record<string, { checked: boolean; charLimit: number }>>({});
   const [globalTone, setGlobalTone] = useState<EssayTone>("공식적");
   const [globalPersona, setGlobalPersona] = useState<EssayPersona>("경력직");
   const [customCategory, setCustomCategory] = useState("");
   const [customLimit, setCustomLimit] = useState(500);
   const [useCustom, setUseCustom] = useState(false);
+
+  function handleItemChange(name: string, patch: Partial<{ checked: boolean; charLimit: number }>) {
+    setItemSelections((prev) => ({
+      ...prev,
+      [name]: { ...{ checked: false, charLimit: 500 }, ...prev[name], ...patch },
+    }));
+  }
 
   // Agent config (그래프 노드에서 직접 편집)
   const [agentConfigs, setAgentConfigs] = useState<AppSettings["agents"]>(
@@ -111,27 +115,28 @@ export default function GeneratePage() {
   const [savedIds, setSavedIds] = useState<Record<string, number>>({});  // category → library id
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [editedContents, setEditedContents] = useState<Record<string, string>>({});
-  const [graphEvents, setGraphEvents] = useState<GraphEvent[]>([]);
-  const graphCategoriesRef = useRef<string[]>([]);
+  const [pipelineEvents, setPipelineEvents] = useState<PipelineEvent[]>([]);
 
   // ── Derived ──────────────────────────────────────────────────────────────
 
+  const PRESET_DEFAULTS: Record<string, number> = Object.fromEntries(
+    [
+      ["자기소개", 300], ["지원동기", 500], ["성장과정", 500],
+      ["직무경험", 700], ["강점/역량", 500], ["입사 후 포부", 500],
+    ]
+  );
+
   const selectedItems: ItemConfig[] = [
-    ...PRESET_CATEGORIES.filter((c) => checkedPresets[c.name]).map((c) => ({
-      category: c.name,
-      charLimit: itemLimits[c.name] ?? c.defaultLimit,
-      tone: globalTone,
-      persona: globalPersona,
-    })),
+    ...Object.entries(itemSelections)
+      .filter(([, v]) => v.checked)
+      .map(([name, v]) => ({
+        category: name,
+        charLimit: v.charLimit || PRESET_DEFAULTS[name] || 500,
+        tone: globalTone,
+        persona: globalPersona,
+      })),
     ...(useCustom && customCategory.trim()
-      ? [
-          {
-            category: customCategory.trim(),
-            charLimit: customLimit,
-            tone: globalTone,
-            persona: globalPersona,
-          },
-        ]
+      ? [{ category: customCategory.trim(), charLimit: customLimit, tone: globalTone, persona: globalPersona }]
       : []),
   ];
 
@@ -150,8 +155,7 @@ export default function GeneratePage() {
     setResults([]);
     setGenError(null);
     setEditedContents({});
-    graphCategoriesRef.current = selectedItems.map((i) => i.category);
-    setGraphEvents([{ node: "jd_analyzer", phase: "start" }]);
+    setPipelineEvents([{ node: "jd_analyzer", phase: "start" }]);
 
     // 그래프 노드 설정을 API 포맷으로 변환
     const agentConfig: Record<string, { provider: string; model: string; api_key: string }> = {};
@@ -181,13 +185,11 @@ export default function GeneratePage() {
           appendLog("progress", d.message);
           // JD 분석 완료 메시지 감지 → 그래프 이벤트 주입
           if (d.node === "jd_analyzer" && d.message.includes("공고 분석 완료")) {
-            setGraphEvents((prev) => [...prev, { node: "jd_analyzer", phase: "done", detail: "" }]);
-            graphCategoriesRef.current.forEach((cat) => {
-              setGraphEvents((prev) => [...prev, { node: "rag", category: cat, phase: "start" }]);
-            });
+            setPipelineEvents((prev) => [...prev, { node: "jd_analyzer", phase: "done" }]);
+            setPipelineEvents((prev) => [...prev, { node: "rag", phase: "start" }]);
           }
         } else if (event === "node_event") {
-          setGraphEvents((prev) => [...prev, data as GraphEvent]);
+          setPipelineEvents((prev) => [...prev, data as PipelineEvent]);
         } else if (event === "error") {
           const d = data as { message: string };
           appendLog("error", d.message);
@@ -303,143 +305,56 @@ export default function GeneratePage() {
           <p className="text-sm text-zinc-500 mt-1">각 항목의 목표 글자수를 설정하세요.</p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-zinc-700">항목 선택</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {PRESET_CATEGORIES.map((cat) => (
-              <div key={cat.name} className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id={`cat-${cat.name}`}
-                  checked={checkedPresets[cat.name] ?? false}
-                  onChange={(e) =>
-                    setCheckedPresets((prev) => ({ ...prev, [cat.name]: e.target.checked }))
-                  }
-                  className="size-4 cursor-pointer accent-zinc-900"
-                />
-                <label htmlFor={`cat-${cat.name}`} className="text-sm font-medium text-zinc-800 w-24 cursor-pointer">
-                  {cat.name}
-                </label>
-                <Input
-                  type="number"
-                  min={100}
-                  max={5000}
-                  step={50}
-                  value={itemLimits[cat.name] ?? cat.defaultLimit}
-                  onChange={(e) =>
-                    setItemLimits((prev) => ({ ...prev, [cat.name]: Number(e.target.value) }))
-                  }
-                  disabled={!checkedPresets[cat.name]}
-                  className="w-28 text-sm"
-                />
-                <span className="text-xs text-zinc-400">자</span>
-              </div>
-            ))}
+        {/* 항목 선택 (PipelineView 통합) */}
+        <ItemSection
+          items={itemSelections}
+          onChange={handleItemChange}
+          customName={customCategory}
+          customLimit={customLimit}
+          useCustom={useCustom}
+          onCustomNameChange={setCustomCategory}
+          onCustomLimitChange={setCustomLimit}
+          onToggleCustom={() => setUseCustom((p) => !p)}
+        />
 
-            {/* Custom category */}
-            <div className="flex items-center gap-3 pt-1 border-t border-zinc-100">
-              <input
-                type="checkbox"
-                id="cat-custom"
-                checked={useCustom}
-                onChange={(e) => setUseCustom(e.target.checked)}
-                className="size-4 cursor-pointer accent-zinc-900"
-              />
-              <label htmlFor="cat-custom" className="text-sm font-medium text-zinc-800 w-24 cursor-pointer">
-                직접 입력
-              </label>
-              <Input
-                placeholder="항목명"
-                value={customCategory}
-                onChange={(e) => setCustomCategory(e.target.value)}
-                disabled={!useCustom}
-                className="flex-1 text-sm"
-              />
-              <Input
-                type="number"
-                min={100}
-                max={5000}
-                step={50}
-                value={customLimit}
-                onChange={(e) => setCustomLimit(Number(e.target.value))}
-                disabled={!useCustom}
-                className="w-28 text-sm"
-              />
-              <span className="text-xs text-zinc-400">자</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-zinc-700">공통 설정</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-6">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-zinc-500">톤</Label>
-              <Select
-                value={globalTone}
-                onValueChange={(v) => setGlobalTone(v as EssayTone)}
-              >
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TONES.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs text-zinc-500">페르소나</Label>
-              <Select
-                value={globalPersona}
-                onValueChange={(v) => setGlobalPersona(v as EssayPersona)}
-              >
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PERSONAS.map((p) => (
-                    <SelectItem key={p} value={p}>
-                      {p}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {selectedItems.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {selectedItems.map((item) => (
-              <Badge key={item.category} variant="secondary">
-                {item.category} {item.charLimit}자
-              </Badge>
-            ))}
+        {/* 공통 설정 */}
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-zinc-500 font-medium">톤</span>
+            <select
+              value={globalTone}
+              onChange={(e) => setGlobalTone(e.target.value as EssayTone)}
+              className="text-sm border rounded-md px-2 py-1.5 outline-none bg-white"
+              style={{ borderColor: "#e4e4e7" }}
+            >
+              {TONES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
           </div>
-        )}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-zinc-500 font-medium">페르소나</span>
+            <select
+              value={globalPersona}
+              onChange={(e) => setGlobalPersona(e.target.value as EssayPersona)}
+              className="text-sm border rounded-md px-2 py-1.5 outline-none bg-white"
+              style={{ borderColor: "#e4e4e7" }}
+            >
+              {PERSONAS.map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+          {selectedItems.length > 0 && (
+            <span className="text-xs text-zinc-400 ml-auto">
+              {selectedItems.length}개 항목 선택됨
+            </span>
+          )}
+        </div>
 
         {/* 에이전트 파이프라인 설정 */}
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-zinc-700">에이전트 파이프라인</p>
-          <p className="text-xs text-zinc-400">각 노드에서 프로바이더와 모델을 선택하세요. 설정은 자동 저장됩니다.</p>
-          <div className="relative">
-            <AgentGraph
-              configs={agentConfigs}
-              events={[]}
-              editable={true}
-              onConfigChange={handleConfigChange}
-            />
-          </div>
-        </div>
+        <AgentPipeline
+          configs={agentConfigs}
+          events={[]}
+          editable={true}
+          onConfigChange={handleConfigChange}
+        />
 
         <div className="flex gap-3">
           <Button variant="outline" onClick={() => setStep("jd")}>
@@ -481,9 +396,9 @@ export default function GeneratePage() {
         )}
 
         {/* 에이전트 파이프라인 실시간 모니터링 */}
-        <AgentGraph
+        <AgentPipeline
           configs={agentConfigs}
-          events={graphEvents}
+          events={pipelineEvents}
           editable={false}
         />
 
