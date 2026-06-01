@@ -22,7 +22,7 @@ services:
     ports:
       - "11435:11434"          # 11434는 다른 프로젝트 컨테이너가 선점, 11435 사용
     volumes:
-      - ${HOME}/.ollama:/root/.ollama   # WSL2 기존 모델 재사용 (재다운로드 불필요)
+      - ollama_data:/root/.ollama   # named volume — 재시작해도 모델 유지
     deploy:
       resources:
         reservations:
@@ -76,3 +76,4 @@ services:
 
 volumes:
   postgres_data:
+  ollama_data:
