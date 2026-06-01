@@ -27,10 +27,15 @@
 - [ ] 실제 채용 공고 3~5개로 자소서 생성 (공고별 품질 비교)
 - [ ] 기존 자소서가 있다면 텍스트 업로드 → `source_type=essay` 인덱싱
 
-### 보안 (CLAUDE.md Rule #2)
-- [ ] **API 키 DB 암호화 저장** — `crypto.py`(Fernet) 존재, 라우터 미연결 / `UserLLMConfig` 활용
-- [ ] `.env` `ENCRYPTION_KEY` 강제 검증 (default 값이면 startup 에러)
+### 보안 (CLAUDE.md Rule #2) — 🔴 리뷰 2026-06-02 High
+- [ ] **`ENCRYPTION_KEY` startup 검증** (default 값이면 에러) — 30분, 즉효
+- [ ] **API 키 DB 암호화 연결** — `crypto.py`(Fernet) 미사용 상태 / `UserLLMConfig` 연결, 또는 "localStorage 평문·단일사용자 전제" 문서 명시
 - [ ] CORS 화이트리스트 환경별 분기 (`config.py`)
+
+### 아키텍처 정합성 — 🟡 리뷰 2026-06-02 (포트폴리오)
+- [ ] **React Query/Zustand 결정**: 선언(requirements)했으나 미사용(전부 useState+fetch) → 도입 or 문서 정정
+- [ ] `generate/page.tsx` 분할 (774줄 / useState 25개 → 커스텀 훅)
+- [ ] 빈 `except Exception` 로깅 추가 (url_fetcher/file.py)
 
 ### 품질
 - [ ] structlog 구조화 로깅

@@ -58,6 +58,7 @@ docker compose up
 - [로드맵 (마일스톤 + 남은 할 일)](ROADMAP.md) — 앞으로 할 일
 - [변경 이력](CHANGELOG.md) — 완료된 작업 (단일 소스)
 - [실사용 피드백](feedback.md)
+- [시니어 리뷰 (2026-06-02)](review-2026-06-02.md) — 화면 + 코드 리뷰
 - [테스트 시나리오](test-scenarios.md)
 - [M1 실행 가이드](M1_execution_guide.md)
 - [Claude Code 컨텍스트](../CLAUDE.md) — 루트에 위치, Claude Code 자동 로드

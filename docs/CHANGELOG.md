@@ -9,6 +9,15 @@
 
 ## [Unreleased]
 
+### 추가 — 시니어 리뷰 문서 + 모델 페이지 UX 개선
+
+- `docs/review-2026-06-02.md`: 화면(UX) + 코드(아키텍처/보안/품질/테스트) 시니어 리뷰
+  - High: API 키 암호화 미연결(`crypto.py` 미사용), ENCRYPTION_KEY 검증 부재
+  - Medium: React Query/Zustand 선언 vs 미사용 간극, generate 774줄 거대 컴포넌트
+  - 핵심 권고 3가지(보안 마무리·스택 정합성·컴포넌트 분할)를 ROADMAP에 반영
+- `/models` API 키: onBlur 자동저장 → 명시적 "저장" 버튼 (dirty 감지 + Enter)
+- `/models` 추천 모델: 미설치 모델 우선 정렬 (다운로드 유도)
+
 ### 변경 — 모델/설정 메뉴 통합 (`/settings` → `/models`)
 
 - 중복 제거: Ollama 다운로드가 `/settings`·`/models` 양쪽에 있던 것 → `/models` 단일화
