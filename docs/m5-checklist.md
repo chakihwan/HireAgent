@@ -67,7 +67,9 @@
 - [ ] 임베딩 모델 캐시 볼륨 마운트
   - `docker-compose.yml`에 `~/.cache/huggingface` mount
   - 컨테이너 재시작 시 KURE-v1 재다운로드 방지
-- [ ] 백엔드 GPU passthrough 검토 (KURE-v1 5배 가속)
+- [부분완료] 백엔드 GPU passthrough (2026-06-01)
+  - `NVIDIA_DRIVER_CAPABILITIES=utility`로 NVML(VRAM 조회) 활성화 ✅
+  - KURE-v1 임베딩 CUDA 가속은 미적용 (capabilities에 `compute` 추가 + sentence-transformers device 설정 필요)
 - [x] **WSL2 + Docker HMR 활성화** (v0.7.3, 2026-05-26)
   - webpack 모드 + 폴링으로 file watch 해결, 파일 저장 시 자동 반영
 
@@ -127,7 +129,7 @@
 - [ ] **A/B 비교 모드** (같은 항목 2번 생성 → 나란히 비교)
 - [ ] **지원 연결 드롭다운** (저장 시 application_id 선택)
 - [ ] **JD 분석 결과 미리보기** (요구역량/인재상 추출 단계 결과 표시)
-- [ ] **VRAM 초과 모델 사전 경고** (gemma4:e4b 등, feedback.md 2026-06-01)
+- [완료] **VRAM 초과 모델 사전 경고** (2026-06-01) — nvidia-ml-py 런타임 GPU 조회, over 모델 생성 차단 (gemma4:e4b 등)
 
 ### `/library` 페이지
 - [ ] **검색** (제목/내용 풀텍스트)

@@ -107,10 +107,11 @@
 gpu memory available="7.1 GiB" / total needed="9.8 GiB"
 error="llama runner process has terminated"
 ```
-**조치**: 
-- 생성 전 미설치 모델 차단은 있으나, **설치됐지만 VRAM 초과** 케이스는 미차단 ⚠️
-- 안전 모델: exaone3.5:7.8b(4.8GB)·qwen2.5:7b(4.7GB) ✅ / gemma4:e2b(7.2GB) 경계 / gemma4:e4b(9.6GB) ❌
-**개선 대기**: 모델 크기 vs VRAM 사전 경고 (3순위) — `/api/ps` + GPU 메모리 조회로 추정 가능
+**조치**: ✅ **해결 (v0.7.7)** — 런타임 GPU 조회 기반 사전 경고
+- `app/utils/gpu.py`: nvidia-ml-py(NVML)로 실제 VRAM 조회 (하드코딩 X → 어떤 하드웨어도 대응)
+- `/ollama/models`가 모델별 fit(ok/tight/over) 판정 반환, `/generate` 생성 전 over 모델 차단
+- graceful: GPU 없으면 경고 비활성화 (CPU/AMD/배포 환경)
+- 검증: RTX 5060 8GB → gemma4:e4b(9.8GB 필요) over 정확 판정, exaone/qwen 등 ok
 
 ---
 

@@ -9,6 +9,16 @@
 
 ## [Unreleased]
 
+### 추가 — VRAM 초과 모델 사전 경고 (런타임 GPU 조회)
+
+- `app/utils/gpu.py`: nvidia-ml-py(NVML)로 실제 GPU VRAM 조회 — 하드코딩 없이 어떤 하드웨어든 대응
+  - `assess_model_fit`: 모델 크기 × 1.1 안전계수 vs VRAM 총량 → `ok`/`tight`/`over`
+  - graceful degradation: GPU 미감지(CPU/AMD/배포) 시 경고 비활성화
+- 백엔드: `/ollama/models`에 fit·required_gb·gpu 정보 추가, `/ollama/gpu` 신설
+  - docker-compose 백엔드 GPU passthrough(`NVIDIA_DRIVER_CAPABILITIES=utility`)
+- 프론트: `/models` GPU 배너 + fit 경고 뱃지, `/generate` 생성 전 over 모델 차단
+- 검증: RTX 5060 8GB → gemma4:e4b(9.8GB) over / exaone·qwen 등 ok 정확 판정
+
 ---
 
 ## [0.7.7] - 2026-06-01
