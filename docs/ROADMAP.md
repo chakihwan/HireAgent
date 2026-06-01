@@ -31,8 +31,9 @@
 - [ ] **API 키 DB 암호화 연결** — `crypto.py`(Fernet) 미사용 상태 / `UserLLMConfig` 연결, 또는 "localStorage 평문·단일사용자 전제" 문서 명시
 
 ### 아키텍처 정합성 — 🟡 리뷰 2026-06-02 (포트폴리오)
-- [ ] **React Query/Zustand 결정**: 선언(requirements)했으나 미사용(전부 useState+fetch) → 도입 or 문서 정정
-- [ ] `generate/page.tsx` 분할 (774줄 / useState 25개 → 커스텀 훅)
+- [완료] React Query/Zustand 도입 (선언 스택 실제 사용) — 대시보드 RQ 전환, settings Zustand
+- [완료] `generate/page.tsx` 분할 — `useEssayGeneration` 훅 (774→727줄)
+- [ ] React Query를 jobs/library/projects 페이지에도 확대 적용 (현재 대시보드만)
 - [ ] 빈 `except Exception` 로깅 추가 (url_fetcher/file.py)
 
 ### 품질
@@ -45,7 +46,7 @@
 
 ### 글로벌 UX
 - [ ] 다크 모드 (`next-themes` + Tailwind dark:)
-- [ ] Toast 알림 통일 (`alert()` 제거 → 일관된 toast)
+- [완료] Toast 알림 통일 (`alert()` 9곳 → sonner toast, v0.7.7)
 - [ ] 로딩 스켈레톤 컴포넌트 통일
 - [ ] 한국어 폰트 (Pretendard/Suit — 현재 Geist는 영어 폰트)
 - [ ] 모바일 반응형 점검 (워크플로우 캔버스 데스크톱 우선이라 특히 필요)

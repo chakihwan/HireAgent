@@ -9,6 +9,18 @@
 
 ## [Unreleased]
 
+### 변경 — 프론트 스택 정합성 + 컴포넌트 분할 (리뷰 2026-06-02 Medium)
+
+- **React Query 도입** (서버 상태) — `lib/queries.ts` 훅(jobs/library/projects/ollama),
+  대시보드를 useState+useEffect+Promise.all → `useJobs/useLibrary/useProjects`로 전환
+  (캐싱 staleTime 30s, 중복제거·invalidate 자동)
+- **Zustand 도입** (클라이언트 상태) — `settings-store`를 create+persist로 전환
+  (skipHydration + Providers rehydrate로 SSR mismatch 방지, models는 셀렉터 직접 구독)
+- **Toast 통일** — `alert()` 9곳 → sonner `toast` (`Providers`에 `Toaster`)
+- **generate 페이지 분할** — SSE 생성 로직을 `hooks/useEssayGeneration.ts`로 추출 (774→727줄)
+- → 리뷰의 "선언한 스택(React Query/Zustand) vs 미사용" 간극 해소, 거대 컴포넌트·alert 부채 정리
+- 커밋 5분할 (인프라 / RQ훅 / toast / models / generate)
+
 ### 추가/수정 — 보안·운영 (리뷰 2026-06-02 후속)
 
 - **ENCRYPTION_KEY startup 검증** (Rule #2) — `config.py` field_validator로 기본값·빈값·
