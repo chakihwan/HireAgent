@@ -9,6 +9,17 @@
 
 ## [Unreleased]
 
+### 추가 — Google Gemini provider 구현 (google-genai SDK)
+
+- 기존 `GoogleProvider`는 `NotImplementedError` 스텁 → google-genai SDK로 실제 구현
+- **구 google-generativeai(deprecated) 대신 새 google-genai 채택** — `Client(api_key)`가
+  인스턴스별 키를 보유해 멀티유저/멀티키 환경에서 전역 `genai.configure()` 충돌 없음 (Rule #4)
+- pyproject: `google-generativeai>=0.8.0` → `google-genai>=1.0.0` (다음 docker build 시 영구 반영)
+- **gemini-2.5 계열 thinking off** — 2.5는 thinking 토큰이 max_output_tokens를 잠식해 본문이
+  50자로 잘리는 문제 → `ThinkingConfig(thinking_budget=0)` (2.0/1.5 등엔 미적용, 400 방지)
+- 실사용 검증: 자소서 생성 성공(평가·RAG·회사명 추출 정상). 글자수는 600/500자로 초과 —
+  exaone보단 개선이나 LLM 공통 수렴 한계 재확인 (feedback.md 2026-06-02)
+
 ### 변경 — React Query를 jobs/library/projects 페이지로 확대 (리뷰 2026-06-02 후속)
 
 - 기존 RQ 도입은 대시보드만 → 나머지 3개 데이터 페이지도 `useState+useEffect+fetch` → 훅 전환
