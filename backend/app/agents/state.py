@@ -21,6 +21,7 @@ class Draft(TypedDict):
     iteration: int
     evaluation_score: float | None
     evaluation_feedback: str | None
+    evaluation_scores: dict | None  # 항목별 점수 (막대그래프용)
 
 
 class EssayState(TypedDict):
@@ -69,3 +70,4 @@ class ItemState(TypedDict):
     iteration: int
     evaluation_score: float | None
     evaluation_feedback: str | None
+    evaluation_scores: dict | None

@@ -36,6 +36,7 @@ class DraftResult(BaseModel):
     iteration: int
     evaluation_score: float | None
     evaluation_feedback: str | None
+    evaluation_scores: dict[str, float] | None = None  # 항목별 점수 (막대그래프)
 
 
 class EssayGenerateResponse(BaseModel):

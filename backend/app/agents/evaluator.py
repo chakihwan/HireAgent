@@ -60,11 +60,12 @@ async def evaluator_node(state: ItemState) -> dict:
         temperature=0.2,
     )
 
-    score, feedback = _parse_evaluation(result.content)
+    score, feedback, scores = _parse_evaluation(result.content)
 
     return {
         "evaluation_score": score,
         "evaluation_feedback": feedback,
+        "evaluation_scores": scores,  # 항목별 점수 (막대그래프용)
         "node_events": [
             {"node": "evaluate", "category": item["category"], "phase": "done",
              "detail": f"★ {score:.1f}점" if score is not None else "평가 실패"},
@@ -72,19 +73,24 @@ async def evaluator_node(state: ItemState) -> dict:
     }
 
 
-def _parse_evaluation(raw: str) -> tuple[float | None, str]:
-    """LLM JSON 응답 → (총점, 피드백 텍스트). 파싱 실패 시 (None, 안내)."""
+# 라벨 매핑 (프론트 막대그래프 표시용 — key → 한국어 라벨)
+RUBRIC_LABELS = {k: label for k, label, _ in _RUBRIC}
+
+
+def _parse_evaluation(raw: str) -> tuple[float | None, str, dict[str, float] | None]:
+    """LLM JSON 응답 → (총점, 피드백 텍스트, 항목별 점수). 파싱 실패 시 (None, 안내, None)."""
     try:
         match = re.search(r"\{.*\}", raw.strip(), re.DOTALL)
         parsed = json.loads(match.group() if match else raw)
-        scores = parsed.get("scores", {})
+        raw_scores = parsed.get("scores", {})
 
         # 각 항목 0~2로 clamp 후 백엔드에서 합산 (LLM 산수 실수 방지)
+        scores: dict[str, float] = {}
         breakdown_parts = []
         total = 0.0
         for key, label, _ in _RUBRIC:
-            v = float(scores.get(key, 1))
-            v = max(0.0, min(2.0, v))
+            v = max(0.0, min(2.0, float(raw_scores.get(key, 1))))
+            scores[key] = v
             total += v
             breakdown_parts.append(f"{label} {v:.0f}")
 
@@ -98,9 +104,9 @@ def _parse_evaluation(raw: str) -> tuple[float | None, str]:
         if suggestion:
             feedback += f" | 개선: {suggestion}"
 
-        return round(total, 1), feedback
+        return round(total, 1), feedback, scores
     except Exception:
         # 파싱 실패 — 7.0 고정 대신 None으로 "평가 불가"를 명확히 표시
         return None, (
             "평가 결과를 해석하지 못했습니다 (모델이 형식을 벗어남). 모델 변경을 권장합니다."
-        )
+        ), None

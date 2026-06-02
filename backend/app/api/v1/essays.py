@@ -118,6 +118,7 @@ async def _stream_generation(
             iteration=d["iteration"],
             evaluation_score=d.get("evaluation_score"),
             evaluation_feedback=d.get("evaluation_feedback"),
+            evaluation_scores=d.get("evaluation_scores"),
         )
         for d in accumulated_drafts
     ]
@@ -202,6 +203,7 @@ async def generate_essays_sync(req: EssayGenerateRequest) -> EssayGenerateRespon
             iteration=d["iteration"],
             evaluation_score=d.get("evaluation_score"),
             evaluation_feedback=d.get("evaluation_feedback"),
+            evaluation_scores=d.get("evaluation_scores"),
         )
         for d in final.get("drafts", [])
     ]

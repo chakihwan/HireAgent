@@ -64,6 +64,7 @@ def _fan_out(state: EssayState) -> list[Send]:
                 iteration=0,
                 evaluation_score=None,
                 evaluation_feedback=None,
+                evaluation_scores=None,
             ),
         )
         for item in state["items"]
@@ -82,6 +83,7 @@ async def _process_item(item_state: ItemState) -> dict:
         iteration=result.get("iteration", 1),
         evaluation_score=result.get("evaluation_score"),
         evaluation_feedback=result.get("evaluation_feedback"),
+        evaluation_scores=result.get("evaluation_scores"),
     )
     rag_count = len(result.get("rag_context") or [])
     rag_sources = result.get("rag_sources") or {}
