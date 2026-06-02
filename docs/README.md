@@ -92,6 +92,9 @@ docker compose up
 | [021](adr/021-tech-stack-auto-extraction.md) | tech_stack 자동 추출 (키워드 매칭, 한국어 안전 boundary) | 채택 |
 | [022](adr/022-essay-output-defense-layers.md) | 자소서 출력 다층 방어 (프롬프트+화이트리스트+후처리+경고) | 채택 |
 | [023](adr/023-spa-site-url-policy.md) | SPA 채용 사이트 URL 정책 (사람인 등 사전 차단 + 북마클릿) | 채택 |
+| [024](adr/024-react-flow-workflow-builder.md) | 자소서 생성 UI를 React Flow 워크플로우 빌더로 전환 | 채택 |
+| [025](adr/025-per-item-agent-config.md) | 항목별 독립 에이전트 설정 (항목마다 다른 LLM) | 채택 |
+| [026](adr/026-evaluation-rubric-and-transparency.md) | 자가 평가 루브릭화 + 생성 과정 투명성 (draft_history) | 채택 |
 
 ---
 

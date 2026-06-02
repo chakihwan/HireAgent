@@ -9,6 +9,22 @@
 
 ## [Unreleased]
 
+### 추가 — 생성 단계별 이력 (draft_history)
+
+- write/compress 각 단계 결과를 `draft_history`에 누적 → `DraftResult`에 포함
+  - state→스키마→프론트 전 구간 전달 (`Annotated[list, operator.add]` reducer)
+- 결과 카드 하단 "단계별 이력" 토글: 초안→압축1→압축2→최종을 순서대로 확인
+  - 각 단계: 글자수 진행 바(목표 대비) + 본문 전문 (`DraftHistory.tsx`)
+- **효과**: "글자수 조정이 실제로 되는지", "압축이 수렴하는지"가 투명하게 보임
+  - 검증으로 드러난 현상: 초안 737자→압축 587→550 (동작하나 목표 300자 미수렴)
+
+### 수정 — 압축 글자수 수렴 개선 (한계 존재)
+
+- `compressor`: `max_tokens` target×2 → **target×1.1** (물리적 상한을 타깃에 밀착)
+- 프롬프트 상한 target×1.05 → ×1.0, "약간 짧아져도 OK·내용 추가 금지" 명시
+- 검증: 626→493→454 (개선). 단 exaone이 한국어 글자수를 토큰 단위로 인식하는
+  모델 한계로 완전 수렴은 어려움 → 인라인 편집으로 마무리 (feedback.md)
+
 ### 추가 — 평가 점수 막대그래프 (RubricBars)
 
 - 항목별 점수(0~2)를 `evaluation_scores` dict로 끝까지 전달 (state→스키마→프론트)
