@@ -9,6 +9,16 @@
 
 ## [Unreleased]
 
+### 변경 — React Query를 jobs/library/projects 페이지로 확대 (리뷰 2026-06-02 후속)
+
+- 기존 RQ 도입은 대시보드만 → 나머지 3개 데이터 페이지도 `useState+useEffect+fetch` → 훅 전환
+- `lib/queries.ts`에 projects mutation 훅 5개 추가
+  (`useIndexProject/GitHub/File`, `useDeleteProject/useDeleteProjectByName` — 모두 `["projects"]` 무효화)
+- jobs: `useJobs` + `useCreateJob/Update/Delete`, 수동 낙관적 setState 제거 → invalidate 자동 갱신
+- library: `useLibrary` + update/delete mutation, 새로고침 버튼 `refetch()`
+- projects: `useProjects` + mutation, `AddFormPanel`의 `onRefresh` prop 제거 → 인덱싱 성공 시 자동 갱신
+- 효과: 페이지별 fetch 보일러플레이트·수동 목록 동기화 제거. ROADMAP "RQ 확대" 항목 졸업
+
 ### 추가 — 생성 단계별 이력 (draft_history)
 
 - write/compress 각 단계 결과를 `draft_history`에 누적 → `DraftResult`에 포함

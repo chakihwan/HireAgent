@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Plus, Trash2, ExternalLink } from "lucide-react";
@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createJob, listJobs, updateJob, deleteJob, type JobResponse } from "@/lib/api";
+import { useJobs, useCreateJob, useUpdateJob, useDeleteJob } from "@/lib/queries";
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "작성 중",
@@ -45,65 +45,50 @@ function formatDate(iso: string | null): string {
 }
 
 export default function JobsPage() {
-  const [jobs, setJobs] = useState<JobResponse[]>([]);
-  const [loading, setLoading] = useState(true);
+  const jobsQ = useJobs();
+  const jobs = jobsQ.data ?? [];
+  const loading = jobsQ.isLoading;
+
+  const createMut = useCreateJob();
+  const updateMut = useUpdateJob();
+  const deleteMut = useDeleteJob();
+
   const [showForm, setShowForm] = useState(false);
   const [company, setCompany] = useState("");
   const [position, setPosition] = useState("");
   const [jdText, setJdText] = useState("");
   const [jobUrl, setJobUrl] = useState("");
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  async function fetchJobs() {
-    setLoading(true);
-    try {
-      setJobs(await listJobs());
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { fetchJobs(); }, []);
 
   async function handleCreate() {
     if (!company.trim() || !jdText.trim()) return;
-    setSaving(true);
     setError(null);
     try {
-      const created = await createJob({
+      await createMut.mutateAsync({
         company: company.trim(),
         position: position.trim() || undefined,
         job_description: jdText.trim(),
         job_url: jobUrl.trim() || undefined,
       });
-      setJobs((prev) => [created, ...prev]);
       setShowForm(false);
       setCompany(""); setPosition(""); setJdText(""); setJobUrl("");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setSaving(false);
     }
   }
 
-  async function handleStatusChange(id: number, status: string) {
-    try {
-      const updated = await updateJob(id, { status });
-      setJobs((prev) => prev.map((j) => (j.id === id ? updated : j)));
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
-    }
+  function handleStatusChange(id: number, status: string) {
+    updateMut.mutate(
+      { id, data: { status } },
+      { onError: (e) => toast.error(e instanceof Error ? e.message : String(e)) },
+    );
   }
 
-  async function handleDelete(id: number) {
+  function handleDelete(id: number) {
     if (!confirm("이 지원을 삭제할까요?")) return;
-    try {
-      await deleteJob(id);
-      setJobs((prev) => prev.filter((j) => j.id !== id));
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
-    }
+    deleteMut.mutate(id, {
+      onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+    });
   }
 
   return (
@@ -151,8 +136,8 @@ export default function JobsPage() {
             </div>
             {error && <p className="text-xs text-red-500">{error}</p>}
             <div className="flex gap-2">
-              <Button size="sm" onClick={handleCreate} disabled={saving || !company.trim() || !jdText.trim()}>
-                {saving ? "저장 중..." : "저장"}
+              <Button size="sm" onClick={handleCreate} disabled={createMut.isPending || !company.trim() || !jdText.trim()}>
+                {createMut.isPending ? "저장 중..." : "저장"}
               </Button>
               <Button size="sm" variant="outline" onClick={() => setShowForm(false)}>취소</Button>
             </div>

@@ -33,7 +33,7 @@
 ### 아키텍처 정합성 — 🟡 리뷰 2026-06-02 (포트폴리오)
 - [완료] React Query/Zustand 도입 (선언 스택 실제 사용) — 대시보드 RQ 전환, settings Zustand
 - [완료] `generate/page.tsx` 분할 — `useEssayGeneration` 훅 (774→727줄)
-- [ ] React Query를 jobs/library/projects 페이지에도 확대 적용 (현재 대시보드만)
+- [완료] React Query를 jobs/library/projects 페이지에도 확대 적용 (보일러플레이트 제거 + invalidate 자동 갱신)
 - [ ] 빈 `except Exception` 로깅 추가 (url_fetcher/file.py)
 
 ### 품질

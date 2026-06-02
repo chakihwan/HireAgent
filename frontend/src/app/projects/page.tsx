@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   Trash2, Search, Loader2, FolderGit2, FolderOpen,
@@ -15,10 +15,13 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  indexProject, indexGitHub, indexFile,
-  listProjects, deleteProject, deleteProjectByName, searchProjects,
+  searchProjects,
   type ProjectDocResponse, type SearchResult,
 } from "@/lib/api";
+import {
+  useProjects, useIndexProject, useIndexGitHub, useIndexFile,
+  useDeleteProject, useDeleteProjectByName,
+} from "@/lib/queries";
 
 // ─── 상수 ────────────────────────────────────────────────────────────────────
 
@@ -79,8 +82,13 @@ function formatDate(iso: string) {
 // ─── 메인 페이지 ─────────────────────────────────────────────────────────────
 
 export default function ProjectsPage() {
-  const [docs, setDocs] = useState<ProjectDocResponse[]>([]);
-  const [loading, setLoading] = useState(true);
+  const projectsQ = useProjects();
+  const docs = useMemo(() => projectsQ.data ?? [], [projectsQ.data]);
+  const loading = projectsQ.isLoading;
+
+  const deleteChunkMut = useDeleteProject();
+  const deleteProjectMut = useDeleteProjectByName();
+
   const [activeCard, setActiveCard] = useState<CardType | null>(null);
 
   const [previewItem, setPreviewItem] = useState<{
@@ -93,14 +101,6 @@ export default function ProjectsPage() {
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null);
   const [showSearch, setShowSearch] = useState(false);
 
-  const fetchDocs = useCallback(async () => {
-    setLoading(true);
-    try { setDocs(await listProjects()); }
-    finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { fetchDocs(); }, [fetchDocs]);
-
   const grouped = useMemo(() => {
     const map: Record<CardType, ProjectDocResponse[]> = { resume: [], github: [], custom: [] };
     for (const doc of docs) map[getCardType(doc.source_type)].push(doc);
@@ -109,16 +109,18 @@ export default function ProjectsPage() {
 
   const totalChunks = docs.length;
 
-  async function handleDeleteChunk(id: number) {
+  function handleDeleteChunk(id: number) {
     if (!confirm("이 항목을 삭제할까요?")) return;
-    await deleteProject(id);
-    setDocs(prev => prev.filter(d => d.id !== id));
+    deleteChunkMut.mutate(id, {
+      onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+    });
   }
 
-  async function handleDeleteProject(name: string) {
+  function handleDeleteProject(name: string) {
     if (!confirm(`"${name}"의 모든 청크를 삭제할까요?`)) return;
-    await deleteProjectByName(name);
-    await fetchDocs();
+    deleteProjectMut.mutate(name, {
+      onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+    });
   }
 
   async function handleSearch() {
@@ -188,7 +190,6 @@ export default function ProjectsPage() {
             <AddFormPanel
               type={activeCard}
               onClose={() => setActiveCard(null)}
-              onRefresh={fetchDocs}
             />
           )}
 
@@ -265,15 +266,19 @@ export default function ProjectsPage() {
 // ─── 폼 패널 ─────────────────────────────────────────────────────────────────
 
 function AddFormPanel({
-  type, onClose, onRefresh,
+  type, onClose,
 }: {
   type: CardType;
   onClose: () => void;
-  onRefresh: () => Promise<void>;
 }) {
   const config = CARDS[type];
 
-  const [indexing, setIndexing] = useState(false);
+  // mutation 훅 — 성공 시 각 훅이 ["projects"] 쿼리를 자동 무효화 (수동 refetch 불필요)
+  const indexProjectMut = useIndexProject();
+  const indexGitHubMut = useIndexGitHub();
+  const indexFileMut = useIndexFile();
+  const indexing = indexProjectMut.isPending || indexGitHubMut.isPending || indexFileMut.isPending;
+
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -294,26 +299,29 @@ function AddFormPanel({
   }
 
   async function handleIndex() {
-    setIndexing(true); setError(null); setSuccess(null);
+    setError(null); setSuccess(null);
     try {
       if (type === "resume") {
         if (!file) throw new Error("파일을 선택하세요.");
-        const r = await indexFile(file, {
-          source_type: "resume",
-          project_name: projectName.trim() || undefined,
-          tech_stack: techStack.trim() || undefined,
+        const r = await indexFileMut.mutateAsync({
+          file,
+          fields: {
+            source_type: "resume",
+            project_name: projectName.trim() || undefined,
+            tech_stack: techStack.trim() || undefined,
+          },
         });
         setSuccess(`${file.name} — ${r.chunks_created}개 청크 완료`);
       } else if (type === "github") {
         if (!repoUrl.trim()) throw new Error("GitHub repo URL을 입력하세요.");
-        const r = await indexGitHub({
+        const r = await indexGitHubMut.mutateAsync({
           repo_url: repoUrl.trim(),
           tech_stack: techStack.split(",").map(s => s.trim()).filter(Boolean),
         });
         setSuccess(`${r.owner}/${r.repo} — ${r.files_indexed}개 파일, ${r.total_chunks}개 청크 완료`);
       } else {
         if (content.trim().length < 20) throw new Error("텍스트가 너무 짧습니다 (20자 이상).");
-        const r = await indexProject({
+        const r = await indexProjectMut.mutateAsync({
           content: content.trim(),
           source_type: sourceType,
           project_name: projectName.trim() || undefined,
@@ -321,13 +329,11 @@ function AddFormPanel({
         });
         setSuccess(`${r.chunks_created}개 청크 인덱싱 완료`);
       }
-      await onRefresh();
+      // 성공 시 mutation onSuccess가 ["projects"] 무효화 → 목록 자동 갱신
       reset();
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setIndexing(false);
     }
   }
 

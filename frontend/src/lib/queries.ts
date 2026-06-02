@@ -8,7 +8,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   listJobs, createJob, updateJob, deleteJob, type JobCreate, type JobUpdate,
   listLibrary, saveToLibrary, updateLibraryItem, deleteLibraryItem, type LibraryItemCreate,
-  listProjects,
+  listProjects, indexProject, indexGitHub, indexFile, deleteProject, deleteProjectByName,
+  type ProjectDocCreate, type GitHubIndexRequest, type FileUploadFields,
   getOllamaModels,
 } from "./api";
 
@@ -82,6 +83,46 @@ export function useDeleteLibrary() {
 // ── Projects ──────────────────────────────────────────────────────
 export function useProjects(params?: { source_type?: string; project_name?: string }) {
   return useQuery({ queryKey: qk.projects(params), queryFn: () => listProjects(params) });
+}
+
+export function useIndexProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: ProjectDocCreate) => indexProject(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
+  });
+}
+
+export function useIndexGitHub() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: GitHubIndexRequest) => indexGitHub(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
+  });
+}
+
+export function useIndexFile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ file, fields }: { file: File; fields: FileUploadFields }) => indexFile(file, fields),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
+  });
+}
+
+export function useDeleteProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => deleteProject(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
+  });
+}
+
+export function useDeleteProjectByName() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => deleteProjectByName(name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
+  });
 }
 
 // ── Ollama models (+ GPU fit) ─────────────────────────────────────

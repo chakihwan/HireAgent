@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Trash2, Star, StarOff, Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { listLibrary, updateLibraryItem, deleteLibraryItem, type LibraryItemResponse } from "@/lib/api";
+import { type LibraryItemResponse } from "@/lib/api";
+import { useLibrary, useUpdateLibrary, useDeleteLibrary } from "@/lib/queries";
 
 const CATEGORY_ALL = "__all__";
 
@@ -115,44 +116,31 @@ function EssayCard({ item, onToggleFinal, onDelete }: {
 }
 
 export default function LibraryPage() {
-  const [items, setItems] = useState<LibraryItemResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const libraryQ = useLibrary();
+  const items = libraryQ.data ?? [];
+  const loading = libraryQ.isLoading;
+  const error = libraryQ.error
+    ? (libraryQ.error instanceof Error ? libraryQ.error.message : String(libraryQ.error))
+    : null;
+
+  const updateMut = useUpdateLibrary();
+  const deleteMut = useDeleteLibrary();
+
   const [filterCategory, setFilterCategory] = useState(CATEGORY_ALL);
   const [filterFinal, setFilterFinal] = useState<"all" | "final" | "draft">("all");
 
-  async function fetchItems() {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await listLibrary();
-      setItems(data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
-    }
+  function handleToggleFinal(id: number, current: boolean) {
+    updateMut.mutate(
+      { id, data: { is_final: !current } },
+      { onError: (e) => toast.error(e instanceof Error ? e.message : String(e)) },
+    );
   }
 
-  useEffect(() => { fetchItems(); }, []);
-
-  async function handleToggleFinal(id: number, current: boolean) {
-    try {
-      const updated = await updateLibraryItem(id, { is_final: !current });
-      setItems((prev) => prev.map((i) => (i.id === id ? updated : i)));
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
-    }
-  }
-
-  async function handleDelete(id: number) {
+  function handleDelete(id: number) {
     if (!confirm("이 자소서를 삭제할까요?")) return;
-    try {
-      await deleteLibraryItem(id);
-      setItems((prev) => prev.filter((i) => i.id !== id));
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
-    }
+    deleteMut.mutate(id, {
+      onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+    });
   }
 
   const categories = Array.from(new Set(items.map((i) => i.category))).sort();
@@ -171,7 +159,9 @@ export default function LibraryPage() {
           <h1 className="text-xl font-semibold text-zinc-900">자소서 라이브러리</h1>
           <p className="text-sm text-zinc-500 mt-0.5">저장된 자소서 {items.length}개</p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchItems}>새로고침</Button>
+        <Button variant="outline" size="sm" onClick={() => libraryQ.refetch()} disabled={libraryQ.isFetching}>
+          {libraryQ.isFetching ? "..." : "새로고침"}
+        </Button>
       </div>
 
       {/* Filters */}
