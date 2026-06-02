@@ -121,6 +121,15 @@ error="llama runner process has terminated"
   - 대안: Ollama `/api/ps`의 `size_vram`로 **사후** 판정, 또는 백엔드 네이티브 실행 시 psutil
 - 우선순위: 낮음 — 실제 Mac 사용자 생기는 Phase 3 배포 시점에 처리
 
+**추후 과제 — GPU 정보가 "백엔드 머신" 기준 (배포 시 불일치)**:
+- `/ollama/gpu`는 nvidia-ml-py로 **백엔드가 실행되는 머신**의 GPU를 조회
+- 현재 단일 머신(백엔드=본인 PC)이라 본인 GPU가 정확히 보임
+- 배포 시(ADR-014: Ollama 로컬, 백엔드 클라우드) → 모든 사용자가 "클라우드 서버 GPU"를 동일하게 봄
+  - 실제 추론은 사용자 로컬 Ollama인데 표시 GPU와 불일치
+- 근본: GPU 정보는 "Ollama가 도는 곳"의 것이어야 하나 현재는 "백엔드가 도는 곳"의 것
+- 대안: Ollama `/api/ps`의 `size_vram`(로드된 모델 실측) 활용 또는 브라우저→로컬 Ollama 직접 조회
+- 우선순위: 낮음 — Phase 3 배포 시점에 Mac 이슈와 함께 처리
+
 ---
 
 ### [2026-06-01] SSR hydration mismatch (해결됨)
