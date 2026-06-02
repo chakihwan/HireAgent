@@ -8,6 +8,15 @@ export type ItemConfig = {
   persona: EssayPersona;
 };
 
+// 평가 루브릭 항목 (백엔드 evaluator._RUBRIC과 동기화)
+export const RUBRIC_LABELS: Record<string, string> = {
+  job_fit: "직무적합",
+  specificity: "구체성",
+  authenticity: "진정성",
+  flow: "흐름",
+  readability: "가독성",
+};
+
 export type DraftResult = {
   category: string;
   content: string;
@@ -16,6 +25,7 @@ export type DraftResult = {
   iteration: number;
   evaluation_score: number | null;
   evaluation_feedback: string | null;
+  evaluation_scores: Record<string, number> | null;  // 항목별 0~2점 (막대그래프)
 };
 
 export type SseStartEvent = {
