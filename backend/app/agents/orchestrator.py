@@ -59,6 +59,7 @@ def _fan_out(state: EssayState) -> list[Send]:
                 rag_sources={},
                 tech_whitelist=[],
                 node_events=[],
+                draft_history=[],
                 content="",
                 char_count=0,
                 iteration=0,
@@ -84,6 +85,7 @@ async def _process_item(item_state: ItemState) -> dict:
         evaluation_score=result.get("evaluation_score"),
         evaluation_feedback=result.get("evaluation_feedback"),
         evaluation_scores=result.get("evaluation_scores"),
+        draft_history=result.get("draft_history") or [],
     )
     rag_count = len(result.get("rag_context") or [])
     rag_sources = result.get("rag_sources") or {}

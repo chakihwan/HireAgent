@@ -21,7 +21,8 @@ class Draft(TypedDict):
     iteration: int
     evaluation_score: float | None
     evaluation_feedback: str | None
-    evaluation_scores: dict | None  # 항목별 점수 (막대그래프용)
+    evaluation_scores: dict | None   # 항목별 점수 (막대그래프용)
+    draft_history: list[dict]        # 단계별 이력 (write/compress 각 결과)
 
 
 class EssayState(TypedDict):
@@ -64,6 +65,8 @@ class ItemState(TypedDict):
     tech_whitelist: list[str]
     # sub-node 이벤트 — 프론트엔드 그래프 뷰 실시간 업데이트용
     node_events: Annotated[list[NodeEvent], operator.add]
+    # 단계별 이력 — write/compress 각 결과 (누적, 투명성·디버깅용)
+    draft_history: Annotated[list[dict], operator.add]
 
     content: str
     char_count: int

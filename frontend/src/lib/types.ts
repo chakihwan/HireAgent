@@ -26,6 +26,15 @@ export type DraftResult = {
   evaluation_score: number | null;
   evaluation_feedback: string | null;
   evaluation_scores: Record<string, number> | null;  // 항목별 0~2점 (막대그래프)
+  draft_history: DraftHistoryEntry[];                // 단계별 이력
+};
+
+export type DraftHistoryEntry = {
+  step: "write" | "compress";
+  iteration: number;
+  content: string;
+  char_count: number;
+  char_target: number;
 };
 
 export type SseStartEvent = {

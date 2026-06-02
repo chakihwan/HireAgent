@@ -50,12 +50,18 @@ async def compressor_node(state: ItemState) -> dict:
     )
     content = clean_llm_output(result.content)
     iteration = state.get("iteration", 0) + 1
+    char_count = count_chars(content)
     return {
         "content": content,
-        "char_count": count_chars(content),
+        "char_count": char_count,
         "iteration": iteration,
+        "draft_history": [
+            {"step": "compress", "iteration": iteration,
+             "content": content, "char_count": char_count,
+             "char_target": target},
+        ],
         "node_events": [
             {"node": "compress", "category": item["category"], "phase": "done",
-             "detail": f"{count_chars(content)}자", "iteration": iteration},
+             "detail": f"{char_count}자", "iteration": iteration},
         ],
     }

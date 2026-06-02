@@ -101,15 +101,21 @@ async def essay_writer_node(state: ItemState) -> dict:
     )
     content = clean_llm_output(result.content)
     iteration = state.get("iteration", 0) + 1
+    char_count = count_chars(content)
     return {
         "content": content,
-        "char_count": count_chars(content),
+        "char_count": char_count,
         "iteration": iteration,
         "evaluation_score": None,
         "evaluation_feedback": None,
+        "draft_history": [
+            {"step": "write", "iteration": iteration,
+             "content": content, "char_count": char_count,
+             "char_target": item["char_limit"]},
+        ],
         "node_events": [
             {"node": "write", "category": item["category"], "phase": "done",
-             "detail": f"{count_chars(content)}자 초안", "iteration": iteration},
+             "detail": f"{char_count}자 초안", "iteration": iteration},
         ],
     }
 

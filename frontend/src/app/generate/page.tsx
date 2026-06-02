@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Copy, Check, AlertTriangle } from "lucide-react";
 import { WorkflowCanvas } from "@/components/features/WorkflowCanvas";
 import { RubricBars } from "@/components/features/RubricBars";
+import { DraftHistory } from "@/components/features/DraftHistory";
 import { Button } from "@/components/ui/button";
 import { saveToLibrary, fetchJobUrl, FetchUrlError, getOllamaModels } from "@/lib/api";
 import { loadSettings, saveSettings, DEFAULT_SETTINGS } from "@/lib/settings-store";
@@ -562,21 +563,28 @@ export default function GeneratePage() {
                         className="w-full p-4 text-sm text-zinc-700 leading-relaxed resize-y outline-none border-0"
                         style={{ background: "transparent" }}
                       />
-                      {(draft.evaluation_scores || draft.evaluation_feedback) && (
-                        <div className="px-4 pb-3 border-t border-zinc-50 pt-2.5 space-y-2">
-                          {draft.evaluation_scores && (
-                            <RubricBars scores={draft.evaluation_scores} />
-                          )}
-                          {draft.evaluation_feedback && (
-                            // 막대그래프가 있으면 항목별 점수 부분(앞쪽)은 제외하고 약점·개선만 표시
-                            <p className="text-xs text-zinc-400 leading-relaxed">
-                              {draft.evaluation_scores
-                                ? draft.evaluation_feedback.split("|").slice(1).join("|").trim() || draft.evaluation_feedback
-                                : draft.evaluation_feedback}
-                            </p>
-                          )}
-                        </div>
-                      )}
+                      <div className="px-4 pb-3 space-y-3">
+                        {(draft.evaluation_scores || draft.evaluation_feedback) && (
+                          <div className="border-t border-zinc-50 pt-2.5 space-y-2">
+                            {draft.evaluation_scores && (
+                              <RubricBars scores={draft.evaluation_scores} />
+                            )}
+                            {draft.evaluation_feedback && (
+                              <p className="text-xs text-zinc-400 leading-relaxed">
+                                {draft.evaluation_scores
+                                  ? draft.evaluation_feedback.split("|").slice(1).join("|").trim() || draft.evaluation_feedback
+                                  : draft.evaluation_feedback}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        {draft.draft_history && draft.draft_history.length > 0 && (
+                          <DraftHistory
+                            history={draft.draft_history}
+                            target={draft.char_target}
+                          />
+                        )}
+                      </div>
                     </div>
                   );
                 })}
