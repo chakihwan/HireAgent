@@ -26,26 +26,28 @@ async def compressor_node(state: ItemState) -> dict:
     api_key = cfg.get("api_key", "")
 
     direction = "줄여" if diff > 0 else "늘려"
-    target_min = int(target * 0.95)
-    target_max = int(target * 1.05)
-    prompt = f"""아래 자소서를 정확히 {target}자(공백 포함)에 맞게 수정해주세요.
+    target_min = int(target * 0.90)  # 허용 하한을 조금 넓혀 압축 여유 확보
+    target_max = int(target * 1.00)  # 상한은 목표 100%로 타이트하게 (초과 금지)
+    prompt = f"""아래 자소서를 반드시 {target}자 이하로 줄여주세요.
 
-현재: {state['char_count']}자 → 목표: {target}자 ({target_min}~{target_max}자 허용)
+현재: {state['char_count']}자  목표: {target_min}~{target_max}자
 {abs(diff)}자를 {direction}야 합니다.
 
-⚠️ 중요: 수정 후 반드시 {target_max}자 이하여야 합니다. 현재보다 더 길어지면 안 됩니다.
+⚠️ 절대 규칙:
+- 출력이 {target_max}자를 초과하면 안 됩니다. 약간 짧아져도 괜찮습니다.
+- 내용을 새로 추가하지 마세요. 기존 내용에서만 줄이세요.
 
 [현재 자소서]
 {current}
 
-수정된 자소서 본문만 출력하세요 (소제목·마크다운·연락처 없이)."""
+수정된 자소서 본문만 출력하세요."""
 
     llm = LLMFactory.create(provider, model, api_key)
-    # max_tokens를 목표 × 2로 제한 — 너무 크면 오히려 더 길게 생성할 수 있음
+    # max_tokens를 목표 × 1.1로 강제 — 물리적 상한을 타깃에 바짝 붙여 초과 불가
     result = await llm.generate(
         prompt=prompt,
         system=_SYSTEM,
-        max_tokens=min(target * 2, 2000),
+        max_tokens=min(int(target * 1.1), 1500),
         temperature=0.3,
     )
     content = clean_llm_output(result.content)
