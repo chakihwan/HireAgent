@@ -12,21 +12,41 @@ from app.db import get_db
 from app.schemas.essay import DraftResult, EssayGenerateRequest, EssayGenerateResponse
 from app.schemas.library import EssayLibraryCreate
 from app.services import library as lib_svc
+from app.services import settings as settings_svc
 
 router = APIRouter(prefix="/essays", tags=["essays"])
 
 
-def _build_agent_config(req: EssayGenerateRequest) -> dict:
-    """요청의 agent_config를 dict 형태로 변환. Ollama api_key 기본값 주입."""
+async def _resolve_api_key(
+    db: AsyncSession | None, user_id: str, provider: str, body_key: str | None
+) -> str:
+    """API 키 해석. ollama는 서버 URL, 클라우드는 body 우선·없으면 DB 복호화.
+
+    프론트가 평문 키를 요청 body로 보내지 않아도(Rule #2) DB에 암호화된 키를
+    복호화해 사용한다. body_key가 오면(과도기 하위호환) 그것을 우선.
+    복호화된 평문은 그래프 실행 동안 agent_config dict에만 머물고 로그·응답엔 싣지 않는다.
+    """
+    if provider == "ollama":
+        return body_key or settings.ollama_base_url
+    if body_key:
+        return body_key
+    if db is None:
+        return ""
+    key = await settings_svc.get_decrypted_key(db, user_id, provider)
+    return key or ""
+
+
+async def _build_agent_config(req: EssayGenerateRequest, db: AsyncSession | None) -> dict:
+    """요청의 agent_config를 dict로 변환. 키는 _resolve_api_key로 해석(DB 복호화 포함)."""
     config: dict = {}
     for agent_name, assignment in req.agent_config.items():
-        api_key = assignment.api_key
-        if assignment.provider == "ollama" and not api_key:
-            api_key = settings.ollama_base_url
+        api_key = await _resolve_api_key(
+            db, req.user_id, assignment.provider, assignment.api_key
+        )
         config[agent_name] = {
             "provider": assignment.provider,
             "model": assignment.model,
-            "api_key": api_key or "",
+            "api_key": api_key,
         }
     # 지정되지 않은 에이전트는 Ollama 기본값
     for agent in ("jd_analyzer", "essay_writer", "compressor", "evaluator"):
@@ -39,7 +59,9 @@ def _build_agent_config(req: EssayGenerateRequest) -> dict:
     return config
 
 
-def _build_items(req: EssayGenerateRequest, global_config: dict) -> list[EssayItem]:
+async def _build_items(
+    req: EssayGenerateRequest, global_config: dict, db: AsyncSession | None
+) -> list[EssayItem]:
     """요청의 items 리스트를 EssayItem으로 변환. 항목별 agent_config 오버라이드 처리."""
     items: list[EssayItem] = []
     for item in req.items:
@@ -52,13 +74,13 @@ def _build_items(req: EssayGenerateRequest, global_config: dict) -> list[EssayIt
         if item.agent_config:
             item_cfg: dict = {}
             for agent_name, assignment in item.agent_config.items():
-                api_key = assignment.api_key
-                if assignment.provider == "ollama" and not api_key:
-                    api_key = settings.ollama_base_url
+                api_key = await _resolve_api_key(
+                    db, req.user_id, assignment.provider, assignment.api_key
+                )
                 item_cfg[agent_name] = {
                     "provider": assignment.provider,
                     "model": assignment.model,
-                    "api_key": api_key or "",
+                    "api_key": api_key,
                 }
             essay_item["agent_config"] = {**global_config, **item_cfg}
         items.append(essay_item)
@@ -71,8 +93,8 @@ async def _stream_generation(
     application_id: int | None = None,
     db: AsyncSession | None = None,
 ) -> AsyncGenerator[str, None]:
-    agent_config = _build_agent_config(req)
-    items = _build_items(req, agent_config)
+    agent_config = await _build_agent_config(req, db)
+    items = await _build_items(req, agent_config, db)
 
     initial_state = EssayState(
         job_description=req.job_description,
@@ -175,10 +197,12 @@ async def generate_essays(
 
 
 @router.post("/generate/sync", response_model=EssayGenerateResponse)
-async def generate_essays_sync(req: EssayGenerateRequest) -> EssayGenerateResponse:
+async def generate_essays_sync(
+    req: EssayGenerateRequest, db: AsyncSession = Depends(get_db)
+) -> EssayGenerateResponse:
     """자소서 생성 (동기 응답, 테스트/디버깅용)."""
-    agent_config = _build_agent_config(req)
-    items = _build_items(req, agent_config)
+    agent_config = await _build_agent_config(req, db)
+    items = await _build_items(req, agent_config, db)
 
     initial_state = EssayState(
         job_description=req.job_description,
