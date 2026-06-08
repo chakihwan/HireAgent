@@ -85,3 +85,11 @@ export const PROVIDER_DEFAULT_MODELS: Record<string, string> = {
   openai: "gpt-4o-mini",
   google: "gemini-2.0-flash",
 };
+
+// 무료 티어로 사용 불가한 모델 (유료 billing 연결 키에서만 동작).
+// ⚠️ 차단이 아니라 "소프트 경고"용이다 — 프론트는 사용자가 무료/유료 티어인지
+// 알 수 없으므로(quota는 런타임에만 확정), 막지 말고 알려주고 진행은 허용한다.
+// 유료 티어 사용자는 정상 사용 가능. 무료 키면 429로 실패할 수 있음을 사전 고지.
+export const PAID_TIER_ONLY_MODELS: Record<string, string> = {
+  "gemini-2.5-pro": "Google 무료 티어 미지원 — 유료 billing이 연결된 키에서만 동작합니다.",
+};

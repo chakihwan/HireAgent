@@ -11,31 +11,11 @@ import { saveToLibrary, fetchJobUrl, FetchUrlError, getOllamaModels } from "@/li
 import { loadSettings, saveSettings, DEFAULT_SETTINGS } from "@/lib/settings-store";
 import { useEssayGeneration } from "@/hooks/useEssayGeneration";
 import type { EssayTone, EssayPersona, ItemConfig, AgentKey, ProviderConfig, AppSettings } from "@/lib/types";
+import { PAID_TIER_ONLY_MODELS } from "@/lib/types";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
 type Step = "jd" | "items" | "generating" | "done";
-
-const PRESET_CATEGORIES: Array<{ name: string; defaultLimit: number }> = [
-  { name: "자기소개", defaultLimit: 300 },
-  { name: "지원동기", defaultLimit: 500 },
-  { name: "성장과정", defaultLimit: 500 },
-  { name: "직무경험", defaultLimit: 700 },
-  { name: "팀워크", defaultLimit: 400 },
-  { name: "가치관", defaultLimit: 300 },
-];
-
-const TONES: EssayTone[] = ["공식적", "친근함", "도전적"];
-const PERSONAS: EssayPersona[] = ["신입", "경력직", "전환"];
-
-// ── Helper ───────────────────────────────────────────────────────────────────
-
-function scoreColor(score: number | null): string {
-  if (score === null) return "text-zinc-400";
-  if (score >= 8) return "text-emerald-600";
-  if (score >= 6) return "text-amber-600";
-  return "text-red-500";
-}
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -73,10 +53,16 @@ export default function GeneratePage() {
   const [customLimit, setCustomLimit] = useState(500);
   const [useCustom, setUseCustom] = useState(false);
 
-  function handleItemChange(name: string, patch: Partial<{ checked: boolean; charLimit: number }>) {
+  function handleItemChange(
+    name: string,
+    patch: Partial<{ checked: boolean; charLimit: number }>,
+    defaultLimit = 500,
+  ) {
+    // 체크 시 charLimit이 해당 항목 default로 잡히게 한다 (표시값=적용값 일치).
+    // 과거엔 500 하드코딩이라 표시(예: 직무경험 700)와 적용(500)이 어긋났음.
     setItemSelections((prev) => ({
       ...prev,
-      [name]: { ...{ checked: false, charLimit: 500 }, ...prev[name], ...patch },
+      [name]: { ...{ checked: false, charLimit: defaultLimit }, ...prev[name], ...patch },
     }));
   }
 
@@ -91,6 +77,8 @@ export default function GeneratePage() {
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   // VRAM 초과(over) 모델 → 생성 전 차단용 (런타임 GPU 조회 기반)
   const [overModels, setOverModels] = useState<Record<string, string>>({});
+  // 유료 티어 전용 모델 선택 시 생성 전 소프트 경고 모달 (null이면 닫힘)
+  const [pendingWarning, setPendingWarning] = useState<{ name: string; reason: string }[] | null>(null);
 
   // 클라이언트 마운트 후 localStorage 설정 적용 (SSR hydration mismatch 방지)
   useEffect(() => {
@@ -164,7 +152,7 @@ export default function GeneratePage() {
   // Generation state — useEssayGeneration 훅으로 분리 (SSE + 결과 상태)
   const gen = useEssayGeneration();
   const {
-    log, results, genError, pipelineEvents, savedIds, saving, editedContents, logEndRef,
+    log, results, genError, pipelineEvents, savedIds, saving, editedContents,
     setSavedIds, setSaving, setEditedContents,
   } = gen;
 
@@ -172,7 +160,7 @@ export default function GeneratePage() {
 
   const PRESET_DEFAULTS: Record<string, number> = Object.fromEntries(
     [
-      ["자기소개", 300], ["지원동기", 500], ["성장과정", 500],
+      ["자기소개", 500], ["지원동기", 500], ["성장과정", 500],
       ["직무경험", 700], ["강점/역량", 500], ["입사 후 포부", 500],
     ]
   );
@@ -195,38 +183,8 @@ export default function GeneratePage() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
-  const handleGenerate = useCallback(async () => {
-    // 실제 사용될 ollama 모델 수집 (전역 + 항목별 오버라이드)
-    const usedOllamaModels = new Set<string>();
-    for (const cfg of Object.values(agentConfigs)) {
-      if (cfg.provider === "ollama") usedOllamaModels.add(cfg.model);
-    }
-    for (const overrides of Object.values(itemAgentConfigs)) {
-      for (const cfg of Object.values(overrides)) {
-        if (cfg?.provider === "ollama") usedOllamaModels.add(cfg.model);
-      }
-    }
-
-    // 사전 검증 1 — 설치 안 된 모델 차단
-    if (ollamaModels.length > 0) {
-      const notInstalled = [...usedOllamaModels].filter((m) => !ollamaModels.includes(m));
-      if (notInstalled.length > 0) {
-        gen.fail(
-          `설치되지 않은 Ollama 모델: ${notInstalled.join(", ")}\n\n설치된 모델: ${ollamaModels.join(", ")}\n("🤖 모델 관리"에서 다운로드하세요)`,
-        );
-        return;
-      }
-    }
-
-    // 사전 검증 2 — VRAM 초과 모델 차단 (런타임 GPU 조회 기반)
-    const overUsed = [...usedOllamaModels].filter((m) => overModels[m]);
-    if (overUsed.length > 0) {
-      gen.fail(
-        `GPU VRAM이 부족한 모델이 선택됐습니다:\n${overUsed.map((m) => `• ${m}: ${overModels[m]}`).join("\n")}\n\n더 작은 모델로 변경하거나 "🤖 모델 관리"에서 확인하세요.`,
-      );
-      return;
-    }
-
+  // 실제 생성 실행 — 모든 사전 점검을 통과한 뒤(또는 경고 모달에서 "진행" 선택 후) 호출.
+  const executeGenerate = useCallback(async () => {
     setStep("generating");
 
     // 프로바이더별 API 키 (/models에서 입력, providerKeys에 저장)
@@ -261,10 +219,64 @@ export default function GeneratePage() {
       agent_config: agentConfig,
     };
 
-    // SSE 실행은 훅에 위임. done 시 step 전환.
-    await gen.run(request, selectedItems.map((i) => i.category), () => setStep("done"));
+    // SSE 실행은 훅에 위임. done 시 step 전환, 실패 시 입력 단계로 복귀(버튼 먹통 방지).
+    await gen.run(
+      request,
+      selectedItems.map((i) => i.category),
+      () => setStep("done"),
+      () => setStep("items"),
+    );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jd, selectedItems, agentConfigs, itemAgentConfigs, ollamaModels, overModels]);
+  }, [jd, selectedItems, agentConfigs, itemAgentConfigs]);
+
+  const handleGenerate = useCallback(async () => {
+    // 실제 사용될 모델 수집 (전역 + 항목별 오버라이드)
+    const usedOllamaModels = new Set<string>();
+    const usedModels = new Set<string>();
+    for (const cfg of Object.values(agentConfigs)) {
+      usedModels.add(cfg.model);
+      if (cfg.provider === "ollama") usedOllamaModels.add(cfg.model);
+    }
+    for (const overrides of Object.values(itemAgentConfigs)) {
+      for (const cfg of Object.values(overrides)) {
+        if (!cfg) continue;
+        usedModels.add(cfg.model);
+        if (cfg.provider === "ollama") usedOllamaModels.add(cfg.model);
+      }
+    }
+
+    // 사전 검증 1 — 설치 안 된 Ollama 모델 (하드 차단: 사용자 PC의 확실한 사실)
+    if (ollamaModels.length > 0) {
+      const notInstalled = [...usedOllamaModels].filter((m) => !ollamaModels.includes(m));
+      if (notInstalled.length > 0) {
+        gen.fail(
+          `설치되지 않은 Ollama 모델: ${notInstalled.join(", ")}\n\n설치된 모델: ${ollamaModels.join(", ")}\n("🤖 모델 관리"에서 다운로드하세요)`,
+        );
+        return;
+      }
+    }
+
+    // 사전 검증 2 — VRAM 초과 모델 (하드 차단: 런타임 GPU 조회로 확실)
+    const overUsed = [...usedOllamaModels].filter((m) => overModels[m]);
+    if (overUsed.length > 0) {
+      gen.fail(
+        `GPU VRAM이 부족한 모델이 선택됐습니다:\n${overUsed.map((m) => `• ${m}: ${overModels[m]}`).join("\n")}\n\n더 작은 모델로 변경하거나 "🤖 모델 관리"에서 확인하세요.`,
+      );
+      return;
+    }
+
+    // 사전 검증 3 — 유료 티어 전용 모델 (소프트 경고: 사용자 티어를 알 수 없어 막지 않고 확인)
+    const paidWarnings = [...usedModels]
+      .filter((m) => PAID_TIER_ONLY_MODELS[m])
+      .map((m) => ({ name: m, reason: PAID_TIER_ONLY_MODELS[m] }));
+    if (paidWarnings.length > 0) {
+      setPendingWarning(paidWarnings);
+      return;
+    }
+
+    executeGenerate();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentConfigs, itemAgentConfigs, ollamaModels, overModels, executeGenerate]);
 
 
   // ── 풀스크린 레이아웃 ────────────────────────────────────────────
@@ -330,7 +342,7 @@ export default function GeneratePage() {
             <label className="text-xs font-semibold text-zinc-600 uppercase tracking-wider">항목 선택</label>
             <div className="mt-1.5 flex flex-col gap-1.5">
               {[
-                { name: "자기소개", default: 300 },
+                { name: "자기소개", default: 500 },
                 { name: "지원동기", default: 500 },
                 { name: "성장과정", default: 500 },
                 { name: "직무경험", default: 700 },
@@ -343,7 +355,7 @@ export default function GeneratePage() {
                 return (
                   <div
                     key={preset.name}
-                    onClick={() => !isGenerating && handleItemChange(preset.name, { checked: !checked })}
+                    onClick={() => !isGenerating && handleItemChange(preset.name, { checked: !checked }, preset.default)}
                     className="flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer select-none transition-all"
                     style={{ borderColor: checked ? "#3b82f6" : "#e4e4e7", background: checked ? "#eff6ff" : "#fff" }}
                   >
@@ -443,9 +455,9 @@ export default function GeneratePage() {
             </div>
           )}
           <div className="flex gap-2">
-            {(isDone || isGenerating) && (
+            {(isDone || isGenerating || genError) && (
               <button
-                onClick={() => gen.reset()}
+                onClick={() => { gen.reset(); setStep("jd"); }}
                 className="flex-1 py-2 rounded-lg border border-zinc-300 text-xs font-medium text-zinc-600 hover:bg-zinc-50 transition-colors"
                 disabled={isGenerating}
               >
@@ -593,6 +605,72 @@ export default function GeneratePage() {
           </div>
         )}
       </main>
+
+      {/* 유료 티어 전용 모델 선택 시 생성 전 소프트 경고 (차단 아님 — 진행 허용) */}
+      {pendingWarning && (
+        <GenerateWarningModal
+          warnings={pendingWarning}
+          onCancel={() => setPendingWarning(null)}
+          onProceed={() => { setPendingWarning(null); executeGenerate(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── 생성 전 경고 모달 ────────────────────────────────────────────────────────
+
+// 유료 티어 전용 모델(예: gemini-2.5-pro)을 골랐을 때 생성 직전 확인받는 모달.
+// 프론트는 사용자가 무료/유료 티어인지 알 수 없으므로 막지 않고 알려준 뒤 선택하게 한다.
+function GenerateWarningModal({
+  warnings, onCancel, onProceed,
+}: {
+  warnings: { name: string; reason: string }[];
+  onCancel: () => void;
+  onProceed: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 backdrop-blur-sm p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="size-5 text-amber-500 shrink-0" />
+            <h2 className="text-base font-semibold text-zinc-900">확인이 필요해요</h2>
+          </div>
+          <div className="space-y-2">
+            {warnings.map((w) => (
+              <div key={w.name} className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                <p className="text-sm font-medium text-amber-900">{w.name}</p>
+                <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">{w.reason}</p>
+              </div>
+            ))}
+          </div>
+          <ul className="text-xs text-zinc-500 leading-relaxed list-disc list-inside space-y-0.5">
+            <li>무료 키라면 생성이 <span className="font-medium text-zinc-700">429 오류</span>로 실패할 수 있어요.</li>
+            <li>유료 티어(billing 연결) 키라면 그대로 진행하셔도 됩니다.</li>
+          </ul>
+        </div>
+        <div className="flex gap-2 px-5 py-3 border-t border-zinc-100">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2 rounded-lg border border-zinc-300 text-sm font-medium text-zinc-600 hover:bg-zinc-50 transition-colors"
+          >
+            모델 바꾸기
+          </button>
+          <button
+            onClick={onProceed}
+            className="flex-1 py-2 rounded-lg bg-zinc-900 text-white text-sm font-semibold hover:bg-zinc-700 transition-colors"
+          >
+            그래도 진행 →
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

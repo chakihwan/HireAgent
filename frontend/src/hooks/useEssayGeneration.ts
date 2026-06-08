@@ -51,6 +51,7 @@ export function useEssayGeneration() {
       request: EssayGenerateRequest,
       categories: string[],
       onDone?: () => void,
+      onError?: () => void,
     ): Promise<void> => {
       setLog([]);
       setResults([]);
@@ -58,6 +59,7 @@ export function useEssayGeneration() {
       setEditedContents({});
       setPipelineEvents([{ node: "jd_analyzer", phase: "start" }]);
 
+      let succeeded = false;
       try {
         await generateEssays(request, (event, data) => {
           if (event === "start") {
@@ -78,14 +80,19 @@ export function useEssayGeneration() {
           } else if (event === "error") {
             const d = data as { message: string };
             appendLog("error", d.message);
+            setGenError(d.message);
           } else if (event === "done") {
             const d = data as SseDoneEvent;
             setResults(d.drafts);
+            succeeded = true;
             onDone?.();
           }
         });
+        // 스트림이 done 없이 끝남 = 실패/중단 → 호출자에게 알려 생성 상태(step) 해제
+        if (!succeeded) onError?.();
       } catch (e) {
         setGenError(e instanceof Error ? e.message : String(e));
+        onError?.();
       }
     },
     [appendLog],
