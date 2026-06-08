@@ -44,6 +44,8 @@ export default function GeneratePage() {
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [spaError, setSpaError] = useState<{ siteName: string | null; message: string } | null>(null);
+  // 사람인 등 SPA 사이트 복사 안내(SpaSiteGuide) 모달 토글 — 사이드바가 좁아 모달로 띄운다
+  const [showSpaGuide, setShowSpaGuide] = useState(false);
 
   // Item selection state (PipelineView 통합)
   const [itemSelections, setItemSelections] = useState<Record<string, { checked: boolean; charLimit: number }>>({});
@@ -332,7 +334,15 @@ export default function GeneratePage() {
               <div className="mt-1 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                 <p className="font-medium">{spaError.siteName ?? "이 사이트"} 자동 추출 불가</p>
                 <p className="mt-0.5">{spaError.message}</p>
-                <button onClick={() => setSpaError(null)} className="mt-1 text-amber-600 underline">닫기</button>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <button
+                    onClick={() => setShowSpaGuide(true)}
+                    className="rounded bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700 transition-colors"
+                  >
+                    📋 복사 방법 보기
+                  </button>
+                  <button onClick={() => setSpaError(null)} className="text-amber-600 underline">닫기</button>
+                </div>
               </div>
             )}
           </section>
@@ -613,6 +623,18 @@ export default function GeneratePage() {
           onCancel={() => setPendingWarning(null)}
           onProceed={() => { setPendingWarning(null); executeGenerate(); }}
         />
+      )}
+
+      {/* 사람인 등 SPA 사이트 복사 안내 (북마클릿·Ctrl+P) — 사이드바가 좁아 모달로 표시 */}
+      {showSpaGuide && spaError && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-zinc-900/50 backdrop-blur-sm p-4"
+          onClick={() => setShowSpaGuide(false)}
+        >
+          <div className="my-8 w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
+            <SpaSiteGuide error={spaError} onClose={() => setShowSpaGuide(false)} />
+          </div>
+        </div>
       )}
     </div>
   );
