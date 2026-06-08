@@ -9,6 +9,27 @@
 
 ## [Unreleased]
 
+### 추가 — 생성 전 유료 티어 모델 소프트 경고 (`/generate`)
+
+- gemini-2.5-pro처럼 무료 티어 미지원 모델 선택 시, 생성 직전 확인 모달 표시
+- **차단이 아니라 경고** — 프론트는 사용자 티어를 알 수 없으므로(quota는 런타임에만 확정)
+  막지 않고 "무료 키면 429 / 유료 키면 진행" 안내 후 [모델 바꾸기]·[그래도 진행] 선택
+- 설치 안 된 모델·VRAM 초과(=사용자 환경 사실)는 기존대로 하드 차단, 티어 의존은 소프트 경고로 구분
+- `PAID_TIER_ONLY_MODELS` 메타데이터로 관리 (lib/types.ts)
+
+### 수정 — 생성 에러 후 버튼 먹통 (`/generate`)
+
+- 생성이 에러(예: 429)로 끝나면 `step`이 "generating"에 고착 → 초기화·생성 버튼이
+  새로고침 전까지 먹통이던 버그. `useEssayGeneration.run`에 onError 콜백 추가 →
+  실패 시 입력 단계로 복귀(isGenerating 해제) + 초기화 버튼을 에러 상태에서도 노출
+
+### 수정 — 항목 디폴트 글자수 표시/적용 불일치 (`/generate`)
+
+- 항목 체크 시 charLimit이 500으로 하드코딩돼, 표시값(자기소개 300·직무경험 700)과
+  실제 적용값(500)이 어긋나던 버그 → 체크 시 항목 default가 그대로 적용되게 수정
+- 자기소개 디폴트 300 → 500 통일 (직무경험 700 등 특수 항목은 유지)
+- generate 페이지 미사용 코드 정리 (PRESET_CATEGORIES·TONES·PERSONAS·scoreColor·logEndRef)
+
 ### 추가 — Google Gemini provider 구현 (google-genai SDK)
 
 - 기존 `GoogleProvider`는 `NotImplementedError` 스텁 → google-genai SDK로 실제 구현
