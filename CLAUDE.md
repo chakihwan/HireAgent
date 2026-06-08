@@ -255,6 +255,7 @@ export function EssayForm({ onSubmit }: { onSubmit: (item: EssayItem) => void })
 | 024 | 자소서 생성 UI를 React Flow 워크플로우 빌더로 전환 | 멀티에이전트 병렬 처리 시각화 + 노드 인라인 설정 |
 | 025 | 항목별 독립 에이전트 설정 | 자기소개=Claude/지원동기=로컬 등 항목마다 다른 LLM |
 | 026 | 자가 평가 루브릭화 + 생성 과정 투명성 | 5항목×2점 채점·백엔드 합산, draft_history로 압축 과정 노출 |
+| 027 | API 키 DB 암호화 연결 (crypto.py → UserLLMConfig) | crypto 미연결·평문 localStorage/body 해소, Rule #2 충족 |
 
 상세 내용: `docs/adr/` 폴더 + `docs/architecture.md`
 

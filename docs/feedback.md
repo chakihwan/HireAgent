@@ -61,9 +61,17 @@
 **조치**: ✅ `google.py`에서 2.5 계열은 `ThinkingConfig(thinking_budget=0)`로 thinking off (자소서 글쓰기엔 reasoning 불필요). 2.0/1.5 등 미지원 모델엔 미적용(400 방지)
 
 **참고 — Gemini 무료 티어 제약** (실측):
-- `gemini-2.5-pro`는 무료 티어 quota=0 (429 RESOURCE_EXHAUSTED, limit:0) → 무료로 사용 불가. flash 계열만 가능
-- 멀티에이전트(노드 4개 × 항목 수) 동시 호출 시 분당 요청 한도 초과(429)·서버 과부하(503) 빈번
+- `gemini-2.5-pro`, `gemini-2.0-flash` 모두 무료 티어 **limit:0** (429 RESOURCE_EXHAUSTED) → 무료로 사용 불가
+  - **무료로 되는 건 `gemini-2.5-flash`** (실측 600자 생성 성공). 그래서 google 기본 모델을 2.5-flash로 변경, 2.0-flash/2.5-pro는 선택 시 소프트 경고
+- 멀티에이전트(노드 4개 × 항목 수) 동시 호출 시 분당 요청 한도(RPM 10) 초과(429)·서버 과부하(503) 빈번
+  - 모든 노드를 google로 하면 자소서 1개에 5~10회 호출 → 즉시 429. 일부 노드를 ollama로 분산 권장
   - 추후 과제: 429/503 자동 재시도(exponential backoff) — 현재는 tenacity가 일부 재시도하나 무료 한도엔 무력
+
+### [2026-06-08] SSE 생성 에러 시 스트림이 ERR_INCOMPLETE로 깨짐 (해결됨)
+
+**현상**: 429 등 LLM 에러 발생 시 `ERR_INCOMPLETE_CHUNKED_ENCODING` — 에러 메시지 없이 연결만 끊김
+**원인**: `essays.py` astream 루프에 try/except가 없어 예외가 generator 밖으로 나가 SSE 스트림이 비정상 종료
+**조치**: ✅ try/except로 감싸 error 이벤트 + 정상 종료. `_format_llm_error`로 429/401/503 친화 메시지
 
 ---
 

@@ -95,6 +95,7 @@ docker compose up
 | [024](adr/024-react-flow-workflow-builder.md) | 자소서 생성 UI를 React Flow 워크플로우 빌더로 전환 | 채택 |
 | [025](adr/025-per-item-agent-config.md) | 항목별 독립 에이전트 설정 (항목마다 다른 LLM) | 채택 |
 | [026](adr/026-evaluation-rubric-and-transparency.md) | 자가 평가 루브릭화 + 생성 과정 투명성 (draft_history) | 채택 |
+| [027](adr/027-api-key-db-encryption.md) | API 키 DB 암호화 연결 (crypto.py → UserLLMConfig, Rule #2) | 채택 |
 
 ---
 

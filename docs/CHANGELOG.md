@@ -9,6 +9,21 @@
 
 ## [Unreleased]
 
+### 추가 — API 키 DB 암호화 연결 (Rule #2 충족, ADR-027)
+
+- crypto.py(Fernet)를 드디어 연결 — 키를 localStorage 평문 → **DB 암호화 저장**으로 전환
+- Phase 1 settings API: `PUT`/`GET`(마스킹)/`DELETE` `/settings/llm-keys`
+- Phase 2 생성: `_resolve_api_key` — body에 키 없으면 DB에서 복호화. **평문 비전송**
+- Phase 3 프론트: `/models`를 DB 연동(저장=암호화·표시=마스킹), 생성 body의 `api_key` 제거
+- `user_llm_configs` 테이블이 초기 마이그레이션에 이미 존재 → 추가 마이그레이션 불필요
+- E2E: Google 키 저장 → DB Fernet 토큰(평문 미포함) → 복호화 → gemini-2.5-flash 생성 성공
+
+### 수정 — SSE 생성 에러 처리 + Gemini 기본 모델
+
+- SSE astream 예외(429 등)를 try/except로 잡아 **error 이벤트로 곱게 종료** (ERR_INCOMPLETE_CHUNKED_ENCODING 방지)
+- `_format_llm_error`: 429/401/503을 사용자 친화 메시지로 (민감정보 비노출)
+- Gemini 기본 모델 2.0-flash → **2.5-flash** (2.0-flash는 무료 한도 0 실측 → PAID_TIER 경고 추가)
+
 ### 수정 — 사람인 복사 안내(SpaSiteGuide) 모달로 복원 (`/generate`)
 
 - 풀스크린 워크플로우 개편(ADR-024) 때 끊겼던 `SpaSiteGuide`(북마클릿·Ctrl+P·페이지소스 안내) 복원

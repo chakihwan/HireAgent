@@ -27,9 +27,6 @@
 - [ ] 실제 채용 공고 3~5개로 자소서 생성 (공고별 품질 비교)
 - [ ] 기존 자소서가 있다면 텍스트 업로드 → `source_type=essay` 인덱싱
 
-### 보안 (CLAUDE.md Rule #2) — 🔴 리뷰 2026-06-02 High
-- [ ] **API 키 DB 암호화 연결** — `crypto.py`(Fernet) 미사용 상태 / `UserLLMConfig` 연결, 또는 "localStorage 평문·단일사용자 전제" 문서 명시
-
 ### 아키텍처 정합성 — 🟡 리뷰 2026-06-02 (포트폴리오)
 - [완료] React Query/Zustand 도입 (선언 스택 실제 사용) — 대시보드 RQ 전환, settings Zustand
 - [완료] `generate/page.tsx` 분할 — `useEssayGeneration` 훅 (774→727줄)
