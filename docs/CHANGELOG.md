@@ -9,6 +9,14 @@
 
 ## [Unreleased]
 
+### 추가 — LLM 호출 429/503 backoff 재시도
+
+- cloud provider(google·anthropic) `generate`에 exponential backoff (3회 시도, 1→2→4s)
+- `utils/llm_retry.py`: status_code(google `.code`/anthropic·openai `.status_code`/httpx) 우선,
+  없으면 메시지 마커(429·503·RESOURCE_EXHAUSTED·UNAVAILABLE 등)로 재시도 판단. 비재시도 에러는 즉시 reraise
+- tenacity 직접 의존 명시 (transitive 의존 탈피)
+- **한계**: 무료 분당 한도(retryDelay 수십 초)는 못 풂 — 일시적 스파이크·503·짧은 429 흡수가 목적
+
 ### 추가 — API 키 DB 암호화 연결 (Rule #2 충족, ADR-027)
 
 - crypto.py(Fernet)를 드디어 연결 — 키를 localStorage 평문 → **DB 암호화 저장**으로 전환
