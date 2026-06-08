@@ -124,14 +124,14 @@ function ModelConfig({
             className="nodrag nopan"
             value={config.provider}
             onChange={(e) => onChange?.("provider", e.target.value)}
-            style={{ width: "100%", padding: "4px 6px", borderRadius: 6, border: "1.5px solid #e4e4e7", fontSize: 11, background: "#fafafa", cursor: "pointer", outline: "none" }}
+            style={{ width: "100%", padding: "5px 6px", borderRadius: 6, border: "1.5px solid #e4e4e7", fontSize: 12, background: "#fafafa", cursor: "pointer", outline: "none" }}
           >
             {["ollama","anthropic","openai","google"].map((p) => (
               <option key={p} value={p}>{PROVIDER_LABEL[p]}</option>
             ))}
           </select>
         ) : (
-          <div style={{ fontSize: 11, color: "#52525b", fontWeight: 500 }}>{PROVIDER_LABEL[config.provider] ?? config.provider}</div>
+          <div style={{ fontSize: 12, color: "#52525b", fontWeight: 500 }}>{PROVIDER_LABEL[config.provider] ?? config.provider}</div>
         )}
       </div>
       <div>
@@ -141,14 +141,14 @@ function ModelConfig({
             className="nodrag nopan"
             value={config.model}
             onChange={(e) => onChange?.("model", e.target.value)}
-            style={{ width: "100%", padding: "4px 6px", borderRadius: 6, border: "1.5px solid #e4e4e7", fontSize: 10, fontFamily: "monospace", background: "#fafafa", cursor: "pointer", outline: "none" }}
+            style={{ width: "100%", padding: "5px 6px", borderRadius: 6, border: "1.5px solid #e4e4e7", fontSize: 12, background: "#fafafa", cursor: "pointer", outline: "none" }}
           >
             {allOptions.map((m) => (
               <option key={m} value={m}>{m}</option>
             ))}
           </select>
         ) : (
-          <div style={{ fontSize: 10, color: "#52525b", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{config.model}</div>
+          <div style={{ fontSize: 12, color: "#52525b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{config.model}</div>
         )}
       </div>
     </div>
