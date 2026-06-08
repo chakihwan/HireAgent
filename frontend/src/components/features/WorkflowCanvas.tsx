@@ -82,7 +82,7 @@ const PHASE_TEXT: Record<NodePhase, string> = {
 const CLOUD_MODELS: Record<string, string[]> = {
   anthropic: ["claude-haiku-4-5-20251001", "claude-sonnet-4-6", "claude-opus-4-8"],
   openai:    ["gpt-4.1-mini", "gpt-4o-mini", "gpt-4.1", "gpt-4o", "o4-mini"],
-  google:    ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.5-pro"],
+  google:    ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-pro"],
 };
 const PROVIDER_LABEL: Record<string, string> = {
   ollama: "Ollama", anthropic: "Anthropic", openai: "OpenAI", google: "Google",

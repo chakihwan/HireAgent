@@ -6,7 +6,7 @@ import { Download, Trash2, Loader2, CheckCircle2, RefreshCw, X } from "lucide-re
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { getOllamaModels, pullOllamaModel, deleteOllamaModel, type OllamaModel, type GpuInfo } from "@/lib/api";
-import { useSettingsStore } from "@/lib/settings-store";
+import { useLLMKeys, useSaveLLMKey, useDeleteLLMKey } from "@/lib/queries";
 import type { Provider } from "@/lib/types";
 
 // ── 추천 모델 목록 ────────────────────────────────────────────────
@@ -258,33 +258,48 @@ const CLOUD_PROVIDERS: { id: Provider; label: string; placeholder: string; help:
 ];
 
 function CloudKeysSection() {
-  // 저장된 키는 Zustand store에서 직접 구독 (반응형)
-  const savedKeys = useSettingsStore((s) => s.settings.providerKeys);
-  const setProviderKey = useSettingsStore((s) => s.setProviderKey);
-  const [keys, setKeysState] = useState<Partial<Record<Provider, string>>>({});  // 편집 중
+  // 저장된 키는 DB에서 마스킹된 형태로 조회 (평문은 절대 내려오지 않음)
+  const keysQ = useLLMKeys();
+  const saveMut = useSaveLLMKey();
+  const deleteMut = useDeleteLLMKey();
+  const [keys, setKeysState] = useState<Partial<Record<Provider, string>>>({});  // 편집 입력만
   const [justSaved, setJustSaved] = useState<Provider | null>(null);
 
-  useEffect(() => {
-    setKeysState(savedKeys);
-  }, [savedKeys]);
+  const savedMap = new Map((keysQ.data ?? []).map((k) => [k.provider, k.masked]));
 
-  function handleSave(provider: Provider) {
-    setProviderKey(provider, keys[provider] ?? "");
-    setJustSaved(provider);
-    setTimeout(() => setJustSaved((p) => (p === provider ? null : p)), 1500);
+  async function handleSave(provider: Provider) {
+    const val = keys[provider] ?? "";
+    if (!val) return;
+    try {
+      await saveMut.mutateAsync({ provider, apiKey: val });
+      setKeysState((prev) => ({ ...prev, [provider]: "" }));  // 평문 입력을 화면에서 즉시 제거
+      setJustSaved(provider);
+      setTimeout(() => setJustSaved((p) => (p === provider ? null : p)), 1500);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function handleDelete(provider: Provider) {
+    try {
+      await deleteMut.mutateAsync(provider);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    }
   }
 
   return (
     <section>
       <h2 className="text-sm font-semibold text-zinc-700 mb-1">클라우드 API 키</h2>
       <p className="text-xs text-zinc-400 mb-4">
-        프로바이더당 한 번만 입력하면 모든 에이전트가 공유합니다. 키는 브라우저 localStorage에만 저장되며 서버로 전송되지 않습니다.
+        프로바이더당 한 번 입력하면 백엔드가 Fernet으로 암호화해 DB에 저장합니다. 평문 키는 화면·브라우저에 남지 않습니다.
       </p>
       <div className="grid gap-2">
         {CLOUD_PROVIDERS.map((p) => {
           const current = keys[p.id] ?? "";
-          const isDirty = current !== (savedKeys[p.id] ?? "");
-          const hasSaved = !!savedKeys[p.id];
+          const masked = savedMap.get(p.id);
+          const hasSaved = !!masked;
+          const canSave = current.length > 0 && !saveMut.isPending;
           return (
             <div key={p.id} className="rounded-xl border border-zinc-200 px-4 py-3">
               <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -296,23 +311,32 @@ function CloudKeysSection() {
                   type="password"
                   value={current}
                   onChange={(e) => setKeysState((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                  onKeyDown={(e) => { if (e.key === "Enter" && isDirty) handleSave(p.id); }}
-                  placeholder={p.placeholder}
+                  onKeyDown={(e) => { if (e.key === "Enter" && canSave) handleSave(p.id); }}
+                  placeholder={hasSaved ? `저장됨: ${masked}` : p.placeholder}
                   className="flex-1 text-sm border border-zinc-200 rounded-md px-2 py-1.5 outline-none focus:border-zinc-400 font-mono"
                 />
                 <button
                   onClick={() => handleSave(p.id)}
-                  disabled={!isDirty}
+                  disabled={!canSave}
                   className="text-xs font-medium px-3 py-1.5 rounded-md transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ background: isDirty ? "#18181b" : "#e4e4e7", color: isDirty ? "#fff" : "#a1a1aa" }}
+                  style={{ background: canSave ? "#18181b" : "#e4e4e7", color: canSave ? "#fff" : "#a1a1aa" }}
                 >
                   {justSaved === p.id ? "✓ 저장됨" : "저장"}
                 </button>
               </div>
-              {hasSaved && !isDirty && justSaved !== p.id && (
-                <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
-                  <CheckCircle2 className="size-3" /> 키 설정됨
-                </p>
+              {hasSaved && justSaved !== p.id && (
+                <div className="mt-1 flex items-center justify-between">
+                  <p className="text-xs text-emerald-600 flex items-center gap-1">
+                    <CheckCircle2 className="size-3" /> 키 설정됨 ({masked})
+                  </p>
+                  <button
+                    onClick={() => handleDelete(p.id)}
+                    disabled={deleteMut.isPending}
+                    className="text-xs text-zinc-400 hover:text-red-500 underline disabled:opacity-40"
+                  >
+                    삭제
+                  </button>
+                </div>
               )}
             </div>
           );

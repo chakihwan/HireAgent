@@ -571,3 +571,43 @@ export async function generateEssays(
     reader.releaseLock();
   }
 }
+
+// ── Settings: LLM API 키 (DB 암호화 저장) ──────────────────────────
+// 키는 PUT으로 1회 전송 → 백엔드가 Fernet 암호화해 DB 저장. 조회는 마스킹된 값만.
+
+export interface LLMKeyInfo {
+  provider: string;
+  masked: string;
+}
+
+export async function listLLMKeys(): Promise<LLMKeyInfo[]> {
+  const res = await fetch(`${API_BASE}/api/v1/settings/llm-keys`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error((err as { detail?: string }).detail ?? res.statusText);
+  }
+  const data = (await res.json()) as { keys: LLMKeyInfo[] };
+  return data.keys;
+}
+
+export async function saveLLMKey(provider: string, apiKey: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/v1/settings/llm-keys`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ provider, api_key: apiKey }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error((err as { detail?: string }).detail ?? res.statusText);
+  }
+}
+
+export async function deleteLLMKey(provider: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/v1/settings/llm-keys/${encodeURIComponent(provider)}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error((err as { detail?: string }).detail ?? res.statusText);
+  }
+}

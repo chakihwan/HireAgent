@@ -125,7 +125,7 @@ export default function GeneratePage() {
           value === "ollama" ? (ollamaModels[0] ?? "exaone3.5:7.8b")
           : value === "anthropic" ? "claude-haiku-4-5-20251001"
           : value === "openai" ? "gpt-4.1-mini"
-          : value === "google" ? "gemini-2.0-flash"
+          : value === "google" ? "gemini-2.5-flash"
           : "";
         updated.model = firstModel;
       }
@@ -144,7 +144,7 @@ export default function GeneratePage() {
           value === "ollama" ? (ollamaModels[0] ?? "exaone3.5:7.8b")
           : value === "anthropic" ? "claude-haiku-4-5-20251001"
           : value === "openai" ? "gpt-4.1-mini"
-          : "gemini-2.0-flash";
+          : "gemini-2.5-flash";
         updated.apiKey = "";
       }
       return { ...prev, [category]: { ...prev[category], [key]: updated } };
@@ -189,14 +189,11 @@ export default function GeneratePage() {
   const executeGenerate = useCallback(async () => {
     setStep("generating");
 
-    // 프로바이더별 API 키 (/models에서 입력, providerKeys에 저장)
-    const providerKeys = loadSettings().providerKeys;
-    const keyFor = (p: string) => providerKeys[p as keyof typeof providerKeys] ?? "";
-
-    // 그래프 노드 설정을 API 포맷으로 변환 (키는 프로바이더별로 주입)
+    // API 키는 body에 싣지 않는다 — 백엔드가 DB(Fernet 암호화)에서 복호화하거나
+    // ollama 기본 URL을 사용한다 (CLAUDE.md Rule #2: 평문 키 비전송)
     const agentConfig: Record<string, { provider: string; model: string; api_key: string }> = {};
     for (const [key, cfg] of Object.entries(agentConfigs)) {
-      agentConfig[key] = { provider: cfg.provider, model: cfg.model, api_key: keyFor(cfg.provider) };
+      agentConfig[key] = { provider: cfg.provider, model: cfg.model, api_key: "" };
     }
 
     const request = {
@@ -206,7 +203,7 @@ export default function GeneratePage() {
         const itemCfg: Record<string, { provider: string; model: string; api_key: string }> | undefined =
           overrides && Object.keys(overrides).length > 0
             ? Object.fromEntries(
-                Object.entries(overrides).map(([k, v]) => [k, { provider: v!.provider, model: v!.model, api_key: keyFor(v!.provider) }]),
+                Object.entries(overrides).map(([k, v]) => [k, { provider: v!.provider, model: v!.model, api_key: "" }]),
               )
             : undefined;
         return {

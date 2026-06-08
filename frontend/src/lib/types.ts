@@ -83,7 +83,7 @@ export const PROVIDER_DEFAULT_MODELS: Record<string, string> = {
   ollama: "exaone3.5:7.8b",
   anthropic: "claude-haiku-4-5-20251001",
   openai: "gpt-4o-mini",
-  google: "gemini-2.0-flash",
+  google: "gemini-2.5-flash",
 };
 
 // 무료 티어로 사용 불가한 모델 (유료 billing 연결 키에서만 동작).
@@ -92,4 +92,5 @@ export const PROVIDER_DEFAULT_MODELS: Record<string, string> = {
 // 유료 티어 사용자는 정상 사용 가능. 무료 키면 429로 실패할 수 있음을 사전 고지.
 export const PAID_TIER_ONLY_MODELS: Record<string, string> = {
   "gemini-2.5-pro": "Google 무료 티어 미지원 — 유료 billing이 연결된 키에서만 동작합니다.",
+  "gemini-2.0-flash": "Google 무료 티어 한도 0 (실측) — 무료 키는 429. 2.5-flash를 쓰거나 유료 billing이 필요합니다.",
 };

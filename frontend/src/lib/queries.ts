@@ -11,6 +11,7 @@ import {
   listProjects, indexProject, indexGitHub, indexFile, deleteProject, deleteProjectByName,
   type ProjectDocCreate, type GitHubIndexRequest, type FileUploadFields,
   getOllamaModels,
+  listLLMKeys, saveLLMKey, deleteLLMKey,
 } from "./api";
 
 // ── Query Keys ────────────────────────────────────────────────────
@@ -128,4 +129,26 @@ export function useDeleteProjectByName() {
 // ── Ollama models (+ GPU fit) ─────────────────────────────────────
 export function useOllamaModels() {
   return useQuery({ queryKey: qk.ollamaModels, queryFn: getOllamaModels });
+}
+
+// ── LLM API 키 (DB 암호화) ────────────────────────────────────────
+export function useLLMKeys() {
+  return useQuery({ queryKey: ["llm-keys"], queryFn: listLLMKeys });
+}
+
+export function useSaveLLMKey() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ provider, apiKey }: { provider: string; apiKey: string }) =>
+      saveLLMKey(provider, apiKey),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["llm-keys"] }),
+  });
+}
+
+export function useDeleteLLMKey() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (provider: string) => deleteLLMKey(provider),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["llm-keys"] }),
+  });
 }
