@@ -43,5 +43,13 @@ class LLMProvider(ABC):
     ) -> AsyncIterator[str]:
         ...
 
+    async def list_models(self) -> list[str]:
+        """이 프로바이더에서 사용 가능한 모델 ID 목록. 미지원 시 빈 리스트.
+
+        주의: '존재하는 모델'을 반환할 뿐, 호출자의 티어/quota로 실제 사용 가능한지는
+        알 수 없다 (그건 런타임 호출에서만 확정 — 무료 0 모델도 목록엔 나온다).
+        """
+        return []
+
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(model={self.model})"

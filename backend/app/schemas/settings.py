@@ -18,3 +18,9 @@ class LLMKeyInfo(BaseModel):
 
 class LLMKeysResponse(BaseModel):
     keys: list[LLMKeyInfo]
+
+
+class CloudModelsResponse(BaseModel):
+    """provider별 동적 조회 모델 목록. 키 없는 provider는 생략(프론트가 하드코딩 fallback)."""
+
+    models: dict[str, list[str]]

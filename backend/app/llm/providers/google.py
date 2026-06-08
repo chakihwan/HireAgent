@@ -63,6 +63,24 @@ class GoogleProvider(LLMProvider):
             output_tokens=getattr(usage, "candidates_token_count", 0) or 0,
         )
 
+    # 자소서 생성에 부적합한 멀티모달/특수 모델 제외 (tts·이미지·로보틱스·임베딩 등)
+    _EXCLUDE_MARKERS = ("tts", "image", "robotics", "embedding", "aqa", "vision", "learnlm")
+
+    async def list_models(self) -> list[str]:
+        """generateContent 지원 gemini 텍스트 모델만 반환."""
+        result: list[str] = []
+        pager = await self.client.aio.models.list()
+        async for m in pager:
+            if "generateContent" not in (m.supported_actions or []):
+                continue
+            name = (m.name or "").replace("models/", "")
+            if not name.startswith("gemini"):
+                continue
+            if any(x in name for x in self._EXCLUDE_MARKERS):
+                continue
+            result.append(name)
+        return result
+
     async def stream(
         self,
         prompt: str,

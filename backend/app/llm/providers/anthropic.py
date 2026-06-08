@@ -42,6 +42,10 @@ class AnthropicProvider(LLMProvider):
             output_tokens=response.usage.output_tokens,
         )
 
+    async def list_models(self) -> list[str]:
+        page = await self.client.models.list(limit=100)
+        return [m.id for m in page.data]
+
     async def stream(
         self,
         prompt: str,
