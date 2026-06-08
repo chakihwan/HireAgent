@@ -117,18 +117,24 @@ async def _stream_generation(
     accumulated_progress: list[str] = []
     accumulated_errors: list[str] = []
 
-    async for event in essay_graph.astream(initial_state, stream_mode="updates"):
-        for node_name, node_output in event.items():
-            for msg in node_output.get("progress", []):
-                accumulated_progress.append(msg)
-                yield _sse("progress", {"node": node_name, "message": msg})
-            for err in node_output.get("errors", []):
-                accumulated_errors.append(err)
-                yield _sse("error", {"message": err})
-            for draft in node_output.get("drafts", []):
-                accumulated_drafts.append(draft)
-            for ne in node_output.get("node_events", []):
-                yield _sse("node_event", ne)
+    try:
+        async for event in essay_graph.astream(initial_state, stream_mode="updates"):
+            for node_name, node_output in event.items():
+                for msg in node_output.get("progress", []):
+                    accumulated_progress.append(msg)
+                    yield _sse("progress", {"node": node_name, "message": msg})
+                for err in node_output.get("errors", []):
+                    accumulated_errors.append(err)
+                    yield _sse("error", {"message": err})
+                for draft in node_output.get("drafts", []):
+                    accumulated_drafts.append(draft)
+                for ne in node_output.get("node_events", []):
+                    yield _sse("node_event", ne)
+    except Exception as e:
+        # LLM 호출 실패(429 등)로 그래프가 중단되면 스트림을 깔끔히 error로 닫는다.
+        # try/except가 없으면 예외가 generator 밖으로 나가 ERR_INCOMPLETE_CHUNKED_ENCODING이 된다.
+        yield _sse("error", {"message": _format_llm_error(e)})
+        return
 
     char_targets = {item.category: item.char_limit for item in req.items}
     drafts = [
@@ -175,6 +181,22 @@ async def _stream_generation(
 
 def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+def _format_llm_error(e: Exception) -> str:
+    """LLM 호출 예외를 사용자 친화 메시지로. 평문 키 등 민감정보는 싣지 않는다."""
+    msg = str(e)
+    upper = msg.upper()
+    if "429" in msg or "RESOURCE_EXHAUSTED" in upper:
+        return (
+            "LLM 호출 할당량 초과 (429). 무료 티어 분당/일일 한도일 수 있어요. "
+            "잠시 후 다시 시도하거나, 일부 노드를 ollama로 바꿔 호출 수를 줄여보세요."
+        )
+    if "401" in msg or "403" in msg or "API_KEY" in upper or "UNAUTHENT" in upper:
+        return "LLM 인증 실패 — API 키를 확인하세요 (모델 관리에서 키 재저장)."
+    if "503" in msg or "UNAVAILABLE" in upper:
+        return "LLM 서버 일시 과부하 (503). 잠시 후 다시 시도해 주세요."
+    return f"생성 중 오류가 발생했습니다: {msg[:200]}"
 
 
 @router.post("/generate")
