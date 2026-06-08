@@ -611,3 +611,15 @@ export async function deleteLLMKey(provider: string): Promise<void> {
     throw new Error((err as { detail?: string }).detail ?? res.statusText);
   }
 }
+
+// provider별 동적 모델 목록 (키 있는 provider만). 실패 시 빈 → 프론트 하드코딩 fallback.
+export async function getCloudModels(): Promise<Record<string, string[]>> {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/settings/cloud-models`);
+    if (!res.ok) return {};
+    const data = (await res.json()) as { models: Record<string, string[]> };
+    return data.models ?? {};
+  } catch {
+    return {};
+  }
+}

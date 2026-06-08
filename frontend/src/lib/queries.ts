@@ -11,7 +11,7 @@ import {
   listProjects, indexProject, indexGitHub, indexFile, deleteProject, deleteProjectByName,
   type ProjectDocCreate, type GitHubIndexRequest, type FileUploadFields,
   getOllamaModels,
-  listLLMKeys, saveLLMKey, deleteLLMKey,
+  listLLMKeys, saveLLMKey, deleteLLMKey, getCloudModels,
 } from "./api";
 
 // ── Query Keys ────────────────────────────────────────────────────
@@ -150,5 +150,14 @@ export function useDeleteLLMKey() {
   return useMutation({
     mutationFn: (provider: string) => deleteLLMKey(provider),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["llm-keys"] }),
+  });
+}
+
+// 클라우드 모델 동적 목록 — 자주 안 바뀌므로 길게 캐싱
+export function useCloudModels() {
+  return useQuery({
+    queryKey: ["cloud-models"],
+    queryFn: getCloudModels,
+    staleTime: 1000 * 60 * 30,
   });
 }

@@ -18,6 +18,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { AgentKey, ProviderConfig } from "@/lib/types";
+import { useCloudModels } from "@/lib/queries";
 
 // ── 타입 ──────────────────────────────────────────────────────────
 
@@ -99,13 +100,17 @@ function ModelConfig({
   ollamaModels: string[];
   onChange?: (field: keyof ProviderConfig, value: string) => void;
 }) {
+  // 클라우드 모델 동적 목록 (키 있는 provider만). 훅은 early return 전에 호출.
+  const cloudModelsQ = useCloudModels();
+
   if (!config || !agentKey) {
     return <div style={{ fontSize: 10, color: "#a1a1aa", padding: "2px 0 4px" }}>KURE-v1 벡터 검색</div>;
   }
 
+  // 동적 목록 우선, 없으면(키 미등록·조회 실패) 하드코딩 CLOUD_MODELS fallback
   const modelOptions = config.provider === "ollama"
     ? (ollamaModels.length ? ollamaModels : [config.model])
-    : (CLOUD_MODELS[config.provider] ?? [config.model]);
+    : (cloudModelsQ.data?.[config.provider] ?? CLOUD_MODELS[config.provider] ?? [config.model]);
 
   // 현재 값이 목록에 없으면 추가 (직접 입력한 커스텀 모델)
   const allOptions = modelOptions.includes(config.model) ? modelOptions : [config.model, ...modelOptions];
