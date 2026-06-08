@@ -3,6 +3,7 @@ from typing import AsyncIterator
 from anthropic import AsyncAnthropic
 
 from app.llm.base import LLMProvider, LLMResponse
+from app.utils.llm_retry import llm_retry
 
 # 기본 모델: 비용 절감을 위해 haiku, 에이전트 별로 오버라이드 가능
 DEFAULT_MODEL = "claude-haiku-4-5-20251001"
@@ -15,6 +16,7 @@ class AnthropicProvider(LLMProvider):
         super().__init__(api_key, model)
         self.client = AsyncAnthropic(api_key=api_key)
 
+    @llm_retry
     async def generate(
         self,
         prompt: str,

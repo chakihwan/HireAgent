@@ -4,6 +4,7 @@ from google import genai
 from google.genai import types
 
 from app.llm.base import LLMProvider, LLMResponse
+from app.utils.llm_retry import llm_retry
 
 DEFAULT_MODEL = "gemini-2.5-flash"
 
@@ -40,6 +41,7 @@ class GoogleProvider(LLMProvider):
             thinking_config=thinking,
         )
 
+    @llm_retry
     async def generate(
         self,
         prompt: str,

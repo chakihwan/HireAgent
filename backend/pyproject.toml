@@ -24,6 +24,7 @@ dependencies = [
     "openai>=1.50.0",
     "google-genai>=1.0.0",
     "httpx>=0.27.0",
+    "tenacity>=8.0.0",  # LLM 호출 429/503 재시도
     # Agents & RAG
     "langgraph>=0.2.0",
     "langchain>=0.3.0",
