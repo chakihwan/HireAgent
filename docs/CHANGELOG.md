@@ -9,6 +9,14 @@
 
 ## [Unreleased]
 
+### 추가 — 클라우드 모델 목록 동적 로딩
+
+- 하드코딩 `CLOUD_MODELS` → 실제 ListModels API 조회 (DB 키 있는 provider만, 없으면 하드코딩 fallback)
+- 백엔드: `base.list_models` + google(텍스트만 필터)·anthropic 오버라이드, `GET /settings/cloud-models`
+- 프론트: `useCloudModels`(React Query 30분 캐싱), `ModelConfig`에서 동적 우선·fallback
+- 효과: gemini-3.5-flash 등 **최신 모델 자동 반영** + deprecated/멀티모달(tts·image) 제거
+- 한계: ListModels는 '존재하는 모델'만 — 티어 가용성은 모름(무료 0 모델도 표시). PAID_TIER 경고가 담당
+
 ### 추가 — LLM 호출 429/503 backoff 재시도
 
 - cloud provider(google·anthropic) `generate`에 exponential backoff (3회 시도, 1→2→4s)
