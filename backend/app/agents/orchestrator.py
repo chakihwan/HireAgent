@@ -1,3 +1,7 @@
+from collections import defaultdict
+from collections.abc import Callable
+from dataclasses import dataclass, field
+
 from langgraph.graph import END, StateGraph
 from langgraph.types import Send
 
@@ -15,27 +19,14 @@ MIN_EVAL_SCORE = 6.0
 
 # ── 항목별 서브그래프 (동적 구성) ──────────────────────────────
 #
-# 노드는 모두 ItemState를 받아 dict를 반환하는 공통 시그니처라 타입 시퀀스로
-# 조립할 수 있다. compress만 "조건 게이트" — 글자수가 안 맞을 때만 실행되고
-# 수렴(또는 MAX_ITERATIONS)까지 반복한다. 향후 사용자가 flow를 커스텀 (ADR-028).
-
-NODE_REGISTRY = {
-    "retrieve": rag_retriever_node,
-    "write": essay_writer_node,
-    "compress": compressor_node,
-    "evaluate": evaluator_node,
-}
-
-# 기본 파이프라인 — 기존 고정 그래프와 동등. 사용자 정의 flow의 기본값.
-DEFAULT_ITEM_FLOW = ["retrieve", "write", "compress", "evaluate"]
+# 모든 노드는 ItemState를 받아 dict를 반환하는 공통 시그니처라 그래프로 조립할 수 있다.
+# 노드 메타(NodeSpec)로 종류(linear/gate)와 State 입출력 계약(requires/provides)을 선언해,
+# gate(조건 루프)를 '위치'가 아닌 '속성'으로 처리하고 잘못된 노드 조합을 빌드 시 검증한다.
+# 자료구조는 그래프(nodes+edges)라 단계 4의 완전 자유 DAG까지 연속된다 (ADR-028).
 
 
-def _make_compress_router(next_node: str):
-    """compress 게이트 라우터. 글자수 OK 또는 재시도 초과면 next로 탈출, 아니면 compress 반복.
-
-    compress로 진입하는 엣지와 compress 자기 엣지 양쪽에 쓰여, write 결과가 이미
-    적정 글자수면 compress를 건너뛴다 (기존 _needs_compression과 동일 동작).
-    """
+def _make_compress_router(next_node: str) -> Callable[[ItemState], str]:
+    """gate 라우터: 글자수 OK 또는 재시도 초과면 'next'(탈출), 아니면 'loop'(반복)."""
     def router(state: ItemState) -> str:
         result = validate_chars(state["content"], state["item"]["char_limit"])
         if result == "ok" or state.get("iteration", 1) >= MAX_ITERATIONS:
@@ -45,40 +36,121 @@ def _make_compress_router(next_node: str):
     return router
 
 
-def build_item_graph(flow: list[str]) -> StateGraph:
-    """노드 타입 시퀀스 → 항목 서브그래프 동적 구성.
+@dataclass(frozen=True)
+class NodeSpec:
+    """노드 메타 — 함수 + 종류 + State 입출력 계약.
 
-    선형 파이프라인이며 compress 노드는 조건 게이트(글자수 수렴 루프)로 연결한다.
-    완전 자유 DAG 편집은 후속 — 현재는 선형 + compress 루프.
+    kind="gate"는 조건 루프 노드(현재 compress). gate_router가 loop/next를 결정한다.
+    requires/provides는 '의미있게 채워지는' State 키 계약 — 빌드 시 requires를 앞 노드가
+    제공했는지 검증한다 (예: content는 write가 만든다 → evaluate를 write 앞에 두면 거부).
     """
-    unknown = [n for n in flow if n not in NODE_REGISTRY]
+
+    func: Callable
+    kind: str = "linear"  # "linear" | "gate"
+    requires: frozenset[str] = field(default_factory=frozenset)
+    provides: frozenset[str] = field(default_factory=frozenset)
+    gate_router: Callable[[str], Callable] | None = None
+
+
+NODE_REGISTRY: dict[str, NodeSpec] = {
+    "retrieve": NodeSpec(rag_retriever_node, provides=frozenset({"rag_context"})),
+    "write": NodeSpec(essay_writer_node, provides=frozenset({"content"})),
+    "compress": NodeSpec(
+        compressor_node, kind="gate",
+        requires=frozenset({"content"}), provides=frozenset({"content"}),
+        gate_router=_make_compress_router,
+    ),
+    "evaluate": NodeSpec(evaluator_node, requires=frozenset({"content"})),
+}
+
+# fan_out이 ItemState에 의미있게 주입하는 초기 키 (State 계약 검증의 시작 집합)
+_INITIAL_KEYS = frozenset({"item", "jd_analysis", "target_company", "agent_config", "user_id"})
+
+
+@dataclass
+class WorkflowDef:
+    """항목 서브그래프 정의. edges가 비면 nodes 순서대로 선형 연결한다.
+
+    선형은 그래프의 특수 케이스 — 단계 4(완전 자유 DAG)는 edges를 명시해 분기/병합한다.
+    """
+
+    nodes: list[str]
+    edges: list[tuple[str, str]] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        if not self.edges and self.nodes:
+            self.edges = [
+                (self.nodes[i], self.nodes[i + 1]) for i in range(len(self.nodes) - 1)
+            ]
+
+    @property
+    def entry(self) -> str:
+        return self.nodes[0]
+
+
+# 기본 파이프라인 — 기존 고정 그래프와 동등. 사용자 정의 flow의 기본값.
+DEFAULT_ITEM_FLOW = ["retrieve", "write", "compress", "evaluate"]
+
+
+def validate_workflow(wf: WorkflowDef) -> None:
+    """노드 타입 + State 계약 검증. 잘못된 조합은 빌드 전에 막는다."""
+    if not wf.nodes:
+        raise ValueError("워크플로우에 노드가 없습니다")
+    unknown = [n for n in wf.nodes if n not in NODE_REGISTRY]
     if unknown:
         raise ValueError(f"알 수 없는 노드 타입: {unknown}")
-    if not flow:
-        raise ValueError("flow가 비어 있습니다")
+
+    # State 계약 — 선형 순서대로 requires가 앞에서 제공됐는지 (DAG 위상정렬은 단계 4)
+    available = set(_INITIAL_KEYS)
+    for nid in wf.nodes:
+        spec = NODE_REGISTRY[nid]
+        missing = spec.requires - available
+        if missing:
+            raise ValueError(
+                f"노드 '{nid}'의 필수 입력 {set(missing)}을(를) 앞 노드가 제공하지 않습니다 "
+                f"('content'는 write가 만듭니다)"
+            )
+        available |= spec.provides
+
+
+def build_item_graph(workflow: WorkflowDef | list[str]) -> StateGraph:
+    """워크플로우 정의 → 항목 서브그래프 동적 구성.
+
+    노드 종류(NodeSpec.kind)로 엣지를 연결한다. gate 노드는 자기 루프 + 조건 탈출이고,
+    gate로 들어오는 엣지도 조건부(이미 충족이면 건너뜀)로 만든다 — 위치가 아닌 속성 기반.
+    """
+    wf = WorkflowDef(workflow) if isinstance(workflow, list) else workflow
+    validate_workflow(wf)
+
+    out_edges: dict[str, list[str]] = defaultdict(list)
+    for a, b in wf.edges:
+        out_edges[a].append(b)
 
     g = StateGraph(ItemState)
-    for node_id in flow:
-        g.add_node(node_id, NODE_REGISTRY[node_id])
-    g.set_entry_point(flow[0])
+    for nid in wf.nodes:
+        g.add_node(nid, NODE_REGISTRY[nid].func)
+    g.set_entry_point(wf.entry)
 
-    for i, node_id in enumerate(flow):
-        next_node = flow[i + 1] if i + 1 < len(flow) else END
-        if node_id == "compress":
-            # compress 자기 엣지: 수렴까지 반복, 탈출 시 next
-            g.add_conditional_edges(
-                node_id, _make_compress_router(next_node),
-                {"loop": "compress", "next": next_node},
-            )
-        elif next_node == "compress":
-            # compress 진입도 조건부 — 이미 글자수 OK면 compress를 건너뛴다
-            after = flow[i + 2] if i + 2 < len(flow) else END
-            g.add_conditional_edges(
-                node_id, _make_compress_router(after),
-                {"loop": "compress", "next": after},
-            )
+    for nid in wf.nodes:
+        spec = NODE_REGISTRY[nid]
+        nexts: list = out_edges[nid] or [END]
+        if spec.kind == "gate":
+            # gate 자기 엣지: 수렴까지 반복, 탈출 시 next
+            after = nexts[0]
+            assert spec.gate_router is not None
+            g.add_conditional_edges(nid, spec.gate_router(after), {"loop": nid, "next": after})
         else:
-            g.add_edge(node_id, next_node)
+            for nxt in nexts:
+                nxt_spec = NODE_REGISTRY.get(nxt) if nxt is not END else None
+                if nxt_spec is not None and nxt_spec.kind == "gate":
+                    # 다음이 gate면 진입도 조건부 — 이미 충족이면 gate를 건너뛴다
+                    gate_after = (out_edges[nxt] or [END])[0]
+                    assert nxt_spec.gate_router is not None
+                    g.add_conditional_edges(
+                        nid, nxt_spec.gate_router(gate_after), {"loop": nxt, "next": gate_after}
+                    )
+                else:
+                    g.add_edge(nid, nxt)
     return g
 
 
