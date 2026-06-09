@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
-import { Plus, Trash2, ExternalLink } from "lucide-react";
+import { Plus, Trash2, ExternalLink, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/EmptyState";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -147,10 +148,15 @@ export default function JobsPage() {
 
       {loading && <p className="text-sm text-zinc-400">불러오는 중...</p>}
 
-      {!loading && jobs.length === 0 && (
+      {!loading && jobs.length === 0 && !showForm && (
         <Card>
-          <CardContent className="pt-8 pb-8 text-center">
-            <p className="text-sm text-zinc-400">등록된 지원이 없습니다.</p>
+          <CardContent className="p-0">
+            <EmptyState
+              icon={<Briefcase className="size-6" />}
+              title="아직 등록된 지원이 없어요"
+              description="지원할 회사와 공고를 등록하면 자소서를 연결하고 합격 현황을 추적할 수 있어요."
+              action={{ label: "+ 첫 지원 등록", onClick: () => setShowForm(true) }}
+            />
           </CardContent>
         </Card>
       )}

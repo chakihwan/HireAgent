@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Trash2, Star, StarOff, Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Trash2, Star, StarOff, Copy, Check, ChevronDown, ChevronUp, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/EmptyState";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -207,11 +208,21 @@ export default function LibraryPage() {
 
       {!loading && filtered.length === 0 && (
         <Card>
-          <CardContent className="pt-8 pb-8 text-center">
-            <p className="text-sm text-zinc-400">저장된 자소서가 없습니다.</p>
-            <p className="text-xs text-zinc-400 mt-1">
-              자소서 생성 후 결과 화면에서 저장하면 여기에 표시됩니다.
-            </p>
+          <CardContent className="p-0">
+            {items.length === 0 ? (
+              <EmptyState
+                icon={<FileText className="size-6" />}
+                title="아직 저장된 자소서가 없어요"
+                description="자소서를 생성하고 결과 화면에서 저장하면 여기에 모여요."
+                action={{ label: "+ 자소서 생성", href: "/generate" }}
+              />
+            ) : (
+              <EmptyState
+                icon={<FileText className="size-6" />}
+                title="조건에 맞는 자소서가 없어요"
+                description="필터를 바꿔보세요."
+              />
+            )}
           </CardContent>
         </Card>
       )}
