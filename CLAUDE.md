@@ -256,6 +256,7 @@ export function EssayForm({ onSubmit }: { onSubmit: (item: EssayItem) => void })
 | 025 | 항목별 독립 에이전트 설정 | 자기소개=Claude/지원동기=로컬 등 항목마다 다른 LLM |
 | 026 | 자가 평가 루브릭화 + 생성 과정 투명성 | 5항목×2점 채점·백엔드 합산, draft_history로 압축 과정 노출 |
 | 027 | API 키 DB 암호화 연결 (crypto.py → UserLLMConfig) | crypto 미연결·평문 localStorage/body 해소, Rule #2 충족 |
+| 028 | 동적 워크플로우 그래프 (사용자 노드 편집 토대) | NODE_REGISTRY+build_item_graph, 현재/미래 아키텍처+단계 로드맵(→완전 DAG) |
 
 상세 내용: `docs/adr/` 폴더 + `docs/architecture.md`
 

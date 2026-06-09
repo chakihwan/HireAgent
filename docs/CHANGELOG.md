@@ -9,6 +9,14 @@
 
 ## [Unreleased]
 
+### 추가 — 동적 워크플로우 그래프 빌드 토대 (PoC, ADR-028)
+
+- 고정 `_build_item_graph` → `NODE_REGISTRY` + `build_item_graph(flow)` 동적 빌드
+- `DEFAULT_ITEM_FLOW`로 기존과 **동등**(노드 4·엣지 7 동일 검증) — 회귀 없는 리팩토링
+- compress 조건 게이트 일반화 (`_make_compress_router`: 진입·자기루프 양쪽 조건)
+- 사용자 정의 노드 편집(요구사항 F-8.4, 최종 목표 완전 자유 DAG)의 **백엔드 토대**
+- **ADR-028에 현재/미래 아키텍처 + 단계 로드맵 기록** (고정 → PoC → on/off → 순서 → 완전 DAG)
+
 ### 추가 — 클라우드 모델 목록 동적 로딩
 
 - 하드코딩 `CLOUD_MODELS` → 실제 ListModels API 조회 (DB 키 있는 provider만, 없으면 하드코딩 fallback)

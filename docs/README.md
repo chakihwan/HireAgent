@@ -96,6 +96,7 @@ docker compose up
 | [025](adr/025-per-item-agent-config.md) | 항목별 독립 에이전트 설정 (항목마다 다른 LLM) | 채택 |
 | [026](adr/026-evaluation-rubric-and-transparency.md) | 자가 평가 루브릭화 + 생성 과정 투명성 (draft_history) | 채택 |
 | [027](adr/027-api-key-db-encryption.md) | API 키 DB 암호화 연결 (crypto.py → UserLLMConfig, Rule #2) | 채택 |
+| [028](adr/028-dynamic-workflow-graph.md) | 동적 워크플로우 그래프 (사용자 노드 편집 토대, 현재/미래 설계도) | 채택 |
 
 ---
 
