@@ -149,14 +149,23 @@ class EssayState(TypedDict):
 | LLM 출력 후처리 | `backend/app/utils/text_cleaner.py` | `clean_llm_output()` + `detect_output_issue()` (v0.7.4, ADR-022) |
 | 기술 키워드 자동 추출 | `backend/app/rag/tech_extractor.py` | ~150 패턴 매칭, 한국어 안전 boundary (v0.7.4, ADR-021) |
 | RAG 검색 노드 | `backend/app/agents/rag_retriever.py` | KURE-v1 + pgvector cosine + tech_whitelist 수집 (v0.7.4) |
-| 오케스트레이션 | `backend/app/agents/orchestrator.py` | `Send` fan-out (`item.agent_config` 우선) + SSE 품질 경고 + node_events 전달 (v0.7.7) |
-| API 엔드포인트 | `backend/app/api/v1/essays.py` | SSE (`/generate`, `node_event` 포함) + 동기 (`/generate/sync`), 항목별 config 빌드 |
-| 워크플로우 UI | `frontend/src/components/features/WorkflowCanvas.tsx` | React Flow 풀스크린 그래프, 병렬 시각화 + 노드 인라인 설정 (v0.7.7, ADR-024) |
+| 오케스트레이션 | `backend/app/agents/orchestrator.py` | `Send` fan-out + **동적 그래프 빌드**(`build_item_graph`/`NodeSpec`/`WorkflowDef`, flow별 캐시, ADR-028) + SSE 품질 경고 |
+| API 엔드포인트 | `backend/app/api/v1/essays.py` | SSE (`/generate`) + 동기 (`/generate/sync`), `_resolve_api_key`(DB 키 복호화) + flow 전달 + 스트림 에러 처리(`_format_llm_error`) |
+| 워크플로우 UI | `frontend/src/components/features/WorkflowCanvas.tsx` | React Flow 풀스크린 그래프, 병렬 시각화 + 노드 인라인 설정 + 꺼진 노드 흐림(ADR-028 단계 2, ADR-024) |
+| LLM 재시도 | `backend/app/utils/llm_retry.py` | 429/503 exponential backoff (cloud provider `generate`) |
+| API 키 암호화 | `backend/app/services/settings.py` + `utils/crypto.py` | Fernet 저장/복호화, settings API (PUT/GET/DELETE), ADR-027 |
+| 클라우드 모델 동적 로딩 | `GET /settings/cloud-models` + `provider.list_models()` | 하드코딩 대신 ListModels 조회 (키 있는 provider만, fallback) |
 
-**그래프 구조 (실제 구현):**
-- **메인 그래프** (`EssayState`): `jd_analyzer → Send 분기 → _process_item (병렬, 결과 + 품질 경고) → END`
-- **항목 서브그래프** (`ItemState`): `retrieve(RAG + 화이트리스트) → write → [validate 분기] → compress(루프, iteration 증가) → evaluate → END`
-- `Send` API로 각 항목이 독립된 `ItemState`로 fan-out, reducer로 fan-in
+**그래프 구조 (동적 빌드, [ADR-028](adr/028-dynamic-workflow-graph.md)):**
+- 항목 서브그래프는 `build_item_graph(flow)`로 **런타임 구성**된다 (고정 컴파일 아님). 노드 메타
+  `NodeSpec`(kind·State 계약 requires/provides) + 그래프 정의 `WorkflowDef`(nodes+edges)로 조립.
+  `DEFAULT_ITEM_FLOW`는 기존 고정 그래프와 **동등**(노드 4·엣지 7).
+- **메인 그래프** (`EssayState`): `jd_analyzer → Send fan-out → _process_item(flow별 컴파일 그래프 캐시) → END`
+- **기본 항목 flow** (`ItemState`): `retrieve → write → [compress gate 루프] → evaluate`.
+  compress는 `NodeSpec.kind="gate"` — 글자수 안 맞을 때만 실행/반복 (진입·자기 엣지 조건부).
+- **노드 on/off** (ADR-028 단계 2): 생성 요청의 `flow`에서 RAG·압축·평가를 제외 가능.
+  `write`는 State 계약(content 생성)이라 빼면 빌드가 `ValueError`로 거부.
+- `Send` API로 각 항목이 독립 `ItemState`로 fan-out, reducer로 fan-in.
 
 **자소서 출력 다층 방어 (v0.7.4, ADR-022):**
 
@@ -297,33 +306,34 @@ write 노드 (essay_writer.py):
 
 ## 4. 보안 아키텍처
 
-### 4.1 API 키 흐름
+### 4.1 API 키 흐름 (구현 완료, [ADR-027](adr/027-api-key-db-encryption.md))
 
 ```
-[Frontend] 사용자가 설정 페이지에서 Claude API 키 입력
-    ↓ HTTPS (TLS)
-[Backend] 키 수신 (POST /api/v1/settings/llm-keys)
+[저장]
+[Frontend] /models 에서 키 입력
+    ↓ HTTPS (평문 1회 전송)
+[Backend] PUT /api/v1/settings/llm-keys (services/settings.set_key)
     ↓
-[Backend] utils/crypto.py: encrypt_api_key()  ← Fernet AES-256
+[Backend] utils/crypto.encrypt_api_key()  ← Fernet AES-256
     ↓
-[PostgreSQL] user_llm_configs.encrypted_keys (JSONB) 저장
+[PostgreSQL] user_llm_configs.encrypted_keys (JSONB) — Fernet 토큰 저장
 
-사용 시:
-[LangGraph] LLM Factory가 키 필요
+[조회 표시] GET /settings/llm-keys → decrypt → mask_key → 마스킹된 값만 (평문 비노출)
+
+[생성 사용]
+[Backend] essays._resolve_api_key(db, provider, body_key)
+    ↓  ollama → 서버 URL / 클라우드 → body_key 우선, 없으면 DB 복호화
+[Backend] services/settings.get_decrypted_key() → 평문
     ↓
-[Backend] DB에서 암호화 토큰 조회
-    ↓
-[Backend] utils/crypto.py: decrypt_api_key() → 변수에 평문
-    ↓
-[LLM Factory] LLMProvider 인스턴스 생성 (생성자에 키 전달)
-    ↓
-[Backend] 호출 직후 `del api_key` 로 메모리에서 평문 제거
+[LLM Factory] LLMProvider 인스턴스 생성 (생성자에 키)
     ↓ HTTPS
-[External LLM API] 호출
+[External LLM API] 호출 (429/503은 llm_retry backoff)
 ```
 
-**주의 — 개발용 임시 엔드포인트**:
-M1의 `POST /api/v1/llm/test`는 request body에 API 키를 평문으로 받는다. 이는 **개발/디버깅 전용**이며 M3 설정 페이지 구현 후 제거된다. 운영에서는 반드시 위의 암호화 플로우를 따른다.
+- **평문은 localStorage·생성 요청 body 어디에도 남지 않는다.** 프론트는 생성 시 `agent_config.api_key=""` 로 보내고, 백엔드가 DB에서 복호화한다.
+- 복호화 평문은 `agent_config` dict에 그래프 실행 동안 머물며 로그·응답엔 싣지 않는다 (완전 즉시 제거는 구조상 미완 — ADR-027 트레이드오프).
+
+**개발용 임시 엔드포인트**: `POST /api/v1/llm/test`는 body로 평문 키를 받는 디버깅 전용. 운영 플로우는 위 암호화 경로를 따른다.
 
 ### 4.2 멀티테넌시
 
@@ -410,6 +420,11 @@ flowchart LR
 | tech_stack 자동 추출 | [021](adr/021-tech-stack-auto-extraction.md) | 키워드 매칭 (LLM 안 씀), 한국어 안전 boundary |
 | 자소서 출력 다층 방어 | [022](adr/022-essay-output-defense-layers.md) | 프롬프트 강화 + 화이트리스트 + 후처리 + 품질 경고 |
 | SPA 사이트 URL 정책 | [023](adr/023-spa-site-url-policy.md) | 사람인/잡코리아 사전 차단 + 사용자 PC 북마클릿 우회 |
+| React Flow 워크플로우 빌더 | [024](adr/024-react-flow-workflow-builder.md) | 자소서 생성 UI를 노드 그래프로 (시각화) |
+| 항목별 에이전트 설정 | [025](adr/025-per-item-agent-config.md) | 항목마다 다른 LLM |
+| 평가 루브릭 + 생성 투명성 | [026](adr/026-evaluation-rubric-and-transparency.md) | 5항목 채점 + draft_history |
+| API 키 DB 암호화 연결 | [027](adr/027-api-key-db-encryption.md) | crypto.py → DB Fernet, 평문 비전송 |
+| 동적 워크플로우 그래프 | [028](adr/028-dynamic-workflow-graph.md) | NodeSpec/WorkflowDef 런타임 빌드, 사용자 노드 편집 토대 |
 
 ---
 
@@ -421,3 +436,4 @@ flowchart LR
 | v0.2 | 2026-05-22 | 아키텍처 검토 반영: 파이프라인 병렬 흐름 명확화, Ollama 위치 분리, SSE 스트리밍 추가, ADR 010~014 반영, LLM 테스트 엔드포인트 보안 경고 |
 | v0.3 | 2026-05-26 | M2 매핑표에 `text_cleaner.py` / `rag_retriever.py` 추가, §3.4 후처리 설명 갱신 (`clean_llm_output` + 연쇄 버그 설명), §6 ADR 인덱스 015~020 보강 |
 | v0.4 | 2026-05-27 | M2 매핑표에 `tech_extractor.py` 추가 + 자소서 다층 방어 테이블, §3.5 자동 추출(D) 흐름 추가, §3.6 SPA 사이트 차단/북마클릿 흐름 추가, §6 ADR 021~023 추가 |
+| v0.5 | 2026-06-09 | §2 그래프를 **동적 빌드**로 갱신(`NodeSpec`/`WorkflowDef`/flow, ADR-028) + 노드 on/off, M2 매핑에 동적 그래프·`llm_retry`·키 암호화·동적 모델 추가, §4.1 키 흐름을 구현 완료 상태(`_resolve_api_key`·평문 비전송, ADR-027)로 갱신 |
