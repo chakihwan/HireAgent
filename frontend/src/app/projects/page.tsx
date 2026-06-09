@@ -406,7 +406,7 @@ function AddFormPanel({
               <Label className="text-xs text-zinc-600">유형</Label>
               <Select value={sourceType} onValueChange={v => v && setSourceType(v)}>
                 <SelectTrigger className="mt-1.5 h-8 text-sm">
-                  <SelectValue />
+                  <SelectValue>{(v) => SOURCE_LABELS[v as string] ?? (v as string)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="essay">기존 자소서</SelectItem>

@@ -189,7 +189,7 @@ export default function JobsPage() {
                     onValueChange={(v) => v && handleStatusChange(job.id, v)}
                   >
                     <SelectTrigger className="w-32 h-7 text-xs">
-                      <SelectValue />
+                      <SelectValue>{(v) => STATUS_LABELS[v as string] ?? (v as string)}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(STATUS_LABELS).map(([val, label]) => (

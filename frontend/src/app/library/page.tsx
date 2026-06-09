@@ -18,6 +18,13 @@ import { useLibrary, useUpdateLibrary, useDeleteLibrary } from "@/lib/queries";
 
 const CATEGORY_ALL = "__all__";
 
+// 필터 select의 내부 value → 표시 라벨 (Base UI Select.Value는 라벨 자동 매핑 안 함)
+const FINAL_FILTER_LABELS: Record<string, string> = {
+  all: "전체",
+  final: "최종만",
+  draft: "초안만",
+};
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("ko-KR", {
     year: "numeric",
@@ -168,7 +175,7 @@ export default function LibraryPage() {
       <div className="flex gap-3 flex-wrap">
         <Select value={filterCategory} onValueChange={(v) => v && setFilterCategory(v)}>
           <SelectTrigger className="w-36">
-            <SelectValue />
+            <SelectValue>{(v) => (v === CATEGORY_ALL ? "전체 항목" : (v as string))}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={CATEGORY_ALL}>전체 항목</SelectItem>
@@ -183,7 +190,9 @@ export default function LibraryPage() {
           onValueChange={(v) => v && setFilterFinal(v as "all" | "final" | "draft")}
         >
           <SelectTrigger className="w-32">
-            <SelectValue />
+            <SelectValue>
+              {(v) => FINAL_FILTER_LABELS[v as string] ?? (v as string)}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">전체</SelectItem>
