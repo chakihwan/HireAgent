@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
+import { NavLinks } from "@/components/NavLinks";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,26 +36,7 @@ export default function RootLayout({
             <Link href="/" className="text-base font-semibold text-zinc-900 hover:text-zinc-700 transition-colors">
               HireAgent
             </Link>
-            <nav className="flex items-center gap-4">
-              <Link href="/" className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors">
-                홈
-              </Link>
-              <Link href="/generate" className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors">
-                자소서 생성
-              </Link>
-              <Link href="/library" className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors">
-                라이브러리
-              </Link>
-              <Link href="/projects" className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors">
-                내 데이터
-              </Link>
-              <Link href="/jobs" className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors">
-                지원 관리
-              </Link>
-              <Link href="/models" className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors flex items-center gap-1">
-                🤖 모델 & API
-              </Link>
-            </nav>
+            <NavLinks />
           </div>
         </header>
         <main className="flex-1">
