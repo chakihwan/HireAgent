@@ -40,6 +40,7 @@ type ConfigNodeData = {
   config?: ProviderConfig;
   phase: NodePhase; detail: string; iterations: number;
   editable: boolean; ollamaModels: string[];
+  disabled?: boolean;            // 파이프라인에서 꺼진 노드 (흐리게 표시)
   onConfigChange?: (key: AgentKey, field: keyof ProviderConfig, value: string) => void;
 };
 
@@ -53,6 +54,7 @@ type ItemAgentNodeData = {
   isOverridden: boolean;         // 전역과 다른 설정이면 true
   phase: NodePhase; detail: string; iterations: number;
   editable: boolean; ollamaModels: string[];
+  disabled?: boolean;            // 파이프라인에서 꺼진 노드 (흐리게 표시)
   // 항목별 config 변경 콜백 (category + agentKey 이미 바인딩)
   onItemConfigChange?: (field: keyof ProviderConfig, value: string) => void;
 };
@@ -190,15 +192,20 @@ function ConfigNode({ data: d }: NodeProps) {
       border: `2px solid ${PHASE_BORDER[data.phase]}`,
       background: PHASE_BG[data.phase],
       boxShadow: PHASE_GLOW[data.phase],
-      transition: "border-color 0.25s, box-shadow 0.25s, background 0.25s",
+      transition: "border-color 0.25s, box-shadow 0.25s, background 0.25s, opacity 0.2s",
       fontFamily: "inherit",
+      opacity: data.disabled ? 0.45 : 1,
+      filter: data.disabled ? "grayscale(0.7)" : "none",
     }}>
       <Handle type="target" position={Position.Left} style={{ opacity: 0, pointerEvents: "none" }} />
       <div style={{ padding: "12px 14px 10px", borderBottom: "1px solid #f4f4f5" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 24 }}>{data.icon}</span>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 14, color: "#18181b" }}>{data.label}</div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: "#18181b" }}>
+              {data.label}
+              {data.disabled && <span style={{ fontSize: 9, marginLeft: 6, color: "#ef4444", fontWeight: 600 }}>건너뜀</span>}
+            </div>
             <div style={{ fontSize: 10, color: "#a1a1aa", marginTop: 1 }}>{data.role}</div>
           </div>
         </div>
@@ -229,15 +236,20 @@ function ItemAgentNode({ data: d }: NodeProps) {
       border: `2px solid ${PHASE_BORDER[data.phase]}`,
       background: PHASE_BG[data.phase],
       boxShadow: PHASE_GLOW[data.phase],
-      transition: "border-color 0.25s, box-shadow 0.25s, background 0.25s",
+      transition: "border-color 0.25s, box-shadow 0.25s, background 0.25s, opacity 0.2s",
       fontFamily: "inherit",
+      opacity: data.disabled ? 0.45 : 1,
+      filter: data.disabled ? "grayscale(0.7)" : "none",
     }}>
       <Handle type="target" position={Position.Left} style={{ opacity: 0, pointerEvents: "none" }} />
       <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #f4f4f5" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
           <span style={{ fontSize: 18 }}>{data.icon}</span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 12, color: "#18181b" }}>{data.label}</div>
+            <div style={{ fontWeight: 700, fontSize: 12, color: "#18181b" }}>
+              {data.label}
+              {data.disabled && <span style={{ fontSize: 8, marginLeft: 5, color: "#ef4444", fontWeight: 600 }}>건너뜀</span>}
+            </div>
             <div style={{ fontSize: 10, color: "#a1a1aa", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{data.category}</div>
           </div>
         </div>
@@ -261,6 +273,19 @@ function ItemAgentNode({ data: d }: NodeProps) {
 }
 
 const NODE_TYPES = { configNode: ConfigNode, itemAgentNode: ItemAgentNode };
+
+// ── 노드 on/off (ADR-028 단계 2) ──────────────────────────────────
+
+export type EnabledNodes = { retrieve: boolean; compress: boolean; evaluate: boolean };
+const ALL_ENABLED: EnabledNodes = { retrieve: true, compress: true, evaluate: true };
+
+// 노드 id(추상 뷰) 또는 step.key(항목별 뷰)를 enabledNodes에 매핑해 꺼짐 여부 판정
+function isNodeDisabled(idOrKey: string, en: EnabledNodes): boolean {
+  if (idOrKey === "rag" || idOrKey === "retrieve") return !en.retrieve;
+  if (idOrKey === "compress" || idOrKey === "compressor") return !en.compress;
+  if (idOrKey === "evaluate" || idOrKey === "evaluator") return !en.evaluate;
+  return false;
+}
 
 // ── 파이프라인 정의 ────────────────────────────────────────────────
 
@@ -296,6 +321,7 @@ function buildAbstractGraph(
   configs: Record<AgentKey, ProviderConfig>,
   editable: boolean, ollamaModels: string[],
   onChange?: (key: AgentKey, field: keyof ProviderConfig, value: string) => void,
+  enabledNodes: EnabledNodes = ALL_ENABLED,
 ): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = ABSTRACT_PIPELINE.map((m, i) => ({
     id: m.id, type: "configNode",
@@ -306,6 +332,7 @@ function buildAbstractGraph(
       config: m.agentKey ? configs[m.agentKey] : undefined,
       phase: "idle", detail: "", iterations: 0,
       editable, ollamaModels, onConfigChange: onChange,
+      disabled: isNodeDisabled(m.id, enabledNodes),
     } as ConfigNodeData,
   }));
   const edges = ABSTRACT_PIPELINE.slice(0, -1).map((m, i) =>
@@ -321,6 +348,7 @@ function buildParallelGraph(
   editable: boolean, ollamaModels: string[],
   onChange?: (key: AgentKey, field: keyof ProviderConfig, value: string) => void,
   onItemChange?: (category: string, key: AgentKey, field: keyof ProviderConfig, value: string) => void,
+  enabledNodes: EnabledNodes = ALL_ENABLED,
 ): { nodes: Node[]; edges: Edge[] } {
   const n = categories.length;
   const totalH = n * ITEM_ROW_H;
@@ -366,6 +394,7 @@ function buildParallelGraph(
           isOverridden,
           phase: "idle", detail: "", iterations: 0,
           editable, ollamaModels,
+          disabled: isNodeDisabled(step.key, enabledNodes),
           onItemConfigChange: step.agentKey
             ? (field, value) => onItemChange?.(cat, step.agentKey!, field as keyof ProviderConfig, value)
             : undefined,
@@ -480,9 +509,10 @@ type Props = {
   ollamaModels: string[];
   onConfigChange?: (key: AgentKey, field: keyof ProviderConfig, value: string) => void;
   onItemConfigChange?: (category: string, key: AgentKey, field: keyof ProviderConfig, value: string) => void;
+  enabledNodes?: EnabledNodes;
 };
 
-export function WorkflowCanvas({ categories, configs, itemConfigs, events, editable, ollamaModels, onConfigChange, onItemConfigChange }: Props) {
+export function WorkflowCanvas({ categories, configs, itemConfigs, events, editable, ollamaModels, enabledNodes = ALL_ENABLED, onConfigChange, onItemConfigChange }: Props) {
   const onChangeRef = useRef(onConfigChange);
   onChangeRef.current = onConfigChange;
   const onItemChangeRef = useRef(onItemConfigChange);
@@ -499,8 +529,8 @@ export function WorkflowCanvas({ categories, configs, itemConfigs, events, edita
 
   const isParallel = categories.length > 0;
   const { nodes: initNodes, edges: initEdges } = isParallel
-    ? buildParallelGraph(categories, configs, itemConfigs, editable, ollamaModels, stableChange, stableItemChange)
-    : buildAbstractGraph(configs, editable, ollamaModels, stableChange);
+    ? buildParallelGraph(categories, configs, itemConfigs, editable, ollamaModels, stableChange, stableItemChange, enabledNodes)
+    : buildAbstractGraph(configs, editable, ollamaModels, stableChange, enabledNodes);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initEdges);
@@ -510,11 +540,11 @@ export function WorkflowCanvas({ categories, configs, itemConfigs, events, edita
   useEffect(() => {
     processedRef.current = 0;  // 이벤트 카운터 리셋
     const { nodes: n, edges: e } = isParallel
-      ? buildParallelGraph(categories, configs, itemConfigs, editable, ollamaModels, stableChange, stableItemChange)
-      : buildAbstractGraph(configs, editable, ollamaModels, stableChange);
+      ? buildParallelGraph(categories, configs, itemConfigs, editable, ollamaModels, stableChange, stableItemChange, enabledNodes)
+      : buildAbstractGraph(configs, editable, ollamaModels, stableChange, enabledNodes);
     setNodes(n); setEdges(e);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categories.join(","), editable]);
+  }, [categories.join(","), editable, JSON.stringify(enabledNodes)]);
 
   // configs / itemConfigs / ollamaModels 변경 → config 데이터 업데이트
   useEffect(() => {

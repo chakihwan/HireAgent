@@ -51,6 +51,8 @@ export default function GeneratePage() {
   const [itemSelections, setItemSelections] = useState<Record<string, { checked: boolean; charLimit: number }>>({});
   const [globalTone, setGlobalTone] = useState<EssayTone>("공식적");
   const [globalPersona, setGlobalPersona] = useState<EssayPersona>("경력직");
+  // 파이프라인 노드 on/off (write는 content를 만들어 필수 → 토글 없음). flow로 백엔드 전달
+  const [enabledNodes, setEnabledNodes] = useState({ retrieve: true, compress: true, evaluate: true });
   const [customCategory, setCustomCategory] = useState("");
   const [customLimit, setCustomLimit] = useState(500);
   const [useCustom, setUseCustom] = useState(false);
@@ -216,6 +218,13 @@ export default function GeneratePage() {
       }),
       user_id: "local",
       agent_config: agentConfig,
+      // 켜진 노드만 flow로 (write는 필수). 백엔드가 이 구성으로 동적 그래프 빌드
+      flow: [
+        enabledNodes.retrieve && "retrieve",
+        "write",
+        enabledNodes.compress && "compress",
+        enabledNodes.evaluate && "evaluate",
+      ].filter(Boolean) as string[],
     };
 
     // SSE 실행은 훅에 위임. done 시 step 전환, 실패 시 입력 단계로 복귀(버튼 먹통 방지).
@@ -226,7 +235,7 @@ export default function GeneratePage() {
       () => setStep("items"),
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jd, selectedItems, agentConfigs, itemAgentConfigs]);
+  }, [jd, selectedItems, agentConfigs, itemAgentConfigs, enabledNodes]);
 
   const handleGenerate = useCallback(async () => {
     // 실제 사용될 모델 수집 (전역 + 항목별 오버라이드)
@@ -434,6 +443,38 @@ export default function GeneratePage() {
             </div>
           </section>
 
+          {/* 파이프라인 노드 on/off (ADR-028 단계 2) */}
+          <section>
+            <label className="text-xs font-semibold text-zinc-600 uppercase tracking-wider">파이프라인 노드</label>
+            <div className="mt-1.5 flex flex-col gap-1.5">
+              {([
+                { key: "retrieve", label: "RAG 검색", desc: "관련 경험 자동 참고" },
+                { key: "compress", label: "글자수 조정", desc: "목표 글자수로 압축/확장" },
+                { key: "evaluate", label: "자가 평가", desc: "5항목 루브릭 채점" },
+              ] as const).map((n) => {
+                const on = enabledNodes[n.key];
+                return (
+                  <div
+                    key={n.key}
+                    onClick={() => !isGenerating && setEnabledNodes((p) => ({ ...p, [n.key]: !p[n.key] }))}
+                    className="flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer select-none transition-all"
+                    style={{ borderColor: on ? "#3b82f6" : "#e4e4e7", background: on ? "#eff6ff" : "#fff" }}
+                  >
+                    <div className="w-4 h-4 rounded border-2 flex items-center justify-center text-xs flex-shrink-0"
+                      style={{ borderColor: on ? "#3b82f6" : "#d4d4d8", background: on ? "#3b82f6" : "transparent", color: "#fff" }}>
+                      {on && "✓"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium" style={{ color: on ? "#1d4ed8" : "#3f3f46" }}>{n.label}</div>
+                      <div className="text-xs text-zinc-400">{n.desc}</div>
+                    </div>
+                  </div>
+                );
+              })}
+              <p className="text-xs text-zinc-400 mt-0.5">※ 작성(write)은 필수라 항상 포함됩니다</p>
+            </div>
+          </section>
+
           {/* 진행 로그 */}
           {log.length > 0 && (
             <section>
@@ -514,6 +555,7 @@ export default function GeneratePage() {
             events={pipelineEvents}
             editable={!isGenerating}
             ollamaModels={ollamaModels}
+            enabledNodes={enabledNodes}
             onConfigChange={handleConfigChange}
             onItemConfigChange={handleItemAgentConfigChange}
           />
