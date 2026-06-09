@@ -11,11 +11,12 @@
 
 ### 추가 — 동적 워크플로우 그래프 빌드 토대 (PoC, ADR-028)
 
-- 고정 `_build_item_graph` → `NODE_REGISTRY` + `build_item_graph(flow)` 동적 빌드
-- `DEFAULT_ITEM_FLOW`로 기존과 **동등**(노드 4·엣지 7 동일 검증) — 회귀 없는 리팩토링
-- compress 조건 게이트 일반화 (`_make_compress_router`: 진입·자기루프 양쪽 조건)
-- 사용자 정의 노드 편집(요구사항 F-8.4, 최종 목표 완전 자유 DAG)의 **백엔드 토대**
-- **ADR-028에 현재/미래 아키텍처 + 단계 로드맵 기록** (고정 → PoC → on/off → 순서 → 완전 DAG)
+- 고정 `_build_item_graph` → `NodeSpec`(kind·State계약) + `WorkflowDef`(nodes+edges 그래프) + `build_item_graph`
+- **그래프 자료구조** — 선형은 특수케이스(edges 자동), 명시 edges로 DAG → 단계 4까지 자료구조 전환 없이 연속
+- **gate 속성화**(`NodeSpec.kind`) — compress 위치 결합 제거, 조건 노드 추가가 레지스트리 한 줄
+- **State 계약**(`requires`/`provides`) — "content는 write가 만든다" → 무의미 조합(evaluate 먼저 등) 빌드 거부
+- `DEFAULT_ITEM_FLOW`로 기존과 **동등**(노드 4·엣지 7) — 회귀 없는 리팩토링 (사용자 정의 편집 F-8.4 토대)
+- **ADR-028**: 현재/미래 Mermaid + 빌드 파이프라인 다이어그램 + 단계 로드맵 + 아키텍처 리뷰 반영(미해결 정직 명시)
 
 ### 추가 — 클라우드 모델 목록 동적 로딩
 

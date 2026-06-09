@@ -45,25 +45,49 @@ flowchart LR
 
 ## 결정 — 동적 빌드 인프라 (PoC, 이번 단계)
 
-노드를 **레지스트리 + 시퀀스 정의 → 런타임 그래프 빌드**로 전환한다.
+노드를 **메타(NodeSpec) + 그래프 정의(WorkflowDef) → 런타임 빌드 + 계약 검증**으로 전환한다.
 
 ```python
-NODE_REGISTRY = {"retrieve": ..., "write": ..., "compress": ..., "evaluate": ...}
-DEFAULT_ITEM_FLOW = ["retrieve", "write", "compress", "evaluate"]  # 기존과 동등
+@dataclass(frozen=True)
+class NodeSpec:                      # 노드 메타
+    func: Callable
+    kind: str = "linear"            # "linear" | "gate"(조건 루프)
+    requires: frozenset[str]         # 의미있게 읽는 State 키
+    provides: frozenset[str]         # 의미있게 채우는 State 키
+    gate_router: Callable | None
 
-def build_item_graph(flow: list[str]) -> StateGraph:
-    # 선형 시퀀스로 노드를 잇되, compress는 "조건 게이트"로 연결
-    ...
+@dataclass
+class WorkflowDef:                   # 그래프 정의
+    nodes: list[str]
+    edges: list[tuple[str, str]]    # 비면 nodes 순서대로 선형 자동 생성
+
+def build_item_graph(workflow: WorkflowDef | list[str]) -> StateGraph: ...
+def validate_workflow(wf): ...      # 노드 타입 + State 계약 검증
 ```
 
-핵심 설계:
-- **공통 시그니처 덕에 타입 시퀀스로 조립** 가능 (ItemState→dict).
-- **compress 조건 게이트**: compress로 *진입하는 엣지*와 compress *자기 엣지* 양쪽에 라우터를
-  걸어, write 결과가 이미 적정 글자수면 compress를 건너뛴다 (기존 `_needs_compression`과 동일).
-- **동등성 안전장치**: `DEFAULT_ITEM_FLOW`로 빌드한 그래프 = 기존 고정 그래프 (노드 4·엣지 7 동일).
-- 검증: 잘못된 노드 타입은 `ValueError`. 임의 flow(예: `["write","evaluate"]`)도 빌드됨.
+핵심 설계 (아키텍처 리뷰 반영):
+- **그래프 자료구조 (WorkflowDef nodes+edges)** — 선형은 그 특수 케이스(edges 자동), 명시
+  edges로 DAG도 표현 가능. **단계 4까지 자료구조 전환 없이 연속**된다 (리뷰 #1 해소).
+- **gate를 속성으로 (NodeSpec.kind)** — compress 조건 처리가 '위치'(`==compress`)가 아니라
+  '속성'(`kind=="gate"`) 기반. 다른 조건 노드(평가 기반 루프 등) 추가가 레지스트리 한 줄 (리뷰 #2 해소).
+- **State 계약 (requires/provides)** — "content는 write가 만든다"를 선언 → `evaluate`를 `write`
+  앞에 두는 등 무의미한 조합을 빌드 전에 `ValueError`로 거부 (리뷰 #3 해소).
+- **동등성 안전장치** — `DEFAULT_ITEM_FLOW` = 기존 고정 그래프 (노드 4·엣지 7 동일, 검증됨).
 
-이 단계는 **눈에 보이는 기능 변화 없이** 토대만 깐다 (리팩토링 + 확장점 확보).
+**빌드 파이프라인:**
+
+```mermaid
+flowchart LR
+  DEF["WorkflowDef<br/>nodes + edges<br/>(edges 비면 선형 자동)"] --> VAL["validate_workflow<br/>노드타입 + State 계약<br/>requires ⊆ 앞 provides"]
+  VAL -->|"위반 시"| ERR([ValueError])
+  VAL --> BUILD["build_item_graph<br/>NodeSpec.kind로 엣지 연결"]
+  BUILD -->|"kind=linear"| LE["단순 엣지<br/>add_edge"]
+  BUILD -->|"kind=gate"| GE["조건 엣지<br/>loop(자기) · next(탈출)"]
+  LE --> COMP["StateGraph.compile()"]
+  GE --> COMP
+```
+
+이 단계는 **눈에 보이는 기능 변화 없이** 토대만 깐다 — 단 토대가 단계 4(완전 DAG)까지 곧장 이어진다.
 
 ---
 
@@ -105,25 +129,27 @@ flowchart TB
 
 | 항목 | 메모 |
 |------|------|
-| 매 요청 컴파일 비용 | flow별 컴파일 결과를 캐시해야 함 (현재는 DEFAULT 1회 컴파일). 단계 2부터 flow 해시 캐시 |
-| DAG 검증 | 사이클·고립 노드·필수 노드(write 등) 누락·State 키 호환을 빌드 시 검사해야 (단계 4) |
-| compress 게이트 일반화 | 현재 compress 전용. 단계 4에서 "조건 노드" 추상화 필요 (평가 기반 루프 등) |
-| 노드 간 State 의존 | write는 rag_context를 읽음 — RAG 없는 flow면 빈 컨텍스트로 동작(허용). 노드별 입력 요구 명시는 후속 |
-| 병렬 분기 | 현재 선형. DAG 병렬 분기는 State reducer 충돌 주의 (ADR-015 `operator.add` 패턴 확장) |
+| 🔴 **동적 노드 ↔ 정적 State 스키마** | **미해결 (리뷰 #4)** — `ItemState`(TypedDict) 고정. 새 노드 타입이 새 State 키를 요구하면 ItemState 수정·재배포 필요. 즉 확장성이 노드 *함수*엔 있으나 *State*엔 없음. 진짜 플러그인형은 노드별 namespace나 dict 기반 동적 State가 필요 |
+| 🟡 **편집 경계 = 항목 서브그래프 한정** | **명시 (리뷰 #5)** — 동적인 건 항목 서브그래프뿐. `jd_analyzer`·`fan_out`(메인)은 고정 → "JD분석 빼기"는 범위 밖. 프론트가 편집 가능 경계를 표시해야 함 |
+| 매 요청 컴파일 비용 | flow별 컴파일 결과 캐시 필요 (현재 DEFAULT 1회). 단계 2부터 flow 해시 캐시 |
+| DAG 검증 깊이 | 현재 **선형 순서** 기준 State 계약만. 단계 4는 위상정렬 + 사이클·고립 노드 + 계약 통합 |
+| gate 라우터는 아직 compress 전용 | kind로 속성화는 됐으나 라우터 구현은 글자수용. 다른 조건(평가 루프)은 라우터 추가 필요 |
+| 병렬 분기 | DAG 병렬 분기는 State reducer 충돌 주의 (ADR-015 `operator.add` 패턴 확장) |
 
 ---
 
 ## 결과
 
 ### 긍정적
-- ✅ 노드 시퀀스를 런타임에 구성 — 코드 수정 없이 flow 변경 가능 (토대)
-- ✅ 기존과 동등 검증 (DEFAULT_ITEM_FLOW) — 회귀 위험 없이 리팩토링
-- ✅ 노드 타입 추가가 레지스트리 한 줄 — 확장성
-- ✅ 현재→C 경로가 문서화돼 중간 단계가 버려지지 않음
+- ✅ **그래프 자료구조(WorkflowDef)** — 선형→DAG 전환 비용 없이 단계 4까지 연속 (리뷰 #1)
+- ✅ **gate 속성화 + State 계약** — 위치 결합 제거 + 무의미 조합(evaluate 먼저 등) 빌드 차단 (리뷰 #2·#3)
+- ✅ 기존과 동등 검증 (DEFAULT_ITEM_FLOW, 노드 4·엣지 7) — 회귀 위험 없이 리팩토링
+- ✅ 노드 타입 추가가 레지스트리 한 줄 (함수 한정)
 
 ### 부정적/후속
+- 🔴 동적 노드인데 **State 스키마는 정적** — 새 키 필요 노드는 재배포 (리뷰 #4, 단계 4 전 결정 필요)
 - ⚠️ 아직 사용자에게 보이는 변화 없음 (인프라 단계)
-- ⚠️ 완전 DAG·검증·캐싱·저장은 단계 2~4의 큰 작업으로 남음
+- ⚠️ 컴파일 캐시·위상정렬 검증·워크플로우 저장은 단계 2~4로 남음
 
 ---
 
@@ -132,3 +158,4 @@ flowchart TB
 | 날짜 | 변경 | 사유 |
 |------|------|------|
 | 2026-06-09 | 최초 작성 (PoC) | 고정 그래프 → 동적 빌드 토대 + 완전 편집(C) 로드맵 |
+| 2026-06-09 | 아키텍처 리뷰 반영 | 그래프 자료구조(#1)·gate 속성화(#2)·State 계약(#3)으로 PoC 보강. State 스키마(#4)·편집 경계(#5)는 미해결로 명시 |
