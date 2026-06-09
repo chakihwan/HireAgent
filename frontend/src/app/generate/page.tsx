@@ -375,7 +375,7 @@ export default function GeneratePage() {
                     className="flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer select-none transition-all"
                     style={{ borderColor: checked ? "#3b82f6" : "#e4e4e7", background: checked ? "#eff6ff" : "#fff" }}
                   >
-                    <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center text-xs flex-shrink-0"
+                    <div className="w-4 h-4 rounded-[5px] border-2 flex items-center justify-center text-xs flex-shrink-0"
                       style={{ borderColor: checked ? "#3b82f6" : "#d4d4d8", background: checked ? "#3b82f6" : "transparent", color: "#fff" }}>
                       {checked && "✓"}
                     </div>
