@@ -154,7 +154,20 @@ def build_item_graph(workflow: WorkflowDef | list[str]) -> StateGraph:
     return g
 
 
-_item_graph = build_item_graph(DEFAULT_ITEM_FLOW).compile()
+# flow(노드 구성)별 컴파일 그래프 캐시 — 같은 구성은 1회만 컴파일 (매 요청 컴파일 방지)
+_graph_cache: dict[tuple[str, ...], object] = {}
+
+
+def get_item_graph(flow: tuple[str, ...] | None = None):
+    """flow별 컴파일된 항목 서브그래프 (캐시). flow 미지정 시 DEFAULT."""
+    key = tuple(flow) if flow else tuple(DEFAULT_ITEM_FLOW)
+    if key not in _graph_cache:
+        _graph_cache[key] = build_item_graph(list(key)).compile()
+    return _graph_cache[key]
+
+
+# DEFAULT 워밍업 (모듈 로드 시 1회 컴파일 — 기존 동작 유지)
+get_item_graph()
 
 
 # ── 메인 오케스트레이터 그래프 ────────────────────────────────
@@ -170,6 +183,7 @@ def _fan_out(state: EssayState) -> list[Send]:
                 target_company=state.get("target_company", "알 수 없음"),
                 agent_config=item.get("agent_config") or state["agent_config"],
                 user_id=state["user_id"],
+                flow=state.get("flow") or DEFAULT_ITEM_FLOW,
                 rag_context=[],
                 rag_sources={},
                 tech_whitelist=[],
@@ -191,7 +205,7 @@ async def _process_item(item_state: ItemState) -> dict:
     """항목 서브그래프 실행 → EssayState.drafts/progress에 추가"""
     from app.utils.text_cleaner import detect_output_issue
 
-    result = await _item_graph.ainvoke(item_state)
+    result = await get_item_graph(tuple(item_state["flow"])).ainvoke(item_state)
     draft = Draft(
         category=result["item"]["category"],
         content=result["content"],

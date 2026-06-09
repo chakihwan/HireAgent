@@ -26,6 +26,10 @@ class EssayGenerateRequest(BaseModel):
         default_factory=dict,
         description="에이전트별 LLM 설정. 미지정 시 Ollama exaone3.5:7.8b 사용",
     )
+    flow: list[str] | None = Field(
+        default=None,
+        description="항목 서브그래프 노드 구성 (예: RAG·압축 제외). 미지정 시 기본 파이프라인",
+    )
 
 
 class DraftResult(BaseModel):

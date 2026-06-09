@@ -31,6 +31,7 @@ class EssayState(TypedDict):
     items: list[EssayItem]
     agent_config: dict          # {agent_name: {provider, model}}
     user_id: str
+    flow: list[str]             # 항목 서브그래프 노드 구성 (없으면 DEFAULT_ITEM_FLOW)
 
     # ── 중간 상태 ──
     jd_analysis: str            # JD 분석 에이전트 결과
@@ -56,6 +57,7 @@ class ItemState(TypedDict):
     target_company: str
     agent_config: dict
     user_id: str
+    flow: list[str]             # 이 항목에 적용할 노드 구성
 
     # RAG 검색 결과 (작성 에이전트가 참고)
     rag_context: list[str]
