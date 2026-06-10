@@ -36,9 +36,9 @@ function formatDate(iso: string): string {
 
 function charRatioColor(count: number, target: number): string {
   const ratio = count / target;
-  if (ratio >= 0.95 && ratio <= 1.05) return "text-emerald-600";
-  if (ratio >= 0.9 && ratio <= 1.1) return "text-amber-600";
-  return "text-red-500";
+  if (ratio >= 0.95 && ratio <= 1.05) return "text-success";
+  if (ratio >= 0.9 && ratio <= 1.1) return "text-warning";
+  return "text-destructive";
 }
 
 function EssayCard({ item, onToggleFinal, onDelete }: {

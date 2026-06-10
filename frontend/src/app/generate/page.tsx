@@ -583,7 +583,7 @@ export default function GeneratePage() {
                       <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-zinc-100 bg-zinc-50">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-sm font-semibold text-zinc-800 truncate">{draft.category}</span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${charOk ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${charOk ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
                             {currentCharCount}/{draft.char_target}자
                           </span>
                           {isEdited && <span className="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full">편집됨</span>}
