@@ -9,6 +9,20 @@
 
 ## [Unreleased]
 
+### 개선 — UI/디자인 (폰트·토큰·네비·빈상태·버그)
+
+- **한국어 폰트 Pretendard** 적용 — `next/font/local` self-host, Geist(영문) → 전역 본문
+- **기능색 디자인 토큰** info/success/warning — `@theme` + 라이트/다크, Tailwind 유틸 자동 생성
+- **상단 네비 active 표시** — `NavLinks`(usePathname), 현재 페이지 강조 + 밑줄
+- **공용 EmptyState** — jobs·library 빈 상태를 아이콘+안내+CTA로 통일
+- 버그: Select 내부 value 노출(`__all__`·`draft`·`essay` → 라벨 매핑, base-ui) / 항목 선택 원형→체크박스 / 노드 모델 드롭다운 폰트 통일
+
+### 추가 — 노드 on/off (ADR-028 단계 2)
+
+- 생성 요청 `flow`로 항목 그래프를 동적 구성 — RAG·압축·평가 제외 가능 (write는 State 계약상 필수)
+- `get_item_graph` flow별 컴파일 캐시 (같은 구성 1회만 컴파일)
+- 프론트: 사이드바 "파이프라인 노드" 토글 + 캔버스 꺼진 노드 흐림("건너뜀" 배지)
+
 ### 추가 — 동적 워크플로우 그래프 빌드 토대 (PoC, ADR-028)
 
 - 고정 `_build_item_graph` → `NodeSpec`(kind·State계약) + `WorkflowDef`(nodes+edges 그래프) + `build_item_graph`
