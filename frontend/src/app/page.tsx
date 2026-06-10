@@ -120,7 +120,7 @@ export default function DashboardPage() {
   const isEmpty = !loading && jobs.length === 0 && library.length === 0 && projects.length === 0;
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-10 space-y-8">
+    <div className="mx-auto max-w-5xl px-6 py-10 space-y-8">
       {/* Hero */}
       <div>
         <h1 className="text-2xl font-semibold text-zinc-900 flex items-center gap-2">
@@ -249,6 +249,33 @@ export default function DashboardPage() {
               )}
             </div>
           )}
+
+          {/* 시작 가이드 (3스텝) — 온보딩 + 화면 채움 */}
+          <div className="space-y-3">
+            <h2 className="text-sm font-semibold text-zinc-700">이렇게 시작하세요</h2>
+            <div className="grid sm:grid-cols-3 gap-3">
+              {[
+                { n: 1, icon: Database, title: "커리어 데이터 등록", desc: "이력서·GitHub·경험을 인덱싱", href: "/projects" },
+                { n: 2, icon: FileText, title: "공고 입력 & 항목 선택", desc: "지원 공고와 자소서 항목 고르기", href: "/generate" },
+                { n: 3, icon: Sparkles, title: "자소서 생성 & 다듬기", desc: "멀티에이전트가 항목별 작성", href: "/generate" },
+              ].map((s) => (
+                <Link key={s.n} href={s.href}>
+                  <Card className="h-full hover:border-zinc-300 transition-colors">
+                    <CardContent className="p-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="flex size-6 items-center justify-center rounded-full bg-zinc-900 text-xs font-semibold text-white">{s.n}</span>
+                        <s.icon className="size-4 text-zinc-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-zinc-800">{s.title}</p>
+                        <p className="mt-0.5 text-xs leading-relaxed text-zinc-400">{s.desc}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </div>
         </>
       )}
     </div>
