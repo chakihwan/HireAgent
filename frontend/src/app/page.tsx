@@ -63,11 +63,11 @@ function StatCard({
 }) {
   return (
     <Link href={href} className="block group">
-      <Card className="transition-colors group-hover:border-zinc-300 group-hover:bg-white">
+      <Card className="py-0 transition-colors group-hover:border-zinc-300 group-hover:bg-white">
         <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-zinc-500 text-xs font-medium">
-            {icon}
-            {label}
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-xs font-medium text-zinc-500">{label}</span>
+            <span className="text-zinc-300">{icon}</span>
           </div>
           <div className="mt-2 text-2xl font-semibold text-zinc-900 tabular-nums">{value}</div>
           {hint && <div className="mt-0.5 text-xs text-zinc-400">{hint}</div>}

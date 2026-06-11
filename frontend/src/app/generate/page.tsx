@@ -309,7 +309,7 @@ export default function GeneratePage() {
 
           {/* 공고 입력 */}
           <section>
-            <label className="text-xs font-semibold text-zinc-600 uppercase tracking-wider">채용 공고</label>
+            <label className="text-[13px] font-semibold text-zinc-800">채용 공고</label>
             <textarea
               rows={8}
               value={jd}
@@ -355,7 +355,7 @@ export default function GeneratePage() {
 
           {/* 항목 선택 */}
           <section>
-            <label className="text-xs font-semibold text-zinc-600 uppercase tracking-wider">항목 선택</label>
+            <label className="text-[13px] font-semibold text-zinc-800">항목 선택</label>
             <div className="mt-1.5 flex flex-col gap-1.5">
               {[
                 { name: "자기소개", default: 500 },
@@ -424,7 +424,7 @@ export default function GeneratePage() {
 
           {/* 공통 설정 */}
           <section>
-            <label className="text-xs font-semibold text-zinc-600 uppercase tracking-wider">공통 설정</label>
+            <label className="text-[13px] font-semibold text-zinc-800">공통 설정</label>
             <div className="mt-1.5 grid grid-cols-2 gap-2">
               <div>
                 <div className="text-xs text-zinc-400 mb-1">톤</div>
@@ -445,7 +445,7 @@ export default function GeneratePage() {
 
           {/* 파이프라인 노드 on/off (ADR-028 단계 2) */}
           <section>
-            <label className="text-xs font-semibold text-zinc-600 uppercase tracking-wider">파이프라인 노드</label>
+            <label className="text-[13px] font-semibold text-zinc-800">파이프라인 노드</label>
             <div className="mt-1.5 flex flex-col gap-1.5">
               {([
                 { key: "retrieve", label: "RAG 검색", desc: "관련 경험 자동 참고" },
@@ -478,7 +478,7 @@ export default function GeneratePage() {
           {/* 진행 로그 */}
           {log.length > 0 && (
             <section>
-              <label className="text-xs font-semibold text-zinc-600 uppercase tracking-wider">진행 로그</label>
+              <label className="text-[13px] font-semibold text-zinc-800">진행 로그</label>
               <div className="mt-1.5 space-y-1 max-h-40 overflow-y-auto">
                 {log.map((entry) => (
                   <div key={entry.id} className="flex items-start gap-1.5 text-xs">
