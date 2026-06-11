@@ -30,11 +30,20 @@
 - **SQLAlchemy 2.0** + **Alembic** (ORM + 마이그레이션)
 
 ### 프론트엔드
-- **Next.js 14+** (App Router)
+- **Next.js 16** (App Router) — 최신 메이저. 생태계 갭(예: shadcn 대신 base-ui) 인지하고 수용.
+  AGENTS.md 규칙: 추측 말고 `node_modules/next/dist/docs/` 확인 후 작성
 - **TypeScript** (필수, 절대 JS로 작성 금지)
-- **TailwindCSS** + **shadcn/ui**
+- **Tailwind CSS v4** (`@theme` 토큰, config 파일 없음) + **@base-ui/react** (shadcn 호환 컴포넌트)
 - **React Query** (서버 상태) + **Zustand** (클라이언트 상태)
 - **React Hook Form** + **Zod** (폼 검증)
+
+### 디자인 시스템
+- **토큰 우선** — 색을 하드코딩(`#3b82f6`)하지 말고 `globals.css @theme` 토큰 사용
+  - 브랜드: `primary`(인디고 #4f46e5) — 액션·선택. 무채색 베이스 + 포인트 1색
+  - 기능색: `info`(파랑=실행중)·`success`(초록=완료)·`warning`(앰버=경고) — 상태 피드백
+  - 규칙: **"사용자가 조작하는 것 = primary / 시스템 상태 = 기능색"**
+- 폰트: **Pretendard**(한국어 본문, `--font-sans`) + Geist Mono(코드·숫자)
+- 라이트/다크 토큰 둘 다 정의됨 (다크모드는 미구현, 토큰은 준비)
 
 ### LLM 프로바이더 (멀티 지원)
 - Anthropic (Claude Opus/Sonnet/Haiku)
