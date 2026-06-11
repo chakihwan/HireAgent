@@ -263,7 +263,7 @@ export default function DashboardPage() {
                   <Card className="h-full hover:border-zinc-300 transition-colors">
                     <CardContent className="p-4 space-y-2">
                       <div className="flex items-center gap-2">
-                        <span className="flex size-6 items-center justify-center rounded-full bg-zinc-900 text-xs font-semibold text-white">{s.n}</span>
+                        <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{s.n}</span>
                         <s.icon className="size-4 text-zinc-400" />
                       </div>
                       <div>

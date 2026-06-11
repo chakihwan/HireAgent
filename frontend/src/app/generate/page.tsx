@@ -373,13 +373,13 @@ export default function GeneratePage() {
                     key={preset.name}
                     onClick={() => !isGenerating && handleItemChange(preset.name, { checked: !checked }, preset.default)}
                     className="flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer select-none transition-all"
-                    style={{ borderColor: checked ? "#3b82f6" : "#e4e4e7", background: checked ? "#eff6ff" : "#fff" }}
+                    style={{ borderColor: checked ? "var(--primary)" : "#e4e4e7", background: checked ? "#eef2ff" : "#fff" }}
                   >
                     <div className="w-4 h-4 rounded-[5px] border-2 flex items-center justify-center text-xs flex-shrink-0"
-                      style={{ borderColor: checked ? "#3b82f6" : "#d4d4d8", background: checked ? "#3b82f6" : "transparent", color: "#fff" }}>
+                      style={{ borderColor: checked ? "var(--primary)" : "#d4d4d8", background: checked ? "var(--primary)" : "transparent", color: "#fff" }}>
                       {checked && "✓"}
                     </div>
-                    <span className="text-xs font-medium flex-1" style={{ color: checked ? "#1d4ed8" : "#3f3f46" }}>{preset.name}</span>
+                    <span className="text-xs font-medium flex-1" style={{ color: checked ? "var(--primary)" : "#3f3f46" }}>{preset.name}</span>
                     {checked ? (
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <input
@@ -458,14 +458,14 @@ export default function GeneratePage() {
                     key={n.key}
                     onClick={() => !isGenerating && setEnabledNodes((p) => ({ ...p, [n.key]: !p[n.key] }))}
                     className="flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer select-none transition-all"
-                    style={{ borderColor: on ? "#3b82f6" : "#e4e4e7", background: on ? "#eff6ff" : "#fff" }}
+                    style={{ borderColor: on ? "var(--primary)" : "#e4e4e7", background: on ? "#eef2ff" : "#fff" }}
                   >
                     <div className="w-4 h-4 rounded border-2 flex items-center justify-center text-xs flex-shrink-0"
-                      style={{ borderColor: on ? "#3b82f6" : "#d4d4d8", background: on ? "#3b82f6" : "transparent", color: "#fff" }}>
+                      style={{ borderColor: on ? "var(--primary)" : "#d4d4d8", background: on ? "var(--primary)" : "transparent", color: "#fff" }}>
                       {on && "✓"}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium" style={{ color: on ? "#1d4ed8" : "#3f3f46" }}>{n.label}</div>
+                      <div className="text-xs font-medium" style={{ color: on ? "var(--primary)" : "#3f3f46" }}>{n.label}</div>
                       <div className="text-xs text-zinc-400">{n.desc}</div>
                     </div>
                   </div>
@@ -516,7 +516,7 @@ export default function GeneratePage() {
               onClick={handleGenerate}
               disabled={!canGenerate || isGenerating}
               className="flex-1 py-2 rounded-lg text-xs font-semibold transition-colors disabled:opacity-40"
-              style={{ background: canGenerate && !isGenerating ? "#18181b" : "#e4e4e7", color: canGenerate && !isGenerating ? "#fff" : "#a1a1aa" }}
+              style={{ background: canGenerate && !isGenerating ? "var(--primary)" : "#e4e4e7", color: canGenerate && !isGenerating ? "#fff" : "#a1a1aa" }}
             >
               {isGenerating ? "생성 중..." : "▶ 자소서 생성"}
             </button>

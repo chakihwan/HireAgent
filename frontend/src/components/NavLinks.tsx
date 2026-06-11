@@ -24,12 +24,12 @@ export function NavLinks() {
             key={n.href}
             href={n.href}
             className={`relative flex items-center h-full text-sm transition-colors ${
-              active ? "text-zinc-900 font-semibold" : "text-zinc-500 hover:text-zinc-900"
+              active ? "text-primary font-semibold" : "text-zinc-500 hover:text-zinc-900"
             }`}
           >
             {n.label}
             {active && (
-              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-zinc-900 rounded-full" />
+              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-full" />
             )}
           </Link>
         );

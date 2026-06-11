@@ -319,7 +319,7 @@ function CloudKeysSection() {
                   onClick={() => handleSave(p.id)}
                   disabled={!canSave}
                   className="text-xs font-medium px-3 py-1.5 rounded-md transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ background: canSave ? "#18181b" : "#e4e4e7", color: canSave ? "#fff" : "#a1a1aa" }}
+                  style={{ background: canSave ? "var(--primary)" : "#e4e4e7", color: canSave ? "#fff" : "#a1a1aa" }}
                 >
                   {justSaved === p.id ? "✓ 저장됨" : "저장"}
                 </button>
