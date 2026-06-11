@@ -12,22 +12,22 @@
 
 ```mermaid
 flowchart TD
-    User[("👤 사용자 브라우저<br/>자소서 작성 요청")]
+    User(["👤 사용자 브라우저<br/>자소서 작성 요청"])
 
-    subgraph Frontend["Frontend (Next.js 14 + TypeScript)"]
-        FE["App Router · shadcn/ui<br/>TailwindCSS · React Query"]
+    subgraph Frontend["Frontend (Next.js 16 + TypeScript)"]
+        FE["App Router · base-ui · Tailwind v4<br/>React Query · React Flow(워크플로우 빌더)"]
     end
 
-    subgraph Backend["Backend (FastAPI)"]
+    subgraph Backend["Backend (FastAPI · async)"]
         direction LR
-        LG["LangGraph Orchestrator<br/>━━━━━━━━━━━━━<br/>JD 분석 · RAG 검색<br/>작성 · 평가 · 재작성<br/>병렬 노드 + SSE 스트리밍"]
+        LG["LangGraph Orchestrator<br/>━━━━━━━━━━━━━<br/>JD 분석 · RAG · 작성 · 글자수조정 · 평가<br/>동적 그래프 빌드(ADR-028)<br/>병렬 노드 + SSE 스트리밍"]
         LF["LLM Factory<br/>━━━━━━━━━━━<br/>Anthropic · OpenAI<br/>Google · Ollama<br/>에이전트별 모델 할당"]
         LG <--> LF
     end
 
-    DB[("🗄️ PostgreSQL + pgvector<br/>메타데이터 + 벡터 통합<br/>BGE-M3 / KURE-v1")]
-    Ollama[("🏠 Local Ollama<br/>hireagent-ollama 컨테이너<br/>exaone3.5 / gemma4 / deepseek-r1<br/>(같은 Docker 네트워크)")]
-    LLM[("☁️ External LLM APIs<br/>Anthropic · OpenAI · Google<br/>(HTTPS, 사용자 본인 키)")]
+    DB[("🗄️ PostgreSQL + pgvector<br/>메타데이터 + 벡터 + 암호화 키<br/>KURE-v1(1024-dim) · user_id 멀티테넌시")]
+    Ollama["🏠 Local Ollama<br/>hireagent-ollama 컨테이너<br/>exaone3.5 / gemma4 / deepseek-r1<br/>(같은 Docker 네트워크)"]
+    LLM["☁️ External LLM APIs<br/>Anthropic · OpenAI · Google<br/>(HTTPS, 사용자 본인 키)"]
 
     User -->|HTTPS| FE
     FE -->|"REST + SSE (JSON)"| Backend
@@ -49,7 +49,7 @@ flowchart TD
 | 컴포넌트 | 책임 |
 |---------|------|
 | **Frontend (Next.js)** | UI 렌더링, 사용자 입력 수집, REST 호출 + SSE 수신, 클라이언트 상태 관리 |
-| **LangGraph Orchestrator** | 에이전트 워크플로우 실행, 병렬 처리, State 관리, 단계별 SSE 이벤트 발행 |
+| **LangGraph Orchestrator** | 에이전트 워크플로우 **런타임 동적 빌드**(NodeSpec/WorkflowDef, ADR-028), 항목별 병렬 처리, State 관리, 단계별 SSE 이벤트 발행 |
 | **LLM Factory** | 멀티 프로바이더 추상화, 모델 선택, **DB에서 암호화 키 조회·복호화 후 메모리 즉시 폐기** |
 | **PostgreSQL + pgvector** | 사용자 데이터, RAG 벡터, 자소서 라이브러리, 암호화된 API 키 통합 저장 |
 | **Local Ollama (Docker)** | 로컬 LLM 추론 (무료, 오프라인), Docker 내부망으로 백엔드와 연결 |
@@ -437,3 +437,4 @@ flowchart LR
 | v0.3 | 2026-05-26 | M2 매핑표에 `text_cleaner.py` / `rag_retriever.py` 추가, §3.4 후처리 설명 갱신 (`clean_llm_output` + 연쇄 버그 설명), §6 ADR 인덱스 015~020 보강 |
 | v0.4 | 2026-05-27 | M2 매핑표에 `tech_extractor.py` 추가 + 자소서 다층 방어 테이블, §3.5 자동 추출(D) 흐름 추가, §3.6 SPA 사이트 차단/북마클릿 흐름 추가, §6 ADR 021~023 추가 |
 | v0.5 | 2026-06-09 | §2 그래프를 **동적 빌드**로 갱신(`NodeSpec`/`WorkflowDef`/flow, ADR-028) + 노드 on/off, M2 매핑에 동적 그래프·`llm_retry`·키 암호화·동적 모델 추가, §4.1 키 흐름을 구현 완료 상태(`_resolve_api_key`·평문 비전송, ADR-027)로 갱신 |
+| v0.6 | 2026-06-12 | §1 시스템 다이어그램 stale 정정(Next 14→16, shadcn→base-ui·Tailwind v4, BGE-M3→KURE-v1 확정, 동적 그래프 빌드·암호화 키 저장·user_id 멀티테넌시 반영), 책임표 LangGraph 동적 빌드 명시, **노드 모양 정정**(User=stadium·외부 LLM=사각형·DB만 원통 — 기존엔 전부 원통이라 브라우저/외부 API가 DB처럼 보였음) — README 시스템 구성도와 정합 |
