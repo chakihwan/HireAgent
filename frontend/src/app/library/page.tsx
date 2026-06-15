@@ -58,7 +58,7 @@ function EssayCard({ item, onToggleFinal, onDelete }: {
   const score = item.generation_metadata?.evaluation_score as number | undefined;
 
   return (
-    <Card className={item.is_final ? "border-emerald-200" : ""}>
+    <Card className={item.is_final ? "border-emerald-200 dark:border-emerald-800" : ""}>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
@@ -73,7 +73,7 @@ function EssayCard({ item, onToggleFinal, onDelete }: {
             )}
           </div>
           <div className="flex items-center gap-1">
-            <span className="text-xs text-zinc-400">{formatDate(item.created_at)}</span>
+            <span className="text-xs text-muted-foreground">{formatDate(item.created_at)}</span>
             <Button variant="ghost" size="sm" onClick={handleCopy} className="h-7 px-2">
               {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
             </Button>
@@ -86,13 +86,13 @@ function EssayCard({ item, onToggleFinal, onDelete }: {
             >
               {item.is_final
                 ? <StarOff className="size-3.5 text-amber-500" />
-                : <Star className="size-3.5 text-zinc-400" />}
+                : <Star className="size-3.5 text-muted-foreground" />}
             </Button>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => onDelete(item.id)}
-              className="h-7 px-2 text-zinc-400 hover:text-red-500"
+              className="h-7 px-2 text-muted-foreground hover:text-red-500"
             >
               <Trash2 className="size-3.5" />
             </Button>
@@ -109,11 +109,11 @@ function EssayCard({ item, onToggleFinal, onDelete }: {
       </CardHeader>
       {expanded && (
         <CardContent>
-          <p className="text-sm text-zinc-700 whitespace-pre-wrap leading-relaxed bg-zinc-50 rounded-md p-3">
+          <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed bg-muted rounded-md p-3">
             {item.content}
           </p>
           {!!item.generation_metadata?.evaluation_feedback && (
-            <p className="mt-2 text-xs text-zinc-500 border-l-2 border-zinc-200 pl-2 leading-relaxed">
+            <p className="mt-2 text-xs text-muted-foreground border-l-2 border-border pl-2 leading-relaxed">
               {String(item.generation_metadata.evaluation_feedback)}
             </p>
           )}
@@ -164,8 +164,8 @@ export default function LibraryPage() {
     <div className="mx-auto max-w-3xl px-6 py-10 space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-zinc-900">자소서 라이브러리</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">저장된 자소서 {items.length}개</p>
+          <h1 className="text-xl font-semibold text-foreground">자소서 라이브러리</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">저장된 자소서 {items.length}개</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => libraryQ.refetch()} disabled={libraryQ.isFetching}>
           {libraryQ.isFetching ? "..." : "새로고침"}
@@ -203,7 +203,7 @@ export default function LibraryPage() {
         </Select>
       </div>
 
-      {loading && <p className="text-sm text-zinc-400">불러오는 중...</p>}
+      {loading && <p className="text-sm text-muted-foreground">불러오는 중...</p>}
       {error && <p className="text-sm text-red-500">{error}</p>}
 
       {!loading && filtered.length === 0 && (

@@ -96,8 +96,8 @@ export default function JobsPage() {
     <div className="mx-auto max-w-3xl px-6 py-10 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-zinc-900">지원 관리</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">지원 현황 추적 및 합격 태깅</p>
+          <h1 className="text-xl font-semibold text-foreground">지원 관리</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">지원 현황 추적 및 합격 태깅</p>
         </div>
         <Button size="sm" onClick={() => setShowForm((p) => !p)}>
           <Plus className="size-4 mr-1" />
@@ -146,7 +146,7 @@ export default function JobsPage() {
         </Card>
       )}
 
-      {loading && <p className="text-sm text-zinc-400">불러오는 중...</p>}
+      {loading && <p className="text-sm text-muted-foreground">불러오는 중...</p>}
 
       {!loading && jobs.length === 0 && !showForm && (
         <Card>
@@ -168,22 +168,22 @@ export default function JobsPage() {
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="space-y-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-zinc-900">{job.company}</span>
+                    <span className="font-semibold text-foreground">{job.company}</span>
                     {job.position && (
-                      <span className="text-sm text-zinc-500">{job.position}</span>
+                      <span className="text-sm text-muted-foreground">{job.position}</span>
                     )}
                     {job.job_url && (
                       <a
                         href={job.job_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-zinc-400 hover:text-zinc-600"
+                        className="text-muted-foreground hover:text-foreground"
                       >
                         <ExternalLink className="size-3.5" />
                       </a>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap text-xs text-zinc-400">
+                  <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
                     <span>등록 {formatDate(job.created_at)}</span>
                     {job.applied_at && <span>제출 {formatDate(job.applied_at)}</span>}
                     {job.deadline && <span>마감 {formatDate(job.deadline)}</span>}
@@ -214,7 +214,7 @@ export default function JobsPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 px-2 text-zinc-400 hover:text-red-500"
+                    className="h-7 px-2 text-muted-foreground hover:text-red-500"
                     onClick={() => handleDelete(job.id)}
                   >
                     <Trash2 className="size-3.5" />
