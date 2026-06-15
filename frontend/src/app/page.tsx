@@ -63,14 +63,14 @@ function StatCard({
 }) {
   return (
     <Link href={href} className="block group">
-      <Card className="py-0 transition-colors group-hover:border-zinc-300 group-hover:bg-white">
+      <Card className="py-0 transition-colors group-hover:border-zinc-300 group-hover:bg-accent dark:group-hover:border-zinc-700">
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-2">
-            <span className="text-xs font-medium text-zinc-500">{label}</span>
-            <span className="text-zinc-300">{icon}</span>
+            <span className="text-xs font-medium text-muted-foreground">{label}</span>
+            <span className="text-muted-foreground">{icon}</span>
           </div>
-          <div className="mt-2 text-2xl font-semibold text-zinc-900 tabular-nums">{value}</div>
-          {hint && <div className="mt-0.5 text-xs text-zinc-400">{hint}</div>}
+          <div className="mt-2 text-2xl font-semibold text-foreground tabular-nums">{value}</div>
+          {hint && <div className="mt-0.5 text-xs text-muted-foreground">{hint}</div>}
         </CardContent>
       </Card>
     </Link>
@@ -123,25 +123,25 @@ export default function DashboardPage() {
     <div className="mx-auto max-w-5xl px-6 py-10 space-y-8">
       {/* Hero */}
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-900 flex items-center gap-2">
-          <Sparkles className="size-5 text-zinc-400" />
+        <h1 className="text-2xl font-semibold text-foreground flex items-center gap-2">
+          <Sparkles className="size-5 text-muted-foreground" />
           HireAgent
         </h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           한 번 정리한 커리어 데이터로, 멀티에이전트가 항목별 자소서를 다듬어줍니다.
         </p>
       </div>
 
       {error && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="p-4 text-sm text-red-600">
+        <Card className="border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-950/30">
+          <CardContent className="p-4 text-sm text-red-600 dark:text-red-400">
             데이터를 불러오지 못했습니다: {error instanceof Error ? error.message : String(error)}
           </CardContent>
         </Card>
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-sm text-zinc-400 py-12 justify-center">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground py-12 justify-center">
           <Loader2 className="size-4 animate-spin" />
           불러오는 중...
         </div>
@@ -202,8 +202,8 @@ export default function DashboardPage() {
           {isEmpty ? (
             <Card className="border-dashed">
               <CardContent className="p-8 text-center space-y-3">
-                <p className="text-sm text-zinc-600">아직 데이터가 없습니다.</p>
-                <p className="text-xs text-zinc-400 leading-relaxed">
+                <p className="text-sm text-muted-foreground">아직 데이터가 없습니다.</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   먼저 <Link href="/projects" className="underline">커리어 데이터</Link>(이력서·GitHub 레포)를 등록하면,
                   <br />
                   멀티에이전트가 그 경험을 근거로 자소서를 작성합니다.
@@ -219,25 +219,25 @@ export default function DashboardPage() {
             /* 최근 활동 */
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-zinc-700">최근 활동</h2>
+                <h2 className="text-sm font-semibold text-foreground">최근 활동</h2>
               </div>
               {activity.length === 0 ? (
-                <p className="text-xs text-zinc-400">최근 활동이 없습니다.</p>
+                <p className="text-xs text-muted-foreground">최근 활동이 없습니다.</p>
               ) : (
                 <Card>
-                  <CardContent className="p-0 divide-y divide-zinc-100">
+                  <CardContent className="p-0 divide-y divide-border">
                     {activity.map((a) => (
                       <div key={a.id} className="flex items-center gap-3 px-4 py-3">
                         <div className="shrink-0">
                           {a.kind === "essay" ? (
-                            <FileText className="size-4 text-zinc-400" />
+                            <FileText className="size-4 text-muted-foreground" />
                           ) : (
-                            <Briefcase className="size-4 text-zinc-400" />
+                            <Briefcase className="size-4 text-muted-foreground" />
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm text-zinc-800 truncate">{a.label}</p>
-                          <p className="text-xs text-zinc-400 truncate">{a.sub}</p>
+                          <p className="text-sm text-foreground truncate">{a.label}</p>
+                          <p className="text-xs text-muted-foreground truncate">{a.sub}</p>
                         </div>
                         <Badge variant="secondary" className="shrink-0 text-xs font-normal">
                           {timeAgo(a.date)}
@@ -252,7 +252,7 @@ export default function DashboardPage() {
 
           {/* 시작 가이드 (3스텝) — 온보딩 + 화면 채움 */}
           <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-zinc-700">이렇게 시작하세요</h2>
+            <h2 className="text-sm font-semibold text-foreground">이렇게 시작하세요</h2>
             <div className="grid sm:grid-cols-3 gap-3">
               {[
                 { n: 1, icon: Database, title: "커리어 데이터 등록", desc: "이력서·GitHub·경험을 인덱싱", href: "/projects" },
@@ -260,15 +260,15 @@ export default function DashboardPage() {
                 { n: 3, icon: Sparkles, title: "자소서 생성 & 다듬기", desc: "멀티에이전트가 항목별 작성", href: "/generate" },
               ].map((s) => (
                 <Link key={s.n} href={s.href}>
-                  <Card className="h-full hover:border-zinc-300 transition-colors">
+                  <Card className="h-full hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
                     <CardContent className="p-4 space-y-2">
                       <div className="flex items-center gap-2">
                         <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{s.n}</span>
-                        <s.icon className="size-4 text-zinc-400" />
+                        <s.icon className="size-4 text-muted-foreground" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-zinc-800">{s.title}</p>
-                        <p className="mt-0.5 text-xs leading-relaxed text-zinc-400">{s.desc}</p>
+                        <p className="text-sm font-medium text-foreground">{s.title}</p>
+                        <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{s.desc}</p>
                       </div>
                     </CardContent>
                   </Card>
