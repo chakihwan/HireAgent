@@ -11,7 +11,7 @@
 
 <!-- 데모 영상 (생성 흐름: 공고 입력 → 노드 실시간 색변화 → 결과) -->
 <p align="center">
-  <video src="https://github.com/chakihwan/HireAgent/raw/main/docs/assets/demo.mp4" autoplay loop muted playsinline controls width="820"></video>
+  <video src="https://github.com/user-attachments/assets/bb2808f5-8270-408a-afdf-4d33ae7dee06" autoplay loop muted playsinline controls width="820"></video>
 </p>
 
 공고를 붙여넣고 항목을 고르면, 여러 AI 에이전트가 **항목마다 병렬로** `RAG 검색 → 작성 → 글자수 조정 → 자가 평가`를 거쳐 자소서를 만들어줍니다. 본인의 이력서·GitHub 경험을 근거로 쓰고, 글자수는 Python으로 정확히 맞추며, 결과를 루브릭으로 채점합니다.
