@@ -9,6 +9,16 @@
 
 ## [Unreleased]
 
+### 추가 — 다크 모드 (M6)
+
+- **next-themes 도입** — ThemeProvider(Providers 통합) · ThemeToggle(Sun/Moon, `defaultTheme=system`)
+  · html `suppressHydrationWarning`(FOUC 방지). `.dark` 토큰 · `@custom-variant dark`는 기존 globals.css 활용
+- **전 페이지 토큰화** — home·library·jobs·models·projects·generate의 하드코딩 색을 토큰으로
+  (text-zinc→foreground/muted-foreground, bg-white→card, bg-zinc-50→muted, border-zinc→border)
+- **generate 인라인 style 제거** — 체크박스·노드·버튼 hex(#fff/#e4e4e7 등) → className 조건부(primary/violet 토큰)
+- 의미색(red/amber/blue/emerald) 배너에 dark variant, 모달 오버레이 `bg-black/50`
+- 잔여(ROADMAP): WorkflowCanvas PHASE 노드 hex 45곳 · SpaSiteGuide 내부 텍스트
+
 ### 문서 — 루트 README + 데모 영상
 
 - **루트 README 작성** — What/Why, 5개 핵심 기능(ADR 링크), 시스템 구성·생성 파이프라인 Mermaid,
