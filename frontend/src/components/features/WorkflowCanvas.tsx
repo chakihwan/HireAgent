@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
+import { useTheme } from "next-themes";
 import {
   ReactFlow,
   Background,
@@ -64,10 +65,13 @@ type AnyNodeData = ConfigNodeData | ItemAgentNodeData;
 // ── 스타일 ────────────────────────────────────────────────────────
 
 const PHASE_BORDER: Record<NodePhase, string> = {
-  idle: "#e4e4e7", running: "#3b82f6", done: "#22c55e", error: "#ef4444",
+  idle: "var(--border)", running: "#3b82f6", done: "#22c55e", error: "#ef4444",
 };
 const PHASE_BG: Record<NodePhase, string> = {
-  idle: "#fff", running: "#eff6ff", done: "#f0fdf4", error: "#fef2f2",
+  idle: "var(--card)",
+  running: "color-mix(in srgb, #3b82f6 10%, var(--card))",
+  done: "color-mix(in srgb, #22c55e 10%, var(--card))",
+  error: "color-mix(in srgb, #ef4444 10%, var(--card))",
 };
 const PHASE_GLOW: Record<NodePhase, string> = {
   idle: "none",
@@ -76,7 +80,7 @@ const PHASE_GLOW: Record<NodePhase, string> = {
   error: "0 2px 8px rgba(239,68,68,0.15)",
 };
 const PHASE_DOT: Record<NodePhase, string> = {
-  idle: "#d4d4d8", running: "#3b82f6", done: "#22c55e", error: "#ef4444",
+  idle: "var(--muted-foreground)", running: "#3b82f6", done: "#22c55e", error: "#ef4444",
 };
 const PHASE_TEXT: Record<NodePhase, string> = {
   idle: "대기", running: "실행 중...", done: "완료", error: "오류",
@@ -106,7 +110,7 @@ function ModelConfig({
   const cloudModelsQ = useCloudModels();
 
   if (!config || !agentKey) {
-    return <div style={{ fontSize: 10, color: "#a1a1aa", padding: "2px 0 4px" }}>KURE-v1 벡터 검색</div>;
+    return <div style={{ fontSize: 10, color: "var(--muted-foreground)", padding: "2px 0 4px" }}>KURE-v1 벡터 검색</div>;
   }
 
   // 동적 목록 우선, 없으면(키 미등록·조회 실패) 하드코딩 CLOUD_MODELS fallback
@@ -120,37 +124,37 @@ function ModelConfig({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
       <div>
-        <div style={{ fontSize: 9, fontWeight: 700, color: "#a1a1aa", letterSpacing: "0.07em", marginBottom: 2 }}>PROVIDER</div>
+        <div style={{ fontSize: 9, fontWeight: 700, color: "var(--muted-foreground)", letterSpacing: "0.07em", marginBottom: 2 }}>PROVIDER</div>
         {editable ? (
           <select
             className="nodrag nopan"
             value={config.provider}
             onChange={(e) => onChange?.("provider", e.target.value)}
-            style={{ width: "100%", padding: "5px 6px", borderRadius: 6, border: "1.5px solid #e4e4e7", fontSize: 12, background: "#fafafa", cursor: "pointer", outline: "none" }}
+            style={{ width: "100%", padding: "5px 6px", borderRadius: 6, border: "1.5px solid var(--border)", fontSize: 12, background: "var(--muted)", cursor: "pointer", outline: "none" }}
           >
             {["ollama","anthropic","openai","google"].map((p) => (
               <option key={p} value={p}>{PROVIDER_LABEL[p]}</option>
             ))}
           </select>
         ) : (
-          <div style={{ fontSize: 12, color: "#52525b", fontWeight: 500 }}>{PROVIDER_LABEL[config.provider] ?? config.provider}</div>
+          <div style={{ fontSize: 12, color: "var(--muted-foreground)", fontWeight: 500 }}>{PROVIDER_LABEL[config.provider] ?? config.provider}</div>
         )}
       </div>
       <div>
-        <div style={{ fontSize: 9, fontWeight: 700, color: "#a1a1aa", letterSpacing: "0.07em", marginBottom: 2 }}>MODEL</div>
+        <div style={{ fontSize: 9, fontWeight: 700, color: "var(--muted-foreground)", letterSpacing: "0.07em", marginBottom: 2 }}>MODEL</div>
         {editable ? (
           <select
             className="nodrag nopan"
             value={config.model}
             onChange={(e) => onChange?.("model", e.target.value)}
-            style={{ width: "100%", padding: "5px 6px", borderRadius: 6, border: "1.5px solid #e4e4e7", fontSize: 12, background: "#fafafa", cursor: "pointer", outline: "none" }}
+            style={{ width: "100%", padding: "5px 6px", borderRadius: 6, border: "1.5px solid var(--border)", fontSize: 12, background: "var(--muted)", cursor: "pointer", outline: "none" }}
           >
             {allOptions.map((m) => (
               <option key={m} value={m}>{m}</option>
             ))}
           </select>
         ) : (
-          <div style={{ fontSize: 12, color: "#52525b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{config.model}</div>
+          <div style={{ fontSize: 12, color: "var(--muted-foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{config.model}</div>
         )}
       </div>
     </div>
@@ -161,7 +165,7 @@ function ModelConfig({
 
 function StatusRow({ phase, detail, iterations }: { phase: NodePhase; detail: string; iterations: number }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, paddingTop: 6, borderTop: "1px solid #f4f4f5", marginTop: 4 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 6, paddingTop: 6, borderTop: "1px solid var(--border)", marginTop: 4 }}>
       <span style={{
         width: 7, height: 7, borderRadius: "50%", display: "inline-block", flexShrink: 0,
         background: PHASE_DOT[phase],
@@ -169,12 +173,12 @@ function StatusRow({ phase, detail, iterations }: { phase: NodePhase; detail: st
       }} />
       <span style={{ fontSize: 11, fontWeight: 600, color: PHASE_DOT[phase] }}>{PHASE_TEXT[phase]}</span>
       {iterations > 1 && (
-        <span style={{ fontSize: 9, fontWeight: 700, background: "#fef3c7", color: "#d97706", borderRadius: 4, padding: "1px 5px", marginLeft: 2 }}>
+        <span style={{ fontSize: 9, fontWeight: 700, background: "color-mix(in srgb, #d97706 20%, var(--card))", color: "#d97706", borderRadius: 4, padding: "1px 5px", marginLeft: 2 }}>
           {iterations}회차
         </span>
       )}
       {detail && (
-        <span style={{ fontSize: 10, color: "#a1a1aa", marginLeft: "auto", textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 70 }}>
+        <span style={{ fontSize: 10, color: "var(--muted-foreground)", marginLeft: "auto", textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 70 }}>
           {detail}
         </span>
       )}
@@ -198,15 +202,15 @@ function ConfigNode({ data: d }: NodeProps) {
       filter: data.disabled ? "grayscale(0.7)" : "none",
     }}>
       <Handle type="target" position={Position.Left} style={{ opacity: 0, pointerEvents: "none" }} />
-      <div style={{ padding: "12px 14px 10px", borderBottom: "1px solid #f4f4f5" }}>
+      <div style={{ padding: "12px 14px 10px", borderBottom: "1px solid var(--border)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 24 }}>{data.icon}</span>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 14, color: "#18181b" }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--foreground)" }}>
               {data.label}
               {data.disabled && <span style={{ fontSize: 9, marginLeft: 6, color: "#ef4444", fontWeight: 600 }}>건너뜀</span>}
             </div>
-            <div style={{ fontSize: 10, color: "#a1a1aa", marginTop: 1 }}>{data.role}</div>
+            <div style={{ fontSize: 10, color: "var(--muted-foreground)", marginTop: 1 }}>{data.role}</div>
           </div>
         </div>
       </div>
@@ -242,21 +246,21 @@ function ItemAgentNode({ data: d }: NodeProps) {
       filter: data.disabled ? "grayscale(0.7)" : "none",
     }}>
       <Handle type="target" position={Position.Left} style={{ opacity: 0, pointerEvents: "none" }} />
-      <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #f4f4f5" }}>
+      <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid var(--border)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
           <span style={{ fontSize: 18 }}>{data.icon}</span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 12, color: "#18181b" }}>
+            <div style={{ fontWeight: 700, fontSize: 12, color: "var(--foreground)" }}>
               {data.label}
               {data.disabled && <span style={{ fontSize: 8, marginLeft: 5, color: "#ef4444", fontWeight: 600 }}>건너뜀</span>}
             </div>
-            <div style={{ fontSize: 10, color: "#a1a1aa", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{data.category}</div>
+            <div style={{ fontSize: 10, color: "var(--muted-foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{data.category}</div>
           </div>
         </div>
       </div>
       <div style={{ padding: "8px 12px 10px" }}>
         {data.isOverridden && data.editable && (
-          <div style={{ fontSize: 9, color: "#7c3aed", fontWeight: 700, marginBottom: 4, background: "#f5f3ff", borderRadius: 4, padding: "1px 5px", display: "inline-block" }}>
+          <div style={{ fontSize: 9, color: "#8b5cf6", fontWeight: 700, marginBottom: 4, background: "color-mix(in srgb, #7c3aed 14%, var(--card))", borderRadius: 4, padding: "1px 5px", display: "inline-block" }}>
             ★ 항목 전용 설정
           </div>
         )}
@@ -308,7 +312,7 @@ const CFG_W = 220; const CFG_GAP_X = 70;
 const ITEM_W = 175; const ITEM_GAP_X = 40; const ITEM_ROW_H = 175;
 const JD_X = 0; const ITEM_START_X = CFG_W + CFG_GAP_X;
 
-function mkEdge(id: string, src: string, tgt: string, color = "#e4e4e7", animated = false): Edge {
+function mkEdge(id: string, src: string, tgt: string, color = "var(--border)", animated = false): Edge {
   return {
     id, source: src, target: tgt,
     type: "smoothstep", animated,
@@ -513,6 +517,7 @@ type Props = {
 };
 
 export function WorkflowCanvas({ categories, configs, itemConfigs, events, editable, ollamaModels, enabledNodes = ALL_ENABLED, onConfigChange, onItemConfigChange }: Props) {
+  const { resolvedTheme } = useTheme();
   const onChangeRef = useRef(onConfigChange);
   onChangeRef.current = onConfigChange;
   const onItemChangeRef = useRef(onItemConfigChange);
@@ -587,6 +592,7 @@ export function WorkflowCanvas({ categories, configs, itemConfigs, events, edita
 
   return (
     <ReactFlow
+      colorMode={resolvedTheme === "dark" ? "dark" : "light"}
       nodes={nodes} edges={edges}
       onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
       nodeTypes={NODE_TYPES}
@@ -598,7 +604,7 @@ export function WorkflowCanvas({ categories, configs, itemConfigs, events, edita
       minZoom={0.2} maxZoom={1.5}
       proOptions={{ hideAttribution: true }}
     >
-      <Background variant={BackgroundVariant.Dots} gap={28} size={1.2} color="#e8e8e8" />
+      <Background variant={BackgroundVariant.Dots} gap={28} size={1.2} color="var(--border)" />
       <Controls showInteractive={false} position="bottom-left" />
       <MiniMap
         nodeColor={(nd) => {
@@ -607,8 +613,7 @@ export function WorkflowCanvas({ categories, configs, itemConfigs, events, edita
           return PHASE_DOT[phase];
         }}
         position="bottom-right"
-        style={{ borderRadius: 10, border: "1px solid #e4e4e7" }}
-        maskColor="rgba(255,255,255,0.8)"
+        style={{ borderRadius: 10, border: "1px solid var(--border)" }}
       />
     </ReactFlow>
   );
