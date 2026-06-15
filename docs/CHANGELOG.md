@@ -9,6 +9,13 @@
 
 ## [Unreleased]
 
+### 문서 — 루트 README + 데모 영상
+
+- **루트 README 작성** — What/Why, 5개 핵심 기능(ADR 링크), 시스템 구성·생성 파이프라인 Mermaid,
+  기술적 도전 4선, 빠른 시작·테스트 안내, 스크린샷 6장 + **데모 영상**(GitHub user-attachments 임베드)
+- **architecture.md §1 stale 정정** — Next 14→16·shadcn→base-ui·BGE-M3→KURE-v1 확정,
+  동적 그래프 빌드(ADR-028)·user_id 멀티테넌시 반영, Mermaid 노드 모양 정정(User=stadium·외부 LLM=사각형·DB만 원통)
+
 ### 개선 — 화면 마감 + 브랜드 포인트 색
 
 - **브랜드 포인트 색 인디고** — `--primary` 무채색 → `#4f46e5`(라이트)/`#818cf8`(다크). 액션·선택을

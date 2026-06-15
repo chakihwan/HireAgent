@@ -123,7 +123,6 @@
 
 ## 📚 상시 트랙 — 문서 + 포트폴리오
 
-- [ ] 루트 `README.md` 강화 (데모 GIF, What/Why/How, 배지, ADR 링크)
 - [ ] `docs/demo.md` 첫 사용 5분 가이드 (인덱싱→공고→생성, 스크린샷)
 - [ ] `docs/deployment.md` Railway+Vercel 배포 가이드
 - [ ] `docs/api.md` 핵심 흐름 narrative
