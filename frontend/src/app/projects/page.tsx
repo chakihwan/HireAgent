@@ -136,18 +136,18 @@ export default function ProjectsPage() {
 
       {/* 헤더 */}
       <div>
-        <h1 className="text-xl font-semibold text-zinc-900">내 커리어 데이터</h1>
-        <p className="text-sm text-zinc-500 mt-0.5">
+        <h1 className="text-xl font-semibold text-foreground">내 커리어 데이터</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
           이력서·프로젝트·경험을 등록하면 자소서 생성 시 자동으로 참고합니다.
         </p>
         {totalChunks > 0 && (
-          <p className="text-xs text-zinc-400 mt-1">{totalChunks}개 청크 인덱싱됨</p>
+          <p className="text-xs text-muted-foreground mt-1">{totalChunks}개 청크 인덱싱됨</p>
         )}
       </div>
 
       {/* ── 3-카드 선택 영역 ── */}
       {loading ? (
-        <div className="flex items-center gap-2 text-sm text-zinc-400 py-6">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
           <Loader2 className="size-4 animate-spin" /> 불러오는 중...
         </div>
       ) : (
@@ -165,21 +165,21 @@ export default function ProjectsPage() {
                     relative text-left rounded-xl border-2 p-4 h-28 flex flex-col justify-between
                     transition-all duration-150 cursor-pointer
                     ${isActive
-                      ? "border-zinc-800 bg-zinc-50 shadow-sm"
-                      : "border-zinc-200 bg-white hover:border-zinc-400 hover:shadow-sm"
+                      ? "border-foreground bg-muted shadow-sm"
+                      : "border-border bg-card hover:border-muted-foreground hover:shadow-sm"
                     }
                   `}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Icon className={`size-4 ${isActive ? "text-zinc-700" : "text-zinc-400"}`} />
-                      <span className="text-sm font-medium text-zinc-800">{title}</span>
+                      <Icon className={`size-4 ${isActive ? "text-foreground" : "text-muted-foreground"}`} />
+                      <span className="text-sm font-medium text-foreground">{title}</span>
                     </div>
                     {count > 0 && (
                       <Badge variant="secondary" className="text-xs">{count}</Badge>
                     )}
                   </div>
-                  <p className={`text-xs ${isActive ? "text-zinc-500" : "text-zinc-400"}`}>{hint}</p>
+                  <p className={`text-xs ${isActive ? "text-muted-foreground" : "text-muted-foreground"}`}>{hint}</p>
                 </button>
               );
             })}
@@ -216,10 +216,10 @@ export default function ProjectsPage() {
 
       {/* ── RAG 검색 ── */}
       {totalChunks > 0 && (
-        <div className="border-t border-zinc-100 pt-4">
+        <div className="border-t border-border pt-4">
           <button
             onClick={() => setShowSearch(p => !p)}
-            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             {showSearch ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
             RAG 검색 확인
@@ -240,17 +240,17 @@ export default function ProjectsPage() {
               {searchResults && (
                 <div className="space-y-2">
                   {searchResults.length === 0 && (
-                    <p className="text-xs text-zinc-400">매칭 결과 없음</p>
+                    <p className="text-xs text-muted-foreground">매칭 결과 없음</p>
                   )}
                   {searchResults.map(r => (
-                    <div key={r.id} className="text-xs border-l-2 border-blue-200 pl-3 py-1.5">
-                      <div className="flex gap-2 text-zinc-400 mb-1">
+                    <div key={r.id} className="text-xs border-l-2 border-blue-200 dark:border-blue-900 pl-3 py-1.5">
+                      <div className="flex gap-2 text-muted-foreground mb-1">
                         <span>유사도 {(1 - r.distance).toFixed(3)}</span>
                         <span>·</span>
                         <span>{SOURCE_LABELS[r.source_type] ?? r.source_type}</span>
-                        {r.project_name && <><span>·</span><span className="text-zinc-600">{r.project_name}</span></>}
+                        {r.project_name && <><span>·</span><span className="text-muted-foreground">{r.project_name}</span></>}
                       </div>
-                      <p className="text-zinc-700 leading-relaxed line-clamp-3">{r.content}</p>
+                      <p className="text-foreground leading-relaxed line-clamp-3">{r.content}</p>
                     </div>
                   ))}
                 </div>
@@ -338,14 +338,14 @@ function AddFormPanel({
   }
 
   return (
-    <div className="border border-zinc-200 rounded-xl p-5 space-y-4 bg-zinc-50">
+    <div className="border border-border rounded-xl p-5 space-y-4 bg-muted">
       {/* 패널 헤더 */}
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-medium text-zinc-800">{config.title} 인덱싱</p>
-          <p className="text-xs text-zinc-500 mt-0.5">{config.desc}</p>
+          <p className="text-sm font-medium text-foreground">{config.title} 인덱싱</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{config.desc}</p>
         </div>
-        <button onClick={onClose} className="text-zinc-400 hover:text-zinc-700 transition-colors mt-0.5">
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors mt-0.5">
           <X className="size-4" />
         </button>
       </div>
@@ -354,29 +354,29 @@ function AddFormPanel({
       {type === "resume" && (
         <div className="space-y-3">
           <div>
-            <Label className="text-xs text-zinc-600">파일 *</Label>
+            <Label className="text-xs text-muted-foreground">파일 *</Label>
             <input
               ref={fileInputRef}
               type="file"
               accept=".pdf,.docx,.md,.markdown,.txt"
               onChange={e => setFile(e.target.files?.[0] ?? null)}
-              className="mt-1.5 block w-full text-sm text-zinc-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-white file:text-zinc-700 hover:file:bg-zinc-100 cursor-pointer file:shadow-sm file:border file:border-zinc-200"
+              className="mt-1.5 block w-full text-sm text-muted-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-card file:text-foreground hover:file:bg-muted cursor-pointer file:shadow-sm file:border file:border-border"
             />
             {file && (
-              <p className="text-xs text-zinc-400 mt-1">{file.name} ({(file.size / 1024).toFixed(1)} KB)</p>
+              <p className="text-xs text-muted-foreground mt-1">{file.name} ({(file.size / 1024).toFixed(1)} KB)</p>
             )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs text-zinc-600">레이블 <span className="text-zinc-400">(선택)</span></Label>
+              <Label className="text-xs text-muted-foreground">레이블 <span className="text-muted-foreground">(선택)</span></Label>
               <Input className="mt-1.5 h-8 text-sm" value={projectName} onChange={e => setProjectName(e.target.value)} placeholder="예: 사람인 이력서" />
             </div>
             <div>
-              <Label className="text-xs text-zinc-600">
-                기술 스택 <span className="text-zinc-400">(자동 추출됨 · 추가만 입력)</span>
+              <Label className="text-xs text-muted-foreground">
+                기술 스택 <span className="text-muted-foreground">(자동 추출됨 · 추가만 입력)</span>
               </Label>
               <Input className="mt-1.5 h-8 text-sm" value={techStack} onChange={e => setTechStack(e.target.value)} placeholder="자동 인식 안 되는 기술만" />
-              <p className="text-xs text-zinc-400 mt-1">본문에서 Python·FastAPI 등 주요 기술은 자동으로 추출됩니다.</p>
+              <p className="text-xs text-muted-foreground mt-1">본문에서 Python·FastAPI 등 주요 기술은 자동으로 추출됩니다.</p>
             </div>
           </div>
         </div>
@@ -385,16 +385,16 @@ function AddFormPanel({
       {type === "github" && (
         <div className="space-y-3">
           <div>
-            <Label className="text-xs text-zinc-600">GitHub Repo URL *</Label>
+            <Label className="text-xs text-muted-foreground">GitHub Repo URL *</Label>
             <Input className="mt-1.5 h-8 text-sm" value={repoUrl} onChange={e => setRepoUrl(e.target.value)} placeholder="https://github.com/owner/repo" />
-            <p className="text-xs text-zinc-400 mt-1">공개 레포만 지원 · 무인증 rate limit 60/h · 프로젝트명은 owner/repo로 자동 저장</p>
+            <p className="text-xs text-muted-foreground mt-1">공개 레포만 지원 · 무인증 rate limit 60/h · 프로젝트명은 owner/repo로 자동 저장</p>
           </div>
           <div>
-            <Label className="text-xs text-zinc-600">
-              기술 스택 <span className="text-zinc-400">(자동 추출됨 · 추가만 입력)</span>
+            <Label className="text-xs text-muted-foreground">
+              기술 스택 <span className="text-muted-foreground">(자동 추출됨 · 추가만 입력)</span>
             </Label>
             <Input className="mt-1.5 h-8 text-sm" value={techStack} onChange={e => setTechStack(e.target.value)} placeholder="자동 인식 안 되는 기술만" />
-            <p className="text-xs text-zinc-400 mt-1">README에서 Python·FastAPI 등 주요 기술은 자동으로 추출됩니다.</p>
+            <p className="text-xs text-muted-foreground mt-1">README에서 Python·FastAPI 등 주요 기술은 자동으로 추출됩니다.</p>
           </div>
         </div>
       )}
@@ -403,7 +403,7 @@ function AddFormPanel({
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs text-zinc-600">유형</Label>
+              <Label className="text-xs text-muted-foreground">유형</Label>
               <Select value={sourceType} onValueChange={v => v && setSourceType(v)}>
                 <SelectTrigger className="mt-1.5 h-8 text-sm">
                   <SelectValue>{(v) => SOURCE_LABELS[v as string] ?? (v as string)}</SelectValue>
@@ -415,12 +415,12 @@ function AddFormPanel({
               </Select>
             </div>
             <div>
-              <Label className="text-xs text-zinc-600">제목 <span className="text-zinc-400">(선택)</span></Label>
+              <Label className="text-xs text-muted-foreground">제목 <span className="text-muted-foreground">(선택)</span></Label>
               <Input className="mt-1.5 h-8 text-sm" value={projectName} onChange={e => setProjectName(e.target.value)} placeholder="예: 경력기술서" />
             </div>
           </div>
           <div>
-            <Label className="text-xs text-zinc-600">텍스트 *</Label>
+            <Label className="text-xs text-muted-foreground">텍스트 *</Label>
             <Textarea
               rows={6}
               className="mt-1.5 text-sm font-mono resize-none"
@@ -428,7 +428,7 @@ function AddFormPanel({
               onChange={e => setContent(e.target.value)}
               placeholder="내용을 붙여넣거나 입력하세요..."
             />
-            <p className="text-xs text-zinc-400 mt-0.5">{content.length.toLocaleString()}자</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{content.length.toLocaleString()}자</p>
           </div>
         </div>
       )}
@@ -466,8 +466,8 @@ function DataDirectory({
 }) {
   return (
     <div className="space-y-1">
-      <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide mb-3">인덱싱된 데이터</p>
-      <p className="text-xs text-zinc-400 -mt-2 mb-3">항목을 클릭하면 청크 내용을 확인할 수 있습니다.</p>
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">인덱싱된 데이터</p>
+      <p className="text-xs text-muted-foreground -mt-2 mb-3">항목을 클릭하면 청크 내용을 확인할 수 있습니다.</p>
       {(Object.keys(CARDS) as CardType[]).map(type => {
         const { title, icon: Icon } = CARDS[type];
         const items = Array.from(groupByProject(grouped[type]).entries());
@@ -500,23 +500,23 @@ function DirectorySection({
   const [open, setOpen] = useState(true);
 
   return (
-    <div className="rounded-lg border border-zinc-100 overflow-hidden">
+    <div className="rounded-lg border border-border overflow-hidden">
       {/* 폴더 헤더 */}
       <button
         onClick={() => setOpen(p => !p)}
-        className="w-full flex items-center gap-2 px-4 py-2.5 bg-zinc-50 hover:bg-zinc-100 transition-colors text-left"
+        className="w-full flex items-center gap-2 px-4 py-2.5 bg-muted hover:bg-muted transition-colors text-left"
       >
         {open
-          ? <FolderOpen className="size-4 text-zinc-400" />
-          : <Icon className="size-4 text-zinc-400" />
+          ? <FolderOpen className="size-4 text-muted-foreground" />
+          : <Icon className="size-4 text-muted-foreground" />
         }
-        <span className="text-xs font-medium text-zinc-600">{title}</span>
+        <span className="text-xs font-medium text-muted-foreground">{title}</span>
         {items.length > 0 && (
           <Badge variant="outline" className="text-xs ml-auto">{items.length}</Badge>
         )}
         {open
-          ? <ChevronUp className="size-3.5 text-zinc-400 ml-1" />
-          : <ChevronDown className="size-3.5 text-zinc-400 ml-1" />
+          ? <ChevronUp className="size-3.5 text-muted-foreground ml-1" />
+          : <ChevronDown className="size-3.5 text-muted-foreground ml-1" />
         }
       </button>
 
@@ -524,7 +524,7 @@ function DirectorySection({
       {open && (
         <div>
           {items.length === 0 ? (
-            <p className="text-xs text-zinc-300 px-4 py-3">데이터 없음</p>
+            <p className="text-xs text-muted-foreground px-4 py-3">데이터 없음</p>
           ) : (
             items.map(([key, chunks]) => {
               const first = chunks[0];
@@ -536,18 +536,18 @@ function DirectorySection({
               return (
                 <div
                   key={key}
-                  className="flex items-center gap-3 px-4 py-2.5 border-t border-zinc-100 hover:bg-zinc-50 group transition-colors cursor-pointer"
+                  className="flex items-center gap-3 px-4 py-2.5 border-t border-border hover:bg-muted group transition-colors cursor-pointer"
                   onClick={() => onPreview(displayName, chunks)}
                 >
-                  <FileText className="size-3.5 text-zinc-300 shrink-0" />
+                  <FileText className="size-3.5 text-muted-foreground shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm text-zinc-700 truncate block">{displayName}</span>
-                    <span className="text-xs text-zinc-400">
+                    <span className="text-sm text-foreground truncate block">{displayName}</span>
+                    <span className="text-xs text-muted-foreground">
                       {totalChunks}청크 · {totalChars.toLocaleString()}자 · {formatDate(first.indexed_at)}
                     </span>
                   </div>
                   <button
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded text-zinc-400 hover:text-red-500 hover:bg-red-50 shrink-0"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 shrink-0"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (isProject && first.project_name) onDeleteProject(first.project_name);
@@ -591,23 +591,23 @@ function ChunkPreviewModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[85vh] flex flex-col"
+        className="bg-card rounded-xl shadow-2xl max-w-3xl w-full max-h-[85vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
-        <div className="flex items-start justify-between p-5 border-b border-zinc-100">
+        <div className="flex items-start justify-between p-5 border-b border-border">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-base font-semibold text-zinc-900 truncate">{name}</h2>
+              <h2 className="text-base font-semibold text-foreground truncate">{name}</h2>
               <Badge variant="secondary" className="text-xs">
                 {SOURCE_LABELS[first.source_type] ?? first.source_type}
               </Badge>
             </div>
-            <p className="text-xs text-zinc-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               {chunks.length}개 청크 · 총 {totalChars.toLocaleString()}자 · 등록 {formatDate(first.indexed_at)}
             </p>
             {first.tech_stack.length > 0 && (
@@ -620,7 +620,7 @@ function ChunkPreviewModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors shrink-0 ml-3"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0 ml-3"
           >
             <X className="size-4" />
           </button>
@@ -628,7 +628,7 @@ function ChunkPreviewModal({
 
         {/* 안내 */}
         <div className="px-5 pt-4 pb-2">
-          <p className="text-xs text-zinc-500 leading-relaxed bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+          <p className="text-xs text-muted-foreground leading-relaxed bg-amber-50 border border-amber-100 dark:bg-amber-950/30 dark:border-amber-900 rounded-lg px-3 py-2">
             💡 각 청크는 RAG 검색의 단위입니다. 자소서 생성 시 공고와 가장 유사한 청크가 LLM에 전달됩니다.
             청크가 의미 단위로 잘 쪼개졌는지 확인하세요.
           </p>
@@ -639,15 +639,15 @@ function ChunkPreviewModal({
           {chunks
             .sort((a, b) => a.id - b.id)
             .map((chunk, idx) => (
-              <div key={chunk.id} className="border border-zinc-100 rounded-lg overflow-hidden">
-                <div className="flex items-center justify-between px-3 py-2 bg-zinc-50 border-b border-zinc-100">
+              <div key={chunk.id} className="border border-border rounded-lg overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2 bg-muted border-b border-border">
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="text-xs font-mono">#{idx + 1}</Badge>
-                    <span className="text-xs text-zinc-500">청크 ID {chunk.id}</span>
+                    <span className="text-xs text-muted-foreground">청크 ID {chunk.id}</span>
                   </div>
-                  <span className="text-xs text-zinc-400">{chunk.content.length.toLocaleString()}자</span>
+                  <span className="text-xs text-muted-foreground">{chunk.content.length.toLocaleString()}자</span>
                 </div>
-                <pre className="p-3 text-xs text-zinc-700 leading-relaxed whitespace-pre-wrap break-words font-sans">
+                <pre className="p-3 text-xs text-foreground leading-relaxed whitespace-pre-wrap break-words font-sans">
                   {chunk.content}
                 </pre>
               </div>
@@ -655,7 +655,7 @@ function ChunkPreviewModal({
         </div>
 
         {/* 푸터 */}
-        <div className="px-5 py-3 border-t border-zinc-100 flex justify-end">
+        <div className="px-5 py-3 border-t border-border flex justify-end">
           <Button variant="outline" size="sm" onClick={onClose}>닫기</Button>
         </div>
       </div>

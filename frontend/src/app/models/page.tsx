@@ -80,24 +80,24 @@ export default function ModelsPage() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-10 space-y-8">
       <div>
-        <h1 className="text-xl font-semibold text-zinc-900">🤖 LLM 모델 관리</h1>
-        <p className="text-sm text-zinc-500 mt-1">
+        <h1 className="text-xl font-semibold text-foreground">🤖 LLM 모델 관리</h1>
+        <p className="text-sm text-muted-foreground mt-1">
           Ollama 로컬 모델을 다운로드·삭제합니다. 클라우드 모델(Claude·GPT·Gemini)은 설정 페이지에서 API 키를 등록하세요.
         </p>
       </div>
 
       {/* GPU 정보 배너 */}
       {gpu ? (
-        <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 flex items-center gap-3 text-sm">
+        <div className="rounded-xl border border-border bg-muted px-4 py-3 flex items-center gap-3 text-sm">
           <span className="text-lg">🎮</span>
           <div className="flex-1">
-            <span className="font-semibold text-zinc-800">{gpu.name}</span>
-            <span className="text-zinc-500 ml-2">VRAM {gpu.total_gb}GB (가용 {gpu.free_gb}GB)</span>
+            <span className="font-semibold text-foreground">{gpu.name}</span>
+            <span className="text-muted-foreground ml-2">VRAM {gpu.total_gb}GB (가용 {gpu.free_gb}GB)</span>
           </div>
-          <span className="text-xs text-zinc-400">모델 크기가 VRAM을 넘으면 경고가 표시됩니다</span>
+          <span className="text-xs text-muted-foreground">모델 크기가 VRAM을 넘으면 경고가 표시됩니다</span>
         </div>
       ) : (
-        <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-400">
+        <div className="rounded-xl border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
           GPU를 감지하지 못했습니다 (NVIDIA GPU 없음 또는 CPU 환경) — VRAM 경고가 비활성화됩니다.
         </div>
       )}
@@ -105,10 +105,10 @@ export default function ModelsPage() {
       {/* 설치된 모델 */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-zinc-700">
-            설치된 모델 {installed !== null && <span className="text-zinc-400 font-normal">({installed.length}개)</span>}
+          <h2 className="text-sm font-semibold text-foreground">
+            설치된 모델 {installed !== null && <span className="text-muted-foreground font-normal">({installed.length}개)</span>}
           </h2>
-          <button onClick={refresh} className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-800 transition-colors">
+          <button onClick={refresh} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
             <RefreshCw className="size-3.5" /> 새로고침
           </button>
         </div>
@@ -116,15 +116,15 @@ export default function ModelsPage() {
         {error && <p className="text-xs text-red-500 mb-2">Ollama 연결 실패: {error}</p>}
 
         {installed === null ? (
-          <div className="flex items-center gap-2 text-sm text-zinc-400 py-6 justify-center">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center">
             <Loader2 className="size-4 animate-spin" /> 로드 중...
           </div>
         ) : installed.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-zinc-300 py-8 text-center text-sm text-zinc-400">
+          <div className="rounded-xl border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
             설치된 모델이 없습니다. 아래에서 다운로드하세요.
           </div>
         ) : (
-          <div className="rounded-xl border border-zinc-200 divide-y divide-zinc-100 overflow-hidden">
+          <div className="rounded-xl border border-border divide-y divide-border overflow-hidden">
             {installed.map((m) => {
               const isPulling = pulling.has(m.name);
               const fitBadge =
@@ -132,12 +132,12 @@ export default function ModelsPage() {
                 : m.fit === "tight" ? { color: "#d97706", bg: "#fffbeb", label: "VRAM 빠듯" }
                 : null;
               return (
-                <div key={m.name} className="px-4 py-3 hover:bg-zinc-50 group">
+                <div key={m.name} className="px-4 py-3 hover:bg-muted group">
                   <div className="flex items-center gap-3">
                     <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
                     <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-mono text-zinc-800">{m.name}</span>
-                      <span className="text-xs text-zinc-400">{m.parameter_size} · {formatSize(m.size)}</span>
+                      <span className="text-sm font-mono text-foreground">{m.name}</span>
+                      <span className="text-xs text-muted-foreground">{m.parameter_size} · {formatSize(m.size)}</span>
                       {fitBadge && (
                         <span className="text-xs font-semibold rounded px-1.5 py-0.5" style={{ color: fitBadge.color, background: fitBadge.bg }}>
                           ⚠️ {fitBadge.label}
@@ -147,7 +147,7 @@ export default function ModelsPage() {
                     <button
                       onClick={() => handleDelete(m.name)}
                       disabled={isPulling}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-400 hover:text-red-500 p-1.5 rounded-md hover:bg-red-50"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-500 p-1.5 rounded-md hover:bg-red-50"
                     >
                       <Trash2 className="size-3.5" />
                     </button>
@@ -165,12 +165,12 @@ export default function ModelsPage() {
         {pulling.size > 0 && (
           <div className="mt-3 space-y-2">
             {Array.from(pulling.entries()).map(([name, info]) => (
-              <div key={name} className="rounded-xl border border-blue-200 bg-blue-50/60 px-4 py-3 space-y-2">
+              <div key={name} className="rounded-xl border border-blue-200 bg-blue-50/60 dark:border-blue-900 dark:bg-blue-950/40 px-4 py-3 space-y-2">
                 <div className="flex items-center gap-3">
                   <Loader2 className="size-4 text-blue-500 animate-spin shrink-0" />
-                  <span className="text-sm font-mono text-zinc-700 flex-1 truncate">{name}</span>
-                  <span className="text-xs text-zinc-500">{info.status} · {info.percent.toFixed(0)}%</span>
-                  <button onClick={() => info.cancel()} className="text-zinc-400 hover:text-red-500 p-1">
+                  <span className="text-sm font-mono text-foreground flex-1 truncate">{name}</span>
+                  <span className="text-xs text-muted-foreground">{info.status} · {info.percent.toFixed(0)}%</span>
+                  <button onClick={() => info.cancel()} className="text-muted-foreground hover:text-red-500 p-1">
                     <X className="size-3.5" />
                   </button>
                 </div>
@@ -185,8 +185,8 @@ export default function ModelsPage() {
 
       {/* 추천 모델 */}
       <section>
-        <h2 className="text-sm font-semibold text-zinc-700 mb-1">추천 모델</h2>
-        <p className="text-xs text-zinc-400 mb-4">한국어 자소서 작성 기준 · RTX 5060 (8GB VRAM) — 7B까지 GPU 전체 탑재 가능</p>
+        <h2 className="text-sm font-semibold text-foreground mb-1">추천 모델</h2>
+        <p className="text-xs text-muted-foreground mb-4">한국어 자소서 작성 기준 · RTX 5060 (8GB VRAM) — 7B까지 GPU 전체 탑재 가능</p>
 
         <div className="grid gap-2">
           {/* 미설치 모델을 위로 정렬 (다운로드 유도), 설치됨은 아래로 */}
@@ -197,16 +197,16 @@ export default function ModelsPage() {
             const isPulling = pulling.has(m.name);
             const pullInfo = pulling.get(m.name);
             return (
-              <div key={m.name} className={`rounded-xl border px-4 py-3 flex items-center gap-4 ${installed_ ? "border-emerald-200 bg-emerald-50/30" : "border-zinc-200 bg-white hover:bg-zinc-50"}`}>
+              <div key={m.name} className={`rounded-xl border px-4 py-3 flex items-center gap-4 ${installed_ ? "border-emerald-200 bg-emerald-50/30 dark:border-emerald-800 dark:bg-emerald-950/20" : "border-border bg-card hover:bg-muted"}`}>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-mono font-semibold text-zinc-800">{m.name}</span>
-                    <span className="text-xs text-zinc-400">{m.size}</span>
+                    <span className="text-sm font-mono font-semibold text-foreground">{m.name}</span>
+                    <span className="text-xs text-muted-foreground">{m.size}</span>
                     {m.tags.map((t) => (
                       <Badge key={t} variant="secondary" className="text-xs h-5">{t}</Badge>
                     ))}
                   </div>
-                  <p className="text-xs text-zinc-500 mt-0.5">{m.desc}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{m.desc}</p>
                   {isPulling && pullInfo && (
                     <div className="mt-1.5">
                       <Progress value={pullInfo.percent} className="h-1" />
@@ -219,13 +219,13 @@ export default function ModelsPage() {
                       <CheckCircle2 className="size-3.5" /> 설치됨
                     </span>
                   ) : isPulling ? (
-                    <button onClick={() => pullInfo?.cancel()} className="text-xs text-zinc-500 hover:text-red-500 flex items-center gap-1">
+                    <button onClick={() => pullInfo?.cancel()} className="text-xs text-muted-foreground hover:text-red-500 flex items-center gap-1">
                       <X className="size-3.5" /> 취소
                     </button>
                   ) : (
                     <button
                       onClick={() => handlePull(m.name)}
-                      className="flex items-center gap-1.5 text-xs bg-zinc-900 text-white px-3 py-1.5 rounded-lg hover:bg-zinc-700 transition-colors"
+                      className="flex items-center gap-1.5 text-xs bg-foreground text-background px-3 py-1.5 rounded-lg hover:bg-foreground/90 transition-colors"
                     >
                       <Download className="size-3.5" />
                       다운로드
@@ -237,7 +237,7 @@ export default function ModelsPage() {
           })}
         </div>
 
-        <p className="text-xs text-zinc-400 mt-4 leading-relaxed">
+        <p className="text-xs text-muted-foreground mt-4 leading-relaxed">
           💡 <strong>작성·평가</strong>는 exaone3.5:7.8b 권장. <strong>압축·조정</strong>은 경량 모델(2~3B)도 충분합니다.
           VRAM 부족 시 더 작은 모델을 쓰거나 Anthropic/OpenAI 클라우드 API를 사용하세요.
         </p>
@@ -290,8 +290,8 @@ function CloudKeysSection() {
 
   return (
     <section>
-      <h2 className="text-sm font-semibold text-zinc-700 mb-1">클라우드 API 키</h2>
-      <p className="text-xs text-zinc-400 mb-4">
+      <h2 className="text-sm font-semibold text-foreground mb-1">클라우드 API 키</h2>
+      <p className="text-xs text-muted-foreground mb-4">
         프로바이더당 한 번 입력하면 백엔드가 Fernet으로 암호화해 DB에 저장합니다. 평문 키는 화면·브라우저에 남지 않습니다.
       </p>
       <div className="grid gap-2">
@@ -301,10 +301,10 @@ function CloudKeysSection() {
           const hasSaved = !!masked;
           const canSave = current.length > 0 && !saveMut.isPending;
           return (
-            <div key={p.id} className="rounded-xl border border-zinc-200 px-4 py-3">
+            <div key={p.id} className="rounded-xl border border-border px-4 py-3">
               <div className="flex items-center justify-between gap-2 mb-1.5">
-                <span className="text-sm font-medium text-zinc-800">{p.label}</span>
-                <span className="text-xs text-zinc-400">{p.help}</span>
+                <span className="text-sm font-medium text-foreground">{p.label}</span>
+                <span className="text-xs text-muted-foreground">{p.help}</span>
               </div>
               <div className="flex items-center gap-2">
                 <input
@@ -313,7 +313,7 @@ function CloudKeysSection() {
                   onChange={(e) => setKeysState((prev) => ({ ...prev, [p.id]: e.target.value }))}
                   onKeyDown={(e) => { if (e.key === "Enter" && canSave) handleSave(p.id); }}
                   placeholder={hasSaved ? `저장됨: ${masked}` : p.placeholder}
-                  className="flex-1 text-sm border border-zinc-200 rounded-md px-2 py-1.5 outline-none focus:border-zinc-400 font-mono"
+                  className="flex-1 text-sm border border-border rounded-md px-2 py-1.5 outline-none focus:border-muted-foreground font-mono"
                 />
                 <button
                   onClick={() => handleSave(p.id)}
@@ -332,7 +332,7 @@ function CloudKeysSection() {
                   <button
                     onClick={() => handleDelete(p.id)}
                     disabled={deleteMut.isPending}
-                    className="text-xs text-zinc-400 hover:text-red-500 underline disabled:opacity-40"
+                    className="text-xs text-muted-foreground hover:text-red-500 underline disabled:opacity-40"
                   >
                     삭제
                   </button>
@@ -342,7 +342,7 @@ function CloudKeysSection() {
           );
         })}
       </div>
-      <p className="text-xs text-zinc-400 mt-3">
+      <p className="text-xs text-muted-foreground mt-3">
         모델 선택은 <strong>자소서 생성</strong> 화면의 각 노드에서 합니다. 여기서는 키만 등록하세요.
       </p>
     </section>
