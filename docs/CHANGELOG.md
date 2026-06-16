@@ -9,6 +9,15 @@
 
 ## [Unreleased]
 
+### 추가 — RAG 인용 펼치기 (M6, 차별점)
+
+- 자소서 작성에 **실제 참고한 RAG 청크**를 결과에 노출 — "참고한 경험 N개" 토글
+  (출처 한글 라벨·프로젝트명·스니펫 90자)
+- 백엔드: `rag_retriever` 인용 메타 수집 → `ItemState`→`Draft`→`DraftResult` 흐름,
+  SSE·sync 양 경로 직렬화
+- 프론트: `RagCitations` 컴포넌트, generate 결과 카드(평가 다음)
+- **verify**: qwen2.5:7b 실제 생성으로 5개 인용 확인 + sync 직렬화 누락 버그 발견·수정
+
 ### 추가 — 로딩 스켈레톤 (M6)
 
 - **공용 Skeleton** (`ui/skeleton`, `animate-pulse bg-muted` 토큰 → 다크 자동)
