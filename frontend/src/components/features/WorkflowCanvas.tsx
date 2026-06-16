@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import {
   ReactFlow,
@@ -518,6 +518,9 @@ type Props = {
 
 export function WorkflowCanvas({ categories, configs, itemConfigs, events, editable, ollamaModels, enabledNodes = ALL_ENABLED, onConfigChange, onItemConfigChange }: Props) {
   const { resolvedTheme } = useTheme();
+  // mounted 전엔 light 고정 — 서버는 테마를 모르므로 colorMode hydration mismatch 방지
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const onChangeRef = useRef(onConfigChange);
   onChangeRef.current = onConfigChange;
   const onItemChangeRef = useRef(onItemConfigChange);
@@ -592,7 +595,7 @@ export function WorkflowCanvas({ categories, configs, itemConfigs, events, edita
 
   return (
     <ReactFlow
-      colorMode={resolvedTheme === "dark" ? "dark" : "light"}
+      colorMode={mounted && resolvedTheme === "dark" ? "dark" : "light"}
       nodes={nodes} edges={edges}
       onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
       nodeTypes={NODE_TYPES}
