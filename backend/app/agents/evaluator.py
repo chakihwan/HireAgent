@@ -66,6 +66,7 @@ async def evaluator_node(state: ItemState) -> dict:
         "evaluation_score": score,
         "evaluation_feedback": feedback,
         "evaluation_scores": scores,  # 항목별 점수 (막대그래프용)
+        "refine_iteration": state.get("refine_iteration", 0) + 1,  # 누적 평가 횟수
         "node_events": [
             {"node": "evaluate", "category": item["category"], "phase": "done",
              "detail": f"★ {score:.1f}점" if score is not None else "평가 실패"},

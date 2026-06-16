@@ -33,6 +33,7 @@ class EssayState(TypedDict):
     agent_config: dict          # {agent_name: {provider, model}}
     user_id: str
     flow: list[str]             # 항목 서브그래프 노드 구성 (없으면 DEFAULT_ITEM_FLOW)
+    refine_enabled: bool        # 평가 점수 미달 시 재작성 루프 활성 (ADR-029 4a)
 
     # ── 중간 상태 ──
     jd_analysis: str            # JD 분석 에이전트 결과
@@ -59,6 +60,8 @@ class ItemState(TypedDict):
     agent_config: dict
     user_id: str
     flow: list[str]             # 이 항목에 적용할 노드 구성
+    refine_enabled: bool        # 재작성 루프 활성 (ADR-029 4a)
+    refine_iteration: int       # 재작성 횟수 (MAX_REFINE_ITERATIONS로 상한)
 
     # RAG 검색 결과 (작성 에이전트가 참고)
     rag_context: list[str]

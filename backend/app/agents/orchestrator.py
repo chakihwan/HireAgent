@@ -15,6 +15,7 @@ from app.utils.char_counter import validate_chars
 
 MAX_ITERATIONS = 3
 MIN_EVAL_SCORE = 6.0
+MAX_REFINE_ITERATIONS = 2  # 평가 점수 미달 시 재작성 최대 횟수 (ADR-029 4a)
 
 
 # ── 항목별 서브그래프 (동적 구성) ──────────────────────────────
@@ -36,6 +37,25 @@ def _make_compress_router(next_node: str) -> Callable[[ItemState], str]:
     return router
 
 
+def _make_refine_router(next_node: str) -> Callable[[ItemState], str]:
+    """gate 라우터(ADR-029 4a): 루브릭 평가 점수 미달이면 'loop'(write로 재작성).
+
+    판정은 Python(결정론적) — LLM은 채점만. 재작성 비활성·점수 통과·재시도 초과면 'next'.
+    """
+    def router(state: ItemState) -> str:
+        if not state.get("refine_enabled"):
+            return "next"
+        score = state.get("evaluation_score")
+        if score is None or score >= MIN_EVAL_SCORE:
+            return "next"
+        # refine_iteration = 누적 평가 횟수(evaluator가 증가). 초과하면 더 재작성하지 않음.
+        if state.get("refine_iteration", 0) > MAX_REFINE_ITERATIONS:
+            return "next"
+        return "loop"
+
+    return router
+
+
 @dataclass(frozen=True)
 class NodeSpec:
     """노드 메타 — 함수 + 종류 + State 입출력 계약.
@@ -50,6 +70,8 @@ class NodeSpec:
     requires: frozenset[str] = field(default_factory=frozenset)
     provides: frozenset[str] = field(default_factory=frozenset)
     gate_router: Callable[[str], Callable] | None = None
+    loop_target: str | None = None  # gate 루프 대상 (None=자기, "write"=역방향)
+    entry_conditional: bool = True  # 진입 시 판정(compress) vs 실행 후(evaluate)
 
 
 NODE_REGISTRY: dict[str, NodeSpec] = {
@@ -60,7 +82,12 @@ NODE_REGISTRY: dict[str, NodeSpec] = {
         requires=frozenset({"content"}), provides=frozenset({"content"}),
         gate_router=_make_compress_router,
     ),
-    "evaluate": NodeSpec(evaluator_node, requires=frozenset({"content"})),
+    "evaluate": NodeSpec(
+        evaluator_node, kind="gate",
+        requires=frozenset({"content"}),
+        gate_router=_make_refine_router,
+        loop_target="write", entry_conditional=False,
+    ),
 }
 
 # fan_out이 ItemState에 의미있게 주입하는 초기 키 (State 계약 검증의 시작 집합)
@@ -135,15 +162,19 @@ def build_item_graph(workflow: WorkflowDef | list[str]) -> StateGraph:
         spec = NODE_REGISTRY[nid]
         nexts: list = out_edges[nid] or [END]
         if spec.kind == "gate":
-            # gate 자기 엣지: 수렴까지 반복, 탈출 시 next
+            # gate 엣지: 수렴까지 반복(loop_target), 탈출 시 next.
+            # loop_target=None은 자기 자신(compress), "write"는 역방향(refine: 재작성).
             after = nexts[0]
             assert spec.gate_router is not None
-            g.add_conditional_edges(nid, spec.gate_router(after), {"loop": nid, "next": after})
+            g.add_conditional_edges(
+                nid, spec.gate_router(after), {"loop": spec.loop_target or nid, "next": after}
+            )
         else:
             for nxt in nexts:
                 nxt_spec = NODE_REGISTRY.get(nxt) if nxt is not END else None
-                if nxt_spec is not None and nxt_spec.kind == "gate":
-                    # 다음이 gate면 진입도 조건부 — 이미 충족이면 gate를 건너뛴다
+                if nxt_spec is not None and nxt_spec.kind == "gate" and nxt_spec.entry_conditional:
+                    # 진입 조건부 gate(compress) — 이미 충족이면 건너뜀.
+                    # entry_conditional=False(evaluate)는 무조건 진입 후 판정(아래 add_edge).
                     gate_after = (out_edges[nxt] or [END])[0]
                     assert nxt_spec.gate_router is not None
                     g.add_conditional_edges(
@@ -184,6 +215,8 @@ def _fan_out(state: EssayState) -> list[Send]:
                 agent_config=item.get("agent_config") or state["agent_config"],
                 user_id=state["user_id"],
                 flow=state.get("flow") or DEFAULT_ITEM_FLOW,
+                refine_enabled=state.get("refine_enabled", False),
+                refine_iteration=0,
                 rag_context=[],
                 rag_sources={},
                 rag_citations=[],
