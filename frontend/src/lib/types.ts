@@ -34,6 +34,7 @@ export type RagCitation = {
   source_type: string;
   project_name: string | null;
   snippet: string;
+  similarity: number;  // 1 - cosine 거리 (의미적 유사도 — 왜 뽑혔나)
 };
 
 export type DraftHistoryEntry = {

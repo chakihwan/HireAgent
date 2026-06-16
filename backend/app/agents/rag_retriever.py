@@ -57,14 +57,16 @@ async def rag_retriever_node(state: ItemState) -> dict:
     for doc, _ in relevant:
         source_counts[doc.source_type] = source_counts.get(doc.source_type, 0) + 1
 
-    # 인용 메타 — 결과 "참고한 경험" 펼치기용 (출처·프로젝트명·스니펫)
+    # 인용 메타 — 결과 "참고한 경험" 펼치기용 (출처·프로젝트명·스니펫·유사도)
+    # similarity = 1 - cosine distance (의미적 유사도 — "왜 이 청크가 뽑혔나"의 근거)
     rag_citations = [
         {
             "source_type": doc.source_type,
             "project_name": doc.project_name,
-            "snippet": " ".join(doc.content[:90].split()),
+            "snippet": " ".join(doc.content[:240].split()),
+            "similarity": round(1 - dist, 3),
         }
-        for doc, _ in relevant
+        for doc, dist in relevant
     ]
 
     return {
