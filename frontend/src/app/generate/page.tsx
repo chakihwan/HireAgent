@@ -780,14 +780,14 @@ function SpaSiteGuide({
         <div className="flex items-start gap-2">
           <AlertTriangle className="size-4 text-amber-600 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-amber-900">{siteName} 자동 추출 불가</p>
-            <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">{error.message}</p>
-            <p className="text-xs text-amber-700 mt-1">아래 중 가장 편한 방법으로 본문을 가져와서 위 텍스트 영역에 붙여넣어 주세요.</p>
+            <p className="text-sm font-medium text-amber-900 dark:text-amber-200">{siteName} 자동 추출 불가</p>
+            <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5 leading-relaxed">{error.message}</p>
+            <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">아래 중 가장 편한 방법으로 본문을 가져와서 위 텍스트 영역에 붙여넣어 주세요.</p>
           </div>
         </div>
         <button
           onClick={onClose}
-          className="text-amber-700 hover:text-amber-900 text-xs underline shrink-0"
+          className="text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 text-xs underline shrink-0"
         >
           닫기
         </button>
@@ -805,7 +805,7 @@ function SpaSiteGuide({
       {/* 옵션 1: 북마클릿 (가장 강력, 한 번 설치) */}
       <div className="bg-card border-2 border-emerald-300 dark:border-emerald-800 rounded-lg p-4 space-y-3">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded">⭐ 다른 사이트엔 가장 빠름</span>
+          <span className="text-xs font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 px-2 py-0.5 rounded">⭐ 다른 사이트엔 가장 빠름</span>
           <span className="text-sm font-semibold text-foreground">① 북마클릿 (한 번 설치, 평생 사용)</span>
         </div>
 
@@ -863,7 +863,7 @@ function SpaSiteGuide({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* 옵션 2: Ctrl+P 인쇄 → PDF 저장 → 텍스트 복사 */}
-        <div className="bg-card border-2 border-blue-200 rounded-lg p-3">
+        <div className="bg-card border-2 border-blue-200 dark:border-blue-900 rounded-lg p-3">
           <div className="text-xs font-semibold text-foreground mb-1.5">
             ② <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">Ctrl+P</kbd> → PDF 저장 → 복사 <span className="text-blue-600">(사람인 추천)</span>
           </div>
@@ -876,7 +876,7 @@ function SpaSiteGuide({
         </div>
 
         {/* 옵션 3: 페이지 소스 */}
-        <div className="bg-card border border-amber-200 rounded-lg p-3">
+        <div className="bg-card border border-amber-200 dark:border-amber-900 rounded-lg p-3">
           <div className="text-xs font-semibold text-foreground mb-1.5">③ <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">Ctrl+U</kbd> 페이지 소스</div>
           <p className="text-xs text-muted-foreground leading-relaxed">
             HTML 원본이 새 탭에 열림. <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">Ctrl+F</kbd>로 직무 키워드 찾기 → 주변 텍스트 복사. 사이트 차단 무시. 조금 번거롭지만 확실.
@@ -884,7 +884,7 @@ function SpaSiteGuide({
         </div>
       </div>
 
-      <p className="text-xs text-amber-700 leading-relaxed">
+      <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
         💡 사이트가 마우스 드래그를 막아도 위 방법은 모두 통합니다. 북마클릿이 가장 빠르고, 인쇄 미리보기는 즉시 가능.
       </p>
     </div>
