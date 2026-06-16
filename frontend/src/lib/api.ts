@@ -160,6 +160,7 @@ export interface EssayGenerateRequest {
   user_id: string;
   agent_config: Record<string, AgentAssignment>;
   flow?: string[];  // 항목 서브그래프 노드 구성 (예: RAG·압축 제외). 미지정 시 기본
+  refine_enabled?: boolean;  // 평가 점수 미달 시 재작성 루프 (ADR-029 4a). 기본 off
 }
 
 export interface EssayGenerateResponse {

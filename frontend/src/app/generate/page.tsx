@@ -54,6 +54,7 @@ export default function GeneratePage() {
   const [globalPersona, setGlobalPersona] = useState<EssayPersona>("경력직");
   // 파이프라인 노드 on/off (write는 content를 만들어 필수 → 토글 없음). flow로 백엔드 전달
   const [enabledNodes, setEnabledNodes] = useState({ retrieve: true, compress: true, evaluate: true });
+  const [refineEnabled, setRefineEnabled] = useState(false);  // 평가 미달 시 재작성 (ADR-029 4a)
   const [customCategory, setCustomCategory] = useState("");
   const [customLimit, setCustomLimit] = useState(500);
   const [useCustom, setUseCustom] = useState(false);
@@ -226,6 +227,7 @@ export default function GeneratePage() {
         enabledNodes.compress && "compress",
         enabledNodes.evaluate && "evaluate",
       ].filter(Boolean) as string[],
+      refine_enabled: enabledNodes.evaluate && refineEnabled,  // evaluate 꺼지면 재작성 불가
     };
 
     // SSE 실행은 훅에 위임. done 시 step 전환, 실패 시 입력 단계로 복귀(버튼 먹통 방지).
@@ -236,7 +238,7 @@ export default function GeneratePage() {
       () => setStep("items"),
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jd, selectedItems, agentConfigs, itemAgentConfigs, enabledNodes]);
+  }, [jd, selectedItems, agentConfigs, itemAgentConfigs, enabledNodes, refineEnabled]);
 
   const handleGenerate = useCallback(async () => {
     // 실제 사용될 모델 수집 (전역 + 항목별 오버라이드)
@@ -479,6 +481,23 @@ export default function GeneratePage() {
                 );
               })}
               <p className="text-xs text-muted-foreground mt-0.5">※ 작성(write)은 필수라 항상 포함됩니다</p>
+              {/* 재작성 검증 (ADR-029 4a) — evaluate 켜진 경우만 의미 */}
+              <div
+                onClick={() => !isGenerating && enabledNodes.evaluate && setRefineEnabled((p) => !p)}
+                className={`mt-2 flex items-center gap-2 rounded-lg border px-3 py-2 select-none transition-all ${
+                  enabledNodes.evaluate ? "cursor-pointer" : "opacity-50 cursor-not-allowed"
+                } ${refineEnabled && enabledNodes.evaluate ? "border-primary bg-primary/10" : "border-border bg-card hover:bg-muted"}`}
+              >
+                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center text-xs flex-shrink-0 text-white ${
+                  refineEnabled && enabledNodes.evaluate ? "border-primary bg-primary" : "border-zinc-300 dark:border-zinc-600 bg-transparent"
+                }`}>
+                  {refineEnabled && enabledNodes.evaluate && "✓"}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className={`text-xs font-medium ${refineEnabled && enabledNodes.evaluate ? "text-primary" : "text-foreground"}`}>평가 미달 시 재작성</div>
+                  <div className="text-xs text-muted-foreground">루브릭 6점 미만이면 다시 작성 (최대 2회)</div>
+                </div>
+              </div>
             </div>
           </section>
 
