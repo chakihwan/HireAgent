@@ -425,6 +425,7 @@ flowchart LR
 | 평가 루브릭 + 생성 투명성 | [026](adr/026-evaluation-rubric-and-transparency.md) | 5항목 채점 + draft_history |
 | API 키 DB 암호화 연결 | [027](adr/027-api-key-db-encryption.md) | crypto.py → DB Fernet, 평문 비전송 |
 | 동적 워크플로우 그래프 | [028](adr/028-dynamic-workflow-graph.md) | NodeSpec/WorkflowDef 런타임 빌드, 사용자 노드 편집 토대 |
+| 노드 자유 구성·검증 루프 | [029](adr/029-node-composition-validation-loop.md) | evaluate gate화·loop_target 일반화(단계 4a), 점수 미달 시 재작성 |
 
 ---
 

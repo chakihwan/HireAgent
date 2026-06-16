@@ -9,6 +9,15 @@
 
 ## [Unreleased]
 
+### 추가 — 작성 검증→재작성 루프 (ADR-029 4a, 노드 자유 구성 첫걸음)
+
+- **evaluate를 gate로 전환** — 루브릭 점수 < 6.0이면 write로 **재작성 루프**(최대 2회).
+  판정은 Python(결정론적), LLM은 채점만 (Rule #1 정신)
+- **gate 일반화** — `NodeSpec.loop_target`(역방향 루프)·`entry_conditional`(진입 vs 실행후 판정)
+  → compress(자기 루프)와 refine(write 역방향)을 같은 메커니즘으로 (ADR-028 토대 위)
+- 사이드바 "평가 미달 시 재작성" 토글(evaluate 켜진 경우만), `refine_enabled` 기본 off → 회귀 0
+- **verify**: router 단위 6케이스 PASS, 그래프 빌드/컴파일 OK, 통과 케이스 E2E 정상
+
 ### 추가 — RAG 인용 펼치기 (M6, 차별점)
 
 - 자소서 작성에 **실제 참고한 RAG 청크**를 결과에 노출 — "참고한 경험 N개" 토글
