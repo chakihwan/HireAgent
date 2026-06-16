@@ -185,15 +185,21 @@ def build_item_graph(workflow: WorkflowDef | list[str]) -> StateGraph:
     return g
 
 
-# flow(노드 구성)별 컴파일 그래프 캐시 — 같은 구성은 1회만 컴파일 (매 요청 컴파일 방지)
-_graph_cache: dict[tuple[str, ...], object] = {}
+# flow(nodes+edges)별 컴파일 그래프 캐시 — 같은 구성은 1회만 컴파일 (매 요청 컴파일 방지)
+_graph_cache: dict[tuple, object] = {}
 
 
-def get_item_graph(flow: tuple[str, ...] | None = None):
-    """flow별 컴파일된 항목 서브그래프 (캐시). flow 미지정 시 DEFAULT."""
-    key = tuple(flow) if flow else tuple(DEFAULT_ITEM_FLOW)
+def get_item_graph(nodes: tuple[str, ...] | None = None, edges: tuple = ()):
+    """flow(nodes+edges)별 컴파일된 항목 서브그래프 (캐시).
+
+    edges 미지정 시 nodes 순서대로 선형(하위호환). edges 지정 시 임의 DAG·루프 (ADR-030 4c).
+    """
+    node_key = tuple(nodes) if nodes else tuple(DEFAULT_ITEM_FLOW)
+    edge_key = tuple(tuple(e) for e in edges)
+    key = (node_key, edge_key)
     if key not in _graph_cache:
-        _graph_cache[key] = build_item_graph(list(key)).compile()
+        wf = WorkflowDef(list(node_key), [list(e) for e in edge_key])
+        _graph_cache[key] = build_item_graph(wf).compile()
     return _graph_cache[key]
 
 
@@ -215,6 +221,7 @@ def _fan_out(state: EssayState) -> list[Send]:
                 agent_config=item.get("agent_config") or state["agent_config"],
                 user_id=state["user_id"],
                 flow=state.get("flow") or DEFAULT_ITEM_FLOW,
+                flow_edges=state.get("flow_edges") or [],
                 refine_enabled=state.get("refine_enabled", False),
                 refine_iteration=0,
                 rag_context=[],
@@ -239,7 +246,10 @@ async def _process_item(item_state: ItemState) -> dict:
     """항목 서브그래프 실행 → EssayState.drafts/progress에 추가"""
     from app.utils.text_cleaner import detect_output_issue
 
-    result = await get_item_graph(tuple(item_state["flow"])).ainvoke(item_state)
+    result = await get_item_graph(
+        tuple(item_state["flow"]),
+        tuple(tuple(e) for e in item_state.get("flow_edges") or []),
+    ).ainvoke(item_state)
     draft = Draft(
         category=result["item"]["category"],
         content=result["content"],

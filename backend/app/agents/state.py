@@ -33,6 +33,7 @@ class EssayState(TypedDict):
     agent_config: dict          # {agent_name: {provider, model}}
     user_id: str
     flow: list[str]             # 항목 서브그래프 노드 구성 (없으면 DEFAULT_ITEM_FLOW)
+    flow_edges: list[list[str]] # 노드 간 엣지 (DAG·루프), 비면 선형 (ADR-030 4c)
     refine_enabled: bool        # 평가 점수 미달 시 재작성 루프 활성 (ADR-029 4a)
 
     # ── 중간 상태 ──
@@ -60,6 +61,7 @@ class ItemState(TypedDict):
     agent_config: dict
     user_id: str
     flow: list[str]             # 이 항목에 적용할 노드 구성
+    flow_edges: list[list[str]] # 노드 간 엣지 (DAG·루프), 비면 선형 (ADR-030 4c)
     refine_enabled: bool        # 재작성 루프 활성 (ADR-029 4a)
     refine_iteration: int       # 재작성 횟수 (MAX_REFINE_ITERATIONS로 상한)
 

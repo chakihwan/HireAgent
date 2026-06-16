@@ -30,6 +30,10 @@ class EssayGenerateRequest(BaseModel):
         default=None,
         description="항목 서브그래프 노드 구성 (예: RAG·압축 제외). 미지정 시 기본 파이프라인",
     )
+    flow_edges: list[list[str]] | None = Field(
+        default=None,
+        description="노드 간 엣지 [[from,to],...] (DAG·루프). 비면 flow 순서대로 선형",
+    )
     refine_enabled: bool = Field(
         default=False,
         description="평가 점수 미달 시 재작성 루프 활성 (ADR-029 4a). 기본 off",
