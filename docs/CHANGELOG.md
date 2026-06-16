@@ -9,6 +9,11 @@
 
 ## [Unreleased]
 
+### 추가 — 로딩 스켈레톤 (M6)
+
+- **공용 Skeleton** (`ui/skeleton`, `animate-pulse bg-muted` 토큰 → 다크 자동)
+- home·library·jobs·projects·models 로딩을 레이아웃 닮은 스켈레톤으로 (텍스트·스피너 대체)
+
 ### 추가 — 다크 모드 (M6)
 
 - **next-themes 도입** — ThemeProvider(Providers 통합) · ThemeToggle(Sun/Moon, `defaultTheme=system`)

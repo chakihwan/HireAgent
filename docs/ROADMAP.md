@@ -51,7 +51,7 @@
 - [완료] **타이포 위계 + 통계 카드 밀도** (생성 사이드바 섹션 제목, 홈 카드 패딩)
 - [완료] Toast 알림 통일 (`alert()` 9곳 → sonner toast, v0.7.7)
 - [완료] **다크 모드** (`next-themes` + 토글 + 셸·전 페이지·WorkflowCanvas·SpaSiteGuide — 전 컴포넌트 토큰화)
-- [ ] 로딩 스켈레톤 컴포넌트 통일
+- [완료] **로딩 스켈레톤** (`ui/skeleton` + home·library·jobs·projects·models 적용)
 - [ ] 모바일 반응형 점검 (워크플로우 캔버스 데스크톱 우선이라 특히 필요)
 
 ### `/generate`
