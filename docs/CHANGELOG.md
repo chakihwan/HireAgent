@@ -19,7 +19,7 @@
 - 의미색(red/amber/blue/emerald) 배너에 dark variant, 모달 오버레이 `bg-black/50`
 - **WorkflowCanvas 다크** — ReactFlow `colorMode={resolvedTheme}`(내장 UI 자동) + 노드 배경 `color-mix`(상태색+card)
   · 텍스트·테두리 hex → 토큰 → 생성 화면 캔버스까지 다크 완성
-- 잔여(ROADMAP): SpaSiteGuide 내부 텍스트(보조 모달)
+- **SpaSiteGuide 보조 모달** amber/emerald/blue 텍스트 dark variant → **전 컴포넌트 다크 종결**
 
 ### 문서 — 루트 README + 데모 영상
 
