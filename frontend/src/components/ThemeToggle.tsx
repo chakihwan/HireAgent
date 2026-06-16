@@ -12,7 +12,9 @@ export function ThemeToggle() {
 
   useEffect(() => setMounted(true), []);
 
-  const isDark = resolvedTheme === "dark";
+  // mounted 전에는 false 고정 — 서버는 테마를 모르므로(undefined) 클라 첫 렌더와 맞춰
+  // aria-label·onClick의 hydration mismatch를 방지 (mount 후 정확한 값으로 전환)
+  const isDark = mounted && resolvedTheme === "dark";
 
   return (
     <button
