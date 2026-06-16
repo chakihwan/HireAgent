@@ -27,6 +27,13 @@ export type DraftResult = {
   evaluation_feedback: string | null;
   evaluation_scores: Record<string, number> | null;  // 항목별 0~2점 (막대그래프)
   draft_history: DraftHistoryEntry[];                // 단계별 이력
+  rag_citations: RagCitation[];                      // 참고한 RAG 청크 (근거)
+};
+
+export type RagCitation = {
+  source_type: string;
+  project_name: string | null;
+  snippet: string;
 };
 
 export type DraftHistoryEntry = {

@@ -6,6 +6,7 @@ import { Copy, Check, AlertTriangle } from "lucide-react";
 import { WorkflowCanvas } from "@/components/features/WorkflowCanvas";
 import { RubricBars } from "@/components/features/RubricBars";
 import { DraftHistory } from "@/components/features/DraftHistory";
+import { RagCitations } from "@/components/features/RagCitations";
 import { Button } from "@/components/ui/button";
 import { saveToLibrary, fetchJobUrl, FetchUrlError, getOllamaModels } from "@/lib/api";
 import { loadSettings, saveSettings, DEFAULT_SETTINGS } from "@/lib/settings-store";
@@ -643,6 +644,9 @@ export default function GeneratePage() {
                               </p>
                             )}
                           </div>
+                        )}
+                        {draft.rag_citations && draft.rag_citations.length > 0 && (
+                          <RagCitations citations={draft.rag_citations} />
                         )}
                         {draft.draft_history && draft.draft_history.length > 0 && (
                           <DraftHistory
