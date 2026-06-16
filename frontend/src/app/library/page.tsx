@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/EmptyState";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -203,7 +204,13 @@ export default function LibraryPage() {
         </Select>
       </div>
 
-      {loading && <p className="text-sm text-muted-foreground">불러오는 중...</p>}
+      {loading && (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 rounded-xl" />
+          ))}
+        </div>
+      )}
       {error && <p className="text-sm text-red-500">{error}</p>}
 
       {!loading && filtered.length === 0 && (

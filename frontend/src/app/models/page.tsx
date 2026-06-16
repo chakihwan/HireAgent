@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Download, Trash2, Loader2, CheckCircle2, RefreshCw, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { getOllamaModels, pullOllamaModel, deleteOllamaModel, type OllamaModel, type GpuInfo } from "@/lib/api";
 import { useLLMKeys, useSaveLLMKey, useDeleteLLMKey } from "@/lib/queries";
@@ -116,8 +117,10 @@ export default function ModelsPage() {
         {error && <p className="text-xs text-red-500 mb-2">Ollama 연결 실패: {error}</p>}
 
         {installed === null ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center">
-            <Loader2 className="size-4 animate-spin" /> 로드 중...
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 rounded-xl" />
+            ))}
           </div>
         ) : installed.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border py-8 text-center text-sm text-muted-foreground">

@@ -9,9 +9,9 @@ import {
   Plus,
   ArrowRight,
   Sparkles,
-  Loader2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useJobs, useLibrary, useProjects } from "@/lib/queries";
@@ -141,9 +141,18 @@ export default function DashboardPage() {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground py-12 justify-center">
-          <Loader2 className="size-4 animate-spin" />
-          불러오는 중...
+        <div className="space-y-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-[88px] rounded-xl" />
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-9 w-32 rounded-lg" />
+            <Skeleton className="h-9 w-32 rounded-lg" />
+            <Skeleton className="h-9 w-36 rounded-lg" />
+          </div>
+          <Skeleton className="h-44 w-full rounded-xl" />
         </div>
       ) : (
         <>
