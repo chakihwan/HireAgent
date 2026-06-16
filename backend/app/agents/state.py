@@ -23,6 +23,7 @@ class Draft(TypedDict):
     evaluation_feedback: str | None
     evaluation_scores: dict | None   # 항목별 점수 (막대그래프용)
     draft_history: list[dict]        # 단계별 이력 (write/compress 각 결과)
+    rag_citations: list[dict]        # 참고한 RAG 청크 메타 (출처·프로젝트·스니펫)
 
 
 class EssayState(TypedDict):
@@ -63,6 +64,8 @@ class ItemState(TypedDict):
     rag_context: list[str]
     # 채택된 청크의 source_type 분포 (관찰용)
     rag_sources: dict[str, int]
+    # 참고한 청크 인용 메타 (출처·프로젝트명·스니펫) — 결과 "참고한 경험" 표시용
+    rag_citations: list[dict]
     # 사용자가 실제로 다룬 기술 화이트리스트 (할루시네이션 방지)
     tech_whitelist: list[str]
     # sub-node 이벤트 — 프론트엔드 그래프 뷰 실시간 업데이트용

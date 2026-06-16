@@ -43,7 +43,7 @@ async def rag_retriever_node(state: ItemState) -> dict:
             all_tech_lists = [row[0] for row in db_result.all() if row[0]]
     except Exception:
         return {
-            "rag_context": [], "tech_whitelist": [], "rag_sources": {},
+            "rag_context": [], "tech_whitelist": [], "rag_sources": {}, "rag_citations": [],
             "node_events": [{"node": "rag", "category": category, "phase": "error", "detail": "RAG 검색 실패"}],
         }
 
@@ -57,10 +57,21 @@ async def rag_retriever_node(state: ItemState) -> dict:
     for doc, _ in relevant:
         source_counts[doc.source_type] = source_counts.get(doc.source_type, 0) + 1
 
+    # 인용 메타 — 결과 "참고한 경험" 펼치기용 (출처·프로젝트명·스니펫)
+    rag_citations = [
+        {
+            "source_type": doc.source_type,
+            "project_name": doc.project_name,
+            "snippet": " ".join(doc.content[:90].split()),
+        }
+        for doc, _ in relevant
+    ]
+
     return {
         "rag_context": rag_context,
         "tech_whitelist": tech_whitelist,
         "rag_sources": source_counts,
+        "rag_citations": rag_citations,
         "node_events": [
             {"node": "rag", "category": category, "phase": "done",
              "detail": f"{rag_count}개 참고"},

@@ -215,6 +215,7 @@ async def _process_item(item_state: ItemState) -> dict:
         evaluation_feedback=result.get("evaluation_feedback"),
         evaluation_scores=result.get("evaluation_scores"),
         draft_history=result.get("draft_history") or [],
+        rag_citations=result.get("rag_citations") or [],
     )
     rag_count = len(result.get("rag_context") or [])
     rag_sources = result.get("rag_sources") or {}

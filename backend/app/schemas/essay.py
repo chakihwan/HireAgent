@@ -42,6 +42,7 @@ class DraftResult(BaseModel):
     evaluation_feedback: str | None
     evaluation_scores: dict[str, float] | None = None  # 항목별 점수 (막대그래프)
     draft_history: list[dict] = []                      # 단계별 이력 (write/compress)
+    rag_citations: list[dict] = []                      # 참고한 RAG 청크 (출처·프로젝트·스니펫)
 
 
 class EssayGenerateResponse(BaseModel):
