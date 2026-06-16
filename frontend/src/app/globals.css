@@ -149,3 +149,18 @@
     @apply font-sans;
   }
 }
+
+/* React Flow — 다크에서 내장 UI(컨트롤·미니맵) 식별 (colorMode 보완) */
+.dark .react-flow__controls-button {
+  background-color: var(--card);
+  border-bottom-color: var(--border);
+}
+.dark .react-flow__controls-button:hover {
+  background-color: var(--muted);
+}
+.dark .react-flow__controls-button svg {
+  fill: var(--foreground);
+}
+.dark .react-flow__minimap {
+  background-color: var(--card);
+}
