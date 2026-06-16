@@ -186,6 +186,7 @@ def _fan_out(state: EssayState) -> list[Send]:
                 flow=state.get("flow") or DEFAULT_ITEM_FLOW,
                 rag_context=[],
                 rag_sources={},
+                rag_citations=[],
                 tech_whitelist=[],
                 node_events=[],
                 draft_history=[],

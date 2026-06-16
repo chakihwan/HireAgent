@@ -255,6 +255,7 @@ async def generate_essays_sync(
             evaluation_feedback=d.get("evaluation_feedback"),
             evaluation_scores=d.get("evaluation_scores"),
             draft_history=d.get("draft_history") or [],
+            rag_citations=d.get("rag_citations") or [],
         )
         for d in final.get("drafts", [])
     ]
