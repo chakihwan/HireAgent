@@ -51,6 +51,10 @@ def _make_refine_router(next_node: str) -> Callable[[ItemState], str]:
         # refine_iteration = 누적 평가 횟수(evaluator가 증가). 초과하면 더 재작성하지 않음.
         if state.get("refine_iteration", 0) > MAX_REFINE_ITERATIONS:
             return "next"
+        # 글자수가 안 맞으면 재작성(write)은 더 길어져 악화 — 그건 compress 영역이니 스킵.
+        # refine은 '글자수는 맞는데 품질이 미달'일 때만 다시 쓴다 (악순환 방지).
+        if validate_chars(state["content"], state["item"]["char_limit"]) != "ok":
+            return "next"
         return "loop"
 
     return router
