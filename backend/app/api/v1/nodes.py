@@ -11,9 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.essay_writer import essay_writer_node
 from app.agents.jd_analyzer import jd_analyzer_node
-from app.agents.rag_retriever import rag_retriever_node
 from app.api.v1.essays import _resolve_api_key
-from app.db import get_db
+from app.db import AsyncSessionLocal, get_db
+from app.rag.retriever import search
 from app.schemas.node import (
     JDAnalyzeCandidate,
     JDAnalyzeRequest,
@@ -108,17 +108,21 @@ async def run_write(
 
 @router.post("/rag/search", response_model=RagSearchResponse)
 async def run_rag_search(req: RagSearchRequest) -> RagSearchResponse:
-    """JD분석 기반으로 관련 경험(청크)을 검색 → 큐레이션 후보 (ADR-031 D).
+    """직무 분석 기반으로 내 경험(청크)을 검색 → 뉴런 큐레이션 (ADR-031 D, 항목 무관).
 
-    자동 검색 결과를 돌려주고, 사용자가 인용할 청크를 고른다(기본=전부 사용).
+    "내 경험"은 항목과 무관하게 직무 전체에 맞는 경험을 더 많이 가져온다.
+    프론트가 project_name으로 묶어 프로젝트=뉴런으로 시각화한다.
     """
-    state = {
-        "item": {"category": req.category},
-        "jd_analysis": req.jd_analysis,
-        "user_id": req.user_id,
-    }
-    result = await rag_retriever_node(state)  # type: ignore[arg-type]
-    contexts = result.get("rag_context", [])
-    cites = result.get("rag_citations", [])
-    sources = [RagSource(content=ctx, **cite) for ctx, cite in zip(contexts, cites)]
+    async with AsyncSessionLocal() as db:
+        results = await search(db, query=req.jd_analysis, user_id=req.user_id, limit=12)
+    sources = [
+        RagSource(
+            content=doc.content,
+            source_type=doc.source_type,
+            project_name=doc.project_name,
+            snippet=" ".join(doc.content[:90].split()),
+            similarity=round(1 - dist, 3),
+        )
+        for doc, dist in results
+    ]
     return RagSearchResponse(sources=sources)

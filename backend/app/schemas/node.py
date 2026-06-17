@@ -59,8 +59,7 @@ class WriteResponse(BaseModel):
 
 
 class RagSearchRequest(BaseModel):
-    category: str = Field(..., min_length=1)
-    jd_analysis: str = Field(..., min_length=1)
+    jd_analysis: str = Field(..., min_length=1)  # 직무 기반 (항목 무관 — "내 경험" 단계)
     user_id: str = Field(default="local")
 
 
