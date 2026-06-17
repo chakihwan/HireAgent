@@ -426,6 +426,8 @@ flowchart LR
 | API 키 DB 암호화 연결 | [027](adr/027-api-key-db-encryption.md) | crypto.py → DB Fernet, 평문 비전송 |
 | 동적 워크플로우 그래프 | [028](adr/028-dynamic-workflow-graph.md) | NodeSpec/WorkflowDef 런타임 빌드, 사용자 노드 편집 토대 |
 | 노드 자유 구성·검증 루프 | [029](adr/029-node-composition-validation-loop.md) | evaluate gate화·loop_target 일반화(단계 4a), 점수 미달 시 재작성 |
+| 비주얼 워크플로우 빌더(자유 DAG) | [030](adr/030-visual-workflow-builder-free-dag.md) | 루프 중심 노드 편집(4c), 병렬 분기 보류 — **031 우선으로 보류** |
+| 대화형 단계 실행 | [031](adr/031-conversational-stepwise-execution.md) | 자동→대화형 전환, 노드별 사람 개입(select/curate/input/judge), N=모델 다양화 |
 
 ---
 
