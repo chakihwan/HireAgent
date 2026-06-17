@@ -1,47 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Check, Sparkles, ArrowRight, Minus, Plus } from "lucide-react";
-import { runJdAnalyze } from "@/lib/api";
+import { Loader2, Check, Sparkles, ArrowRight, Minus, Plus, FileText } from "lucide-react";
+import { runJdAnalyze, runWrite } from "@/lib/api";
 import { useCloudModels } from "@/lib/queries";
 import { useStudioStore, type ModelRef } from "@/lib/studio-store";
 
-// optgroup 라벨 (로컬/클라우드 + 비용 표시)
 const PROVIDER_LABEL: Record<string, string> = {
   ollama: "💻 로컬 · Ollama (무료)",
   anthropic: "☁️ Claude (API 비용)",
   openai: "☁️ GPT (API 비용)",
   google: "☁️ Gemini (API 비용)",
 };
-
 const MAX_RUNS = 5;
+const CATEGORIES = ["자기소개", "지원동기", "성장과정", "직무경험", "강점/역량", "입사 후 포부"];
 
-// 대화형 단계 실행 (ADR-031 B1) — JD 분석을 N번(각 슬롯 모델 지정) 돌려 후보를 비교·택1.
-// 흐름: 횟수 입력 → N개 슬롯에 모델 배정(중복 가능) → 분석 → 후보 세로 스택 → 택1.
-export function InteractiveStudio({
-  jd,
-  ollamaModels,
+type Group = { provider: string; models: string[] };
+
+// 모델 슬롯 선택 (횟수 +/- + 슬롯별 드롭다운) — JD분석·작성 재사용 (ADR-031 공통 골격)
+function ModelSlots({
+  groups,
+  slots,
+  setSlots,
 }: {
-  jd: string;
-  ollamaModels: string[];
+  groups: Group[];
+  slots: (ModelRef | null)[];
+  setSlots: (s: (ModelRef | null)[]) => void;
 }) {
-  const cloudModelsQ = useCloudModels();
-  const cloudModels = cloudModelsQ.data ?? {};
-
-  // 드롭다운용 provider 그룹 (로컬 먼저)
-  const groups: { provider: string; models: string[] }[] = [
-    { provider: "ollama", models: ollamaModels },
-    ...Object.entries(cloudModels).map(([provider, models]) => ({ provider, models })),
-  ].filter((g) => g.models.length > 0);
-
-  // 세션 store — 모드 전환(언마운트)에도 유지 (ADR-031 ④)
-  const { slots, candidates, chosen, setSlots, setCandidates, setChosen, reset } = useStudioStore();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const validSlots = slots.filter((s): s is ModelRef => s !== null);
-  const canRun = validSlots.length > 0 && jd.trim().length >= 10 && !loading;
-
   function setCount(n: number) {
     const next = Math.max(1, Math.min(MAX_RUNS, n));
     const arr = [...slots];
@@ -49,48 +34,129 @@ export function InteractiveStudio({
     arr.length = next;
     setSlots(arr);
   }
-
   function setSlot(i: number, value: string) {
     if (!value) return;
     const [provider, ...rest] = value.split(":");
-    const ref: ModelRef = { provider, model: rest.join(":") };
-    setSlots(slots.map((s, idx) => (idx === i ? ref : s)));
+    setSlots(slots.map((s, idx) => (idx === i ? { provider, model: rest.join(":") } : s)));
   }
+  return (
+    <>
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-foreground">횟수</span>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={() => setCount(slots.length - 1)} disabled={slots.length <= 1} className="flex size-6 items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-muted disabled:opacity-40">
+            <Minus className="size-3.5" />
+          </button>
+          <span className="w-6 text-center text-sm font-semibold tabular-nums text-foreground">{slots.length}</span>
+          <button type="button" onClick={() => setCount(slots.length + 1)} disabled={slots.length >= MAX_RUNS} className="flex size-6 items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-muted disabled:opacity-40">
+            <Plus className="size-3.5" />
+          </button>
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        {slots.map((slot, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <span className="w-4 shrink-0 text-center text-xs text-muted-foreground">{i + 1}</span>
+            <select
+              value={slot ? `${slot.provider}:${slot.model}` : ""}
+              onChange={(e) => setSlot(i, e.target.value)}
+              className="flex-1 rounded-md border border-border bg-card px-2 py-1.5 text-xs text-foreground outline-none focus:border-muted-foreground"
+            >
+              <option value="" disabled>
+                모델 선택...
+              </option>
+              {groups.map((g) => (
+                <optgroup key={g.provider} label={PROVIDER_LABEL[g.provider] ?? g.provider}>
+                  {g.models.map((m) => (
+                    <option key={m} value={`${g.provider}:${m}`}>
+                      {m}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// 대화형 단계 실행 (ADR-031 B1·C) — JD 분석 → 작성, 각 단계 N번 후보 택1.
+export function InteractiveStudio({ jd, ollamaModels }: { jd: string; ollamaModels: string[] }) {
+  const cloudModelsQ = useCloudModels();
+  const cloudModels = cloudModelsQ.data ?? {};
+  const groups: Group[] = [
+    { provider: "ollama", models: ollamaModels },
+    ...Object.entries(cloudModels).map(([provider, models]) => ({ provider, models })),
+  ].filter((g) => g.models.length > 0);
+
+  const s = useStudioStore();
+  const [jdLoading, setJdLoading] = useState(false);
+  const [jdError, setJdError] = useState<string | null>(null);
+  const [wLoading, setWLoading] = useState(false);
+  const [wError, setWError] = useState<string | null>(null);
+
+  const jdValid = s.slots.filter((x): x is ModelRef => x !== null);
+  const wValid = s.writeSlots.filter((x): x is ModelRef => x !== null);
 
   async function analyze() {
-    if (!canRun) return;
-    setLoading(true);
-    setError(null);
-    setCandidates(null);
-    setChosen(null);
+    if (!jdValid.length || jd.trim().length < 10) return;
+    setJdLoading(true);
+    setJdError(null);
+    s.setCandidates(null);
+    s.setChosen(null);
     try {
-      const r = await runJdAnalyze({ job_description: jd, models: validSlots });
-      setCandidates(r.candidates);
+      const r = await runJdAnalyze({ job_description: jd, models: jdValid });
+      s.setCandidates(r.candidates);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setJdError(e instanceof Error ? e.message : String(e));
     } finally {
-      setLoading(false);
+      setJdLoading(false);
+    }
+  }
+
+  async function write() {
+    if (s.chosen === null || !s.candidates || !wValid.length) return;
+    const picked = s.candidates[s.chosen];
+    setWLoading(true);
+    setWError(null);
+    s.setWriteCandidates(null);
+    s.setWriteChosen(null);
+    try {
+      const r = await runWrite({
+        jd_analysis: picked.jd_analysis,
+        target_company: picked.target_company,
+        category: s.category,
+        char_limit: s.charLimit,
+        models: wValid,
+      });
+      s.setWriteCandidates(r.candidates);
+    } catch (e) {
+      setWError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setWLoading(false);
     }
   }
 
   return (
-    // 좌→우 칼럼 흐름 (가로 스크롤). 각 칼럼 = 한 단계.
     <div className="flex h-full gap-4 overflow-x-auto p-6">
-      {/* ── 단계 1: JD 분석 칼럼 ── */}
+      {/* ── 단계 1: JD 분석 ── */}
       <div className="w-80 shrink-0 space-y-3">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
               <Sparkles className="size-4 text-primary" /> JD 분석
             </h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">N번 분석 → 가장 정확한 것 택1</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">N번 분석 → 택1</p>
           </div>
-          {(candidates || slots.some((s) => s)) && (
+          {(s.candidates || s.slots.some((x) => x)) && (
             <button
               type="button"
               onClick={() => {
-                reset();
-                setError(null);
+                s.reset();
+                setJdError(null);
+                setWError(null);
               }}
               className="shrink-0 text-xs text-muted-foreground transition-colors hover:text-foreground"
             >
@@ -98,123 +164,131 @@ export function InteractiveStudio({
             </button>
           )}
         </div>
-
         {jd.trim().length < 10 && (
           <p className="rounded-lg border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
-            ← 사이드바에 공고를 먼저 붙여넣어 주세요.
+            ← 사이드바에 공고를 붙여넣어 주세요.
           </p>
         )}
-
-        {/* 횟수 입력 */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-foreground">분석 횟수</span>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setCount(slots.length - 1)}
-              disabled={slots.length <= 1}
-              className="flex size-6 items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-muted disabled:opacity-40"
-            >
-              <Minus className="size-3.5" />
-            </button>
-            <span className="w-6 text-center text-sm font-semibold tabular-nums text-foreground">{slots.length}</span>
-            <button
-              type="button"
-              onClick={() => setCount(slots.length + 1)}
-              disabled={slots.length >= MAX_RUNS}
-              className="flex size-6 items-center justify-center rounded-md border border-border bg-card text-foreground hover:bg-muted disabled:opacity-40"
-            >
-              <Plus className="size-3.5" />
-            </button>
-          </div>
-        </div>
-
-        {/* 슬롯별 모델 선택 (중복 가능) */}
-        <div className="space-y-1.5">
-          {slots.map((slot, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <span className="w-4 shrink-0 text-center text-xs text-muted-foreground">{i + 1}</span>
-              <select
-                value={slot ? `${slot.provider}:${slot.model}` : ""}
-                onChange={(e) => setSlot(i, e.target.value)}
-                className="flex-1 rounded-md border border-border bg-card px-2 py-1.5 text-xs text-foreground outline-none focus:border-muted-foreground"
-              >
-                <option value="" disabled>
-                  모델 선택...
-                </option>
-                {groups.map((g) => (
-                  <optgroup key={g.provider} label={PROVIDER_LABEL[g.provider] ?? g.provider}>
-                    {g.models.map((m) => (
-                      <option key={m} value={`${g.provider}:${m}`}>
-                        {m}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
-          ))}
-        </div>
-
+        {groups.length === 0 ? (
+          <p className="text-xs text-muted-foreground">사용 가능한 모델이 없어요.</p>
+        ) : (
+          <ModelSlots groups={groups} slots={s.slots} setSlots={s.setSlots} />
+        )}
         <button
           type="button"
           onClick={analyze}
-          disabled={!canRun}
-          className="w-full rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors disabled:opacity-40"
+          disabled={!jdValid.length || jd.trim().length < 10 || jdLoading}
+          className="w-full rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-40"
         >
-          {loading ? (
+          {jdLoading ? (
             <span className="flex items-center justify-center gap-1.5">
               <Loader2 className="size-3.5 animate-spin" /> 분석 중...
             </span>
           ) : (
-            `${validSlots.length || ""}개 분석 실행`
+            `${jdValid.length || ""}개 분석`
           )}
         </button>
-
-        {error && <p className="text-xs text-red-500 dark:text-red-400">{error}</p>}
-
-        {/* 후보 세로 스택 */}
-        {candidates && (
+        {jdError && <p className="text-xs text-red-500 dark:text-red-400">{jdError}</p>}
+        {s.candidates && (
           <div className="space-y-2 border-t border-border pt-3">
-            <p className="text-xs font-semibold text-foreground">후보 {candidates.length}개 — 고르세요</p>
-            {candidates.map((c, i) => (
+            <p className="text-xs font-semibold text-foreground">후보 {s.candidates.length}개 — 고르세요</p>
+            {s.candidates.map((c, i) => (
               <button
                 key={i}
                 type="button"
-                onClick={() => setChosen(i)}
+                onClick={() => s.setChosen(i)}
                 className={`block w-full rounded-xl border p-3 text-left transition-all ${
-                  chosen === i
-                    ? "border-primary bg-primary/5 ring-1 ring-primary"
-                    : "border-border bg-card hover:border-muted-foreground"
+                  s.chosen === i ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border bg-card hover:border-muted-foreground"
                 }`}
               >
                 <div className="mb-1.5 flex items-center justify-between">
                   <span className="font-mono text-xs font-semibold text-foreground">{c.model}</span>
-                  {chosen === i && <Check className="size-3.5 text-primary" />}
+                  {s.chosen === i && <Check className="size-3.5 text-primary" />}
                 </div>
                 <p className="mb-1 text-[11px] text-muted-foreground">회사: {c.target_company}</p>
-                <pre className="max-h-40 overflow-y-auto whitespace-pre-wrap font-sans text-[11px] leading-relaxed text-muted-foreground">
-                  {c.jd_analysis}
-                </pre>
+                <pre className="max-h-40 overflow-y-auto whitespace-pre-wrap font-sans text-[11px] leading-relaxed text-muted-foreground">{c.jd_analysis}</pre>
               </button>
             ))}
           </div>
         )}
       </div>
 
-      {/* ── 선택되면 다음 단계 칼럼이 오른쪽에 (단계 C 예정) ── */}
-      {chosen !== null && (
+      {/* ── 단계 2: 작성 (JD 선택 시 우측에) ── */}
+      {s.chosen !== null && (
         <>
           <div className="flex shrink-0 items-center text-muted-foreground">
             <ArrowRight className="size-5" />
           </div>
-          <div className="flex w-80 shrink-0 flex-col items-center justify-center rounded-xl border-2 border-dashed border-border p-4 text-center">
-            <p className="text-sm font-medium text-foreground">초안 작성</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {candidates![chosen].model}의 분석을 받아
-              <br />
-              여러 모델로 작성 (곧 추가)
-            </p>
+          <div className="w-80 shrink-0 space-y-3">
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+              <FileText className="size-4 text-primary" /> 초안 작성
+            </h2>
+            {/* 항목 + 글자수 */}
+            <div className="flex gap-2">
+              <select
+                value={s.category}
+                onChange={(e) => s.setCategory(e.target.value)}
+                className="flex-1 rounded-md border border-border bg-card px-2 py-1.5 text-xs text-foreground outline-none"
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="number"
+                min={50}
+                max={2000}
+                step={50}
+                value={s.charLimit}
+                onChange={(e) => s.setCharLimit(Number(e.target.value))}
+                className="w-16 rounded-md border border-border bg-card px-2 py-1.5 text-xs text-foreground outline-none"
+              />
+              <span className="self-center text-xs text-muted-foreground">자</span>
+            </div>
+            <ModelSlots groups={groups} slots={s.writeSlots} setSlots={s.setWriteSlots} />
+            <button
+              type="button"
+              onClick={write}
+              disabled={!wValid.length || wLoading}
+              className="w-full rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-40"
+            >
+              {wLoading ? (
+                <span className="flex items-center justify-center gap-1.5">
+                  <Loader2 className="size-3.5 animate-spin" /> 작성 중...
+                </span>
+              ) : (
+                `${wValid.length || ""}개 작성`
+              )}
+            </button>
+            {wError && <p className="text-xs text-red-500 dark:text-red-400">{wError}</p>}
+            {s.writeCandidates && (
+              <div className="space-y-2 border-t border-border pt-3">
+                <p className="text-xs font-semibold text-foreground">초안 {s.writeCandidates.length}개 — 고르세요</p>
+                {s.writeCandidates.map((c, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => s.setWriteChosen(i)}
+                    className={`block w-full rounded-xl border p-3 text-left transition-all ${
+                      s.writeChosen === i ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border bg-card hover:border-muted-foreground"
+                    }`}
+                  >
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <span className="font-mono text-xs font-semibold text-foreground">{c.model}</span>
+                      <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                        {c.char_count}자{s.writeChosen === i && <Check className="size-3.5 text-primary" />}
+                      </span>
+                    </div>
+                    <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap font-sans text-[11px] leading-relaxed text-foreground">{c.content}</pre>
+                  </button>
+                ))}
+              </div>
+            )}
+            {s.writeChosen !== null && (
+              <p className="text-sm text-success">✓ 초안 선택 완료 (글자수 조정·저장은 다음 단계)</p>
+            )}
           </div>
         </>
       )}

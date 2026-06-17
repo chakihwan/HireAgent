@@ -650,3 +650,31 @@ export async function runJdAnalyze(req: {
   return res.json();
 }
 
+export type WriteCandidate = {
+  content: string;
+  char_count: number;
+  provider: string;
+  model: string;
+};
+
+// 선택한 JD분석으로 N개 모델로 초안 작성 → 후보 N개 (사용자가 비교·택1)
+export async function runWrite(req: {
+  jd_analysis: string;
+  target_company?: string;
+  category: string;
+  char_limit: number;
+  tone?: string;
+  persona?: string;
+  rag_context?: string[];
+  models: { provider: string; model: string; api_key?: string }[];
+  user_id?: string;
+}): Promise<{ candidates: WriteCandidate[] }> {
+  const res = await fetch(`${API_BASE}/api/v1/nodes/write/run`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: "local", ...req }),
+  });
+  if (!res.ok) throw new Error(`작성 실패 (${res.status})`);
+  return res.json();
+}
+
