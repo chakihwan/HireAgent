@@ -9,6 +9,7 @@ import asyncio
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.essay_writer import essay_writer_node
 from app.agents.jd_analyzer import jd_analyzer_node
 from app.api.v1.essays import _resolve_api_key
 from app.db import get_db
@@ -17,6 +18,9 @@ from app.schemas.node import (
     JDAnalyzeRequest,
     JDAnalyzeResponse,
     ModelChoice,
+    WriteCandidate,
+    WriteRequest,
+    WriteResponse,
 )
 
 router = APIRouter(prefix="/nodes", tags=["nodes"])
@@ -54,3 +58,45 @@ async def run_jd_analyze(
 
     candidates = await asyncio.gather(*[_one(mc) for mc in req.models])
     return JDAnalyzeResponse(candidates=list(candidates))
+
+
+@router.post("/write/run", response_model=WriteResponse)
+async def run_write(
+    req: WriteRequest, db: AsyncSession = Depends(get_db)
+) -> WriteResponse:
+    """선택한 JD 분석으로 자소서 초안을 N개 모델로 작성 → 후보 N개 (ADR-031 C).
+
+    rag_context가 비면 분석만으로 작성 (RAG 큐레이션은 단계 D).
+    """
+
+    async def _one(mc: ModelChoice) -> WriteCandidate:
+        api_key = await _resolve_api_key(db, req.user_id, mc.provider, mc.api_key)
+        state = {
+            "item": {
+                "category": req.category,
+                "char_limit": req.char_limit,
+                "tone": req.tone,
+                "persona": req.persona,
+            },
+            "jd_analysis": req.jd_analysis,
+            "target_company": req.target_company,
+            "rag_context": req.rag_context,
+            "tech_whitelist": [],
+            "agent_config": {
+                "essay_writer": {
+                    "provider": mc.provider,
+                    "model": mc.model,
+                    "api_key": api_key,
+                }
+            },
+        }
+        result = await essay_writer_node(state)  # type: ignore[arg-type]
+        return WriteCandidate(
+            content=result["content"],
+            char_count=result["char_count"],
+            provider=mc.provider,
+            model=mc.model,
+        )
+
+    candidates = await asyncio.gather(*[_one(mc) for mc in req.models])
+    return WriteResponse(candidates=list(candidates))
