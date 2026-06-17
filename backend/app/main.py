@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from app.api.v1 import essays, jobs, library, llm, ollama, projects, settings as settings_api
+from app.api.v1 import essays, jobs, library, llm, nodes, ollama, projects, settings as settings_api
 from app.config import settings
 from app.db import AsyncSessionLocal
 
@@ -29,6 +29,7 @@ app.include_router(jobs.router, prefix="/api/v1")
 app.include_router(library.router, prefix="/api/v1")
 app.include_router(projects.router, prefix="/api/v1")
 app.include_router(settings_api.router, prefix="/api/v1")
+app.include_router(nodes.router, prefix="/api/v1")
 
 
 @app.get("/")
