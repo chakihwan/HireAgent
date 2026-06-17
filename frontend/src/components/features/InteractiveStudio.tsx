@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Check, Sparkles } from "lucide-react";
+import { Loader2, Check, Sparkles, ArrowRight } from "lucide-react";
 import { runJdAnalyze, type JdAnalyzeCandidate } from "@/lib/api";
 
 // 대화형 단계 실행 (ADR-031 B1) — JD 분석을 N개 모델로 돌려 후보를 비교·택1.
-// 첫 단계: JD 분석만. 선택 후 다음 노드 연결은 단계 C에서.
+// 레이아웃: 각 단계 = 세로 칼럼(후보 스택), 칼럼들이 좌→우로 늘어남.
 export function InteractiveStudio({
   jd,
   ollamaModels,
@@ -45,101 +45,109 @@ export function InteractiveStudio({
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8 space-y-6">
-      <div>
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-          <Sparkles className="size-5 text-primary" /> 대화형 — JD 분석
-        </h2>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          여러 모델로 공고를 분석하고, 가장 잘 분석한 것을 직접 고르세요.
-        </p>
-      </div>
+    // 좌→우 칼럼 흐름 (가로 스크롤). 각 칼럼 = 한 단계.
+    <div className="flex h-full gap-4 overflow-x-auto p-6">
+      {/* ── 단계 1: JD 분석 칼럼 ── */}
+      <div className="w-80 shrink-0 space-y-3">
+        <div>
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+            <Sparkles className="size-4 text-primary" /> JD 분석
+          </h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">여러 모델로 분석 → 가장 정확한 것 택1</p>
+        </div>
 
-      {jd.trim().length < 10 && (
-        <p className="rounded-lg border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
-          ← 왼쪽 사이드바에 채용 공고를 먼저 붙여넣어 주세요.
-        </p>
-      )}
-
-      {/* 모델 선택 (설치된 ollama) */}
-      <div>
-        <p className="mb-2 text-[13px] font-semibold text-foreground">
-          분석할 모델 {selectedModels.length > 0 && `(${selectedModels.length}개)`}
-        </p>
-        {ollamaModels.length === 0 ? (
-          <p className="text-xs text-muted-foreground">설치된 ollama 모델이 없어요. 모델 관리에서 받아주세요.</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {ollamaModels.map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => toggleModel(m)}
-                className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                  selectedModels.includes(m)
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-card text-foreground hover:bg-muted"
-                }`}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <button
-        type="button"
-        onClick={analyze}
-        disabled={!canRun}
-        className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors disabled:opacity-40"
-      >
-        {loading ? (
-          <span className="flex items-center gap-1.5">
-            <Loader2 className="size-4 animate-spin" /> 분석 중...
-          </span>
-        ) : (
-          `${selectedModels.length || ""}개 모델로 분석 실행`
-        )}
-      </button>
-
-      {error && <p className="text-sm text-red-500 dark:text-red-400">{error}</p>}
-
-      {/* 후보 카드 — 비교·택1 */}
-      {candidates && (
-        <div className="space-y-3">
-          <p className="text-[13px] font-semibold text-foreground">
-            분석 후보 — 가장 정확한 걸 고르세요
+        {jd.trim().length < 10 && (
+          <p className="rounded-lg border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
+            ← 사이드바에 공고를 먼저 붙여넣어 주세요.
           </p>
-          <div className="grid gap-3 md:grid-cols-2">
+        )}
+
+        {/* 모델 선택 */}
+        <div>
+          <p className="mb-1.5 text-xs font-semibold text-foreground">
+            모델 {selectedModels.length > 0 && `(${selectedModels.length}개)`}
+          </p>
+          {ollamaModels.length === 0 ? (
+            <p className="text-xs text-muted-foreground">설치된 ollama 모델이 없어요.</p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {ollamaModels.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => toggleModel(m)}
+                  className={`rounded-md border px-2 py-1 text-xs font-medium transition-colors ${
+                    selectedModels.includes(m)
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-card text-foreground hover:bg-muted"
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={analyze}
+          disabled={!canRun}
+          className="w-full rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors disabled:opacity-40"
+        >
+          {loading ? (
+            <span className="flex items-center justify-center gap-1.5">
+              <Loader2 className="size-3.5 animate-spin" /> 분석 중...
+            </span>
+          ) : (
+            `${selectedModels.length || ""}개 모델로 분석`
+          )}
+        </button>
+
+        {error && <p className="text-xs text-red-500 dark:text-red-400">{error}</p>}
+
+        {/* 후보 세로 스택 */}
+        {candidates && (
+          <div className="space-y-2 border-t border-border pt-3">
+            <p className="text-xs font-semibold text-foreground">후보 {candidates.length}개 — 고르세요</p>
             {candidates.map((c, i) => (
               <button
                 key={i}
                 type="button"
                 onClick={() => setChosen(i)}
-                className={`rounded-xl border p-4 text-left transition-all ${
+                className={`block w-full rounded-xl border p-3 text-left transition-all ${
                   chosen === i
                     ? "border-primary bg-primary/5 ring-1 ring-primary"
                     : "border-border bg-card hover:border-muted-foreground"
                 }`}
               >
-                <div className="mb-2 flex items-center justify-between">
+                <div className="mb-1.5 flex items-center justify-between">
                   <span className="font-mono text-xs font-semibold text-foreground">{c.model}</span>
-                  {chosen === i && <Check className="size-4 text-primary" />}
+                  {chosen === i && <Check className="size-3.5 text-primary" />}
                 </div>
-                <p className="mb-1 text-xs text-muted-foreground">회사: {c.target_company}</p>
-                <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap font-sans text-xs leading-relaxed text-muted-foreground">
+                <p className="mb-1 text-[11px] text-muted-foreground">회사: {c.target_company}</p>
+                <pre className="max-h-40 overflow-y-auto whitespace-pre-wrap font-sans text-[11px] leading-relaxed text-muted-foreground">
                   {c.jd_analysis}
                 </pre>
               </button>
             ))}
           </div>
-          {chosen !== null && (
-            <p className="text-sm text-success">
-              ✓ {candidates[chosen].model}의 분석을 선택했어요 (다음 단계 연결은 곧 추가됩니다).
+        )}
+      </div>
+
+      {/* ── 선택되면 다음 단계 칼럼이 오른쪽에 (단계 C 예정) ── */}
+      {chosen !== null && (
+        <>
+          <div className="flex shrink-0 items-center text-muted-foreground">
+            <ArrowRight className="size-5" />
+          </div>
+          <div className="flex w-80 shrink-0 flex-col items-center justify-center rounded-xl border-2 border-dashed border-border p-4 text-center">
+            <p className="text-sm font-medium text-foreground">초안 작성</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {candidates![chosen].model}의 분석을 받아<br />여러 모델로 작성 (곧 추가)
             </p>
-          )}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );
