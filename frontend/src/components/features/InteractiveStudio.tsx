@@ -3,6 +3,16 @@
 import { useState } from "react";
 import { Loader2, Check, Sparkles, ArrowRight } from "lucide-react";
 import { runJdAnalyze, type JdAnalyzeCandidate } from "@/lib/api";
+import { useCloudModels } from "@/lib/queries";
+
+const PROVIDER_LABEL: Record<string, string> = {
+  ollama: "로컬 (Ollama)",
+  anthropic: "Claude",
+  openai: "GPT",
+  google: "Gemini",
+};
+
+type ModelRef = { provider: string; model: string };
 
 // 대화형 단계 실행 (ADR-031 B1) — JD 분석을 N개 모델로 돌려 후보를 비교·택1.
 // 레이아웃: 각 단계 = 세로 칼럼(후보 스택), 칼럼들이 좌→우로 늘어남.
@@ -13,16 +23,30 @@ export function InteractiveStudio({
   jd: string;
   ollamaModels: string[];
 }) {
-  const [selectedModels, setSelectedModels] = useState<string[]>([]);
+  const cloudModelsQ = useCloudModels();
+  const cloudModels = cloudModelsQ.data ?? {};
+
+  // 로컬 + 등록된 클라우드 키의 모델을 provider 그룹으로
+  const groups: { provider: string; models: string[] }[] = [
+    { provider: "ollama", models: ollamaModels },
+    ...Object.entries(cloudModels).map(([provider, models]) => ({ provider, models })),
+  ].filter((g) => g.models.length > 0);
+
+  const [selected, setSelected] = useState<ModelRef[]>([]);
   const [candidates, setCandidates] = useState<JdAnalyzeCandidate[] | null>(null);
   const [chosen, setChosen] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canRun = selectedModels.length > 0 && jd.trim().length >= 10 && !loading;
+  const canRun = selected.length > 0 && jd.trim().length >= 10 && !loading;
+  const isSel = (p: string, m: string) => selected.some((s) => s.provider === p && s.model === m);
 
-  function toggleModel(m: string) {
-    setSelectedModels((p) => (p.includes(m) ? p.filter((x) => x !== m) : [...p, m]));
+  function toggle(provider: string, model: string) {
+    setSelected((prev) =>
+      isSel(provider, model)
+        ? prev.filter((s) => !(s.provider === provider && s.model === model))
+        : [...prev, { provider, model }],
+    );
   }
 
   async function analyze() {
@@ -32,10 +56,7 @@ export function InteractiveStudio({
     setCandidates(null);
     setChosen(null);
     try {
-      const r = await runJdAnalyze({
-        job_description: jd,
-        models: selectedModels.map((m) => ({ provider: "ollama", model: m })),
-      });
+      const r = await runJdAnalyze({ job_description: jd, models: selected });
       setCandidates(r.candidates);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -62,30 +83,37 @@ export function InteractiveStudio({
           </p>
         )}
 
-        {/* 모델 선택 */}
-        <div>
-          <p className="mb-1.5 text-xs font-semibold text-foreground">
-            모델 {selectedModels.length > 0 && `(${selectedModels.length}개)`}
+        {/* 모델 선택 (provider 그룹: 로컬 + 클라우드) */}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-foreground">
+            모델 {selected.length > 0 && `(${selected.length}개)`}
           </p>
-          {ollamaModels.length === 0 ? (
-            <p className="text-xs text-muted-foreground">설치된 ollama 모델이 없어요.</p>
+          {groups.length === 0 ? (
+            <p className="text-xs text-muted-foreground">사용 가능한 모델이 없어요. 모델 관리에서 받거나 API 키를 등록하세요.</p>
           ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {ollamaModels.map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => toggleModel(m)}
-                  className={`rounded-md border px-2 py-1 text-xs font-medium transition-colors ${
-                    selectedModels.includes(m)
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-card text-foreground hover:bg-muted"
-                  }`}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
+            groups.map((g) => (
+              <div key={g.provider}>
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {PROVIDER_LABEL[g.provider] ?? g.provider}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {g.models.map((m) => (
+                    <button
+                      key={`${g.provider}:${m}`}
+                      type="button"
+                      onClick={() => toggle(g.provider, m)}
+                      className={`rounded-md border px-2 py-1 text-xs font-medium transition-colors ${
+                        isSel(g.provider, m)
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-card text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))
           )}
         </div>
 
@@ -100,7 +128,7 @@ export function InteractiveStudio({
               <Loader2 className="size-3.5 animate-spin" /> 분석 중...
             </span>
           ) : (
-            `${selectedModels.length || ""}개 모델로 분석`
+            `${selected.length || ""}개 모델로 분석`
           )}
         </button>
 
@@ -144,7 +172,9 @@ export function InteractiveStudio({
           <div className="flex w-80 shrink-0 flex-col items-center justify-center rounded-xl border-2 border-dashed border-border p-4 text-center">
             <p className="text-sm font-medium text-foreground">초안 작성</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {candidates![chosen].model}의 분석을 받아<br />여러 모델로 작성 (곧 추가)
+              {candidates![chosen].model}의 분석을 받아
+              <br />
+              여러 모델로 작성 (곧 추가)
             </p>
           </div>
         </>
