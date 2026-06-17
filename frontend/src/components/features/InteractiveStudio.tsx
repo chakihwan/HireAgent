@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { Loader2, Check, Sparkles, ArrowRight, Minus, Plus } from "lucide-react";
-import { runJdAnalyze, type JdAnalyzeCandidate } from "@/lib/api";
+import { runJdAnalyze } from "@/lib/api";
 import { useCloudModels } from "@/lib/queries";
+import { useStudioStore, type ModelRef } from "@/lib/studio-store";
 
 // optgroup 라벨 (로컬/클라우드 + 비용 표시)
 const PROVIDER_LABEL: Record<string, string> = {
@@ -14,7 +15,6 @@ const PROVIDER_LABEL: Record<string, string> = {
 };
 
 const MAX_RUNS = 5;
-type ModelRef = { provider: string; model: string };
 
 // 대화형 단계 실행 (ADR-031 B1) — JD 분석을 N번(각 슬롯 모델 지정) 돌려 후보를 비교·택1.
 // 흐름: 횟수 입력 → N개 슬롯에 모델 배정(중복 가능) → 분석 → 후보 세로 스택 → 택1.
@@ -34,9 +34,8 @@ export function InteractiveStudio({
     ...Object.entries(cloudModels).map(([provider, models]) => ({ provider, models })),
   ].filter((g) => g.models.length > 0);
 
-  const [slots, setSlots] = useState<(ModelRef | null)[]>([null, null]);
-  const [candidates, setCandidates] = useState<JdAnalyzeCandidate[] | null>(null);
-  const [chosen, setChosen] = useState<number | null>(null);
+  // 세션 store — 모드 전환(언마운트)에도 유지 (ADR-031 ④)
+  const { slots, candidates, chosen, setSlots, setCandidates, setChosen, reset } = useStudioStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,19 +44,17 @@ export function InteractiveStudio({
 
   function setCount(n: number) {
     const next = Math.max(1, Math.min(MAX_RUNS, n));
-    setSlots((prev) => {
-      const arr = [...prev];
-      while (arr.length < next) arr.push(null);
-      arr.length = next;
-      return arr;
-    });
+    const arr = [...slots];
+    while (arr.length < next) arr.push(null);
+    arr.length = next;
+    setSlots(arr);
   }
 
   function setSlot(i: number, value: string) {
     if (!value) return;
     const [provider, ...rest] = value.split(":");
-    const ref = { provider, model: rest.join(":") };
-    setSlots((prev) => prev.map((s, idx) => (idx === i ? ref : s)));
+    const ref: ModelRef = { provider, model: rest.join(":") };
+    setSlots(slots.map((s, idx) => (idx === i ? ref : s)));
   }
 
   async function analyze() {
@@ -81,11 +78,25 @@ export function InteractiveStudio({
     <div className="flex h-full gap-4 overflow-x-auto p-6">
       {/* ── 단계 1: JD 분석 칼럼 ── */}
       <div className="w-80 shrink-0 space-y-3">
-        <div>
-          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-            <Sparkles className="size-4 text-primary" /> JD 분석
-          </h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">N번 분석 → 가장 정확한 것 택1</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+              <Sparkles className="size-4 text-primary" /> JD 분석
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">N번 분석 → 가장 정확한 것 택1</p>
+          </div>
+          {(candidates || slots.some((s) => s)) && (
+            <button
+              type="button"
+              onClick={() => {
+                reset();
+                setError(null);
+              }}
+              className="shrink-0 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            >
+              초기화
+            </button>
+          )}
         </div>
 
         {jd.trim().length < 10 && (
