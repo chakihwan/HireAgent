@@ -91,29 +91,59 @@ export function InteractiveStudio({
           {groups.length === 0 ? (
             <p className="text-xs text-muted-foreground">사용 가능한 모델이 없어요. 모델 관리에서 받거나 API 키를 등록하세요.</p>
           ) : (
-            groups.map((g) => (
-              <div key={g.provider}>
-                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  {PROVIDER_LABEL[g.provider] ?? g.provider}
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {g.models.map((m) => (
-                    <button
-                      key={`${g.provider}:${m}`}
-                      type="button"
-                      onClick={() => toggle(g.provider, m)}
-                      className={`rounded-md border px-2 py-1 text-xs font-medium transition-colors ${
-                        isSel(g.provider, m)
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border bg-card text-foreground hover:bg-muted"
-                      }`}
-                    >
-                      {m}
-                    </button>
-                  ))}
+            <>
+              {/* 로컬 — GPU 자원 사용 */}
+              {ollamaModels.length > 0 && (
+                <div>
+                  <p className="mb-1 text-[10px] font-semibold text-success">💻 로컬 · GPU 자원 사용 (무료)</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {ollamaModels.map((m) => (
+                      <button
+                        key={`ollama:${m}`}
+                        type="button"
+                        onClick={() => toggle("ollama", m)}
+                        className={`rounded-md border px-2 py-1 text-xs font-medium transition-colors ${
+                          isSel("ollama", m)
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-card text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))
+              )}
+              {/* 클라우드 — API 비용 발생 */}
+              {groups.some((g) => g.provider !== "ollama") && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-semibold text-warning">☁️ 클라우드 · API 비용 발생</p>
+                  {groups
+                    .filter((g) => g.provider !== "ollama")
+                    .map((g) => (
+                      <div key={g.provider}>
+                        <p className="mb-1 text-[10px] text-muted-foreground">{PROVIDER_LABEL[g.provider] ?? g.provider}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {g.models.map((m) => (
+                            <button
+                              key={`${g.provider}:${m}`}
+                              type="button"
+                              onClick={() => toggle(g.provider, m)}
+                              className={`rounded-md border px-2 py-1 text-xs font-medium transition-colors ${
+                                isSel(g.provider, m)
+                                  ? "border-primary bg-primary/10 text-primary"
+                                  : "border-border bg-card text-foreground hover:bg-muted"
+                              }`}
+                            >
+                              {m}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </>
           )}
         </div>
 
