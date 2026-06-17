@@ -53,3 +53,24 @@ class WriteCandidate(BaseModel):
 
 class WriteResponse(BaseModel):
     candidates: list[WriteCandidate]
+
+
+# ── RAG 검색 (ADR-031 D, 큐레이션용) ──
+
+
+class RagSearchRequest(BaseModel):
+    category: str = Field(..., min_length=1)
+    jd_analysis: str = Field(..., min_length=1)
+    user_id: str = Field(default="local")
+
+
+class RagSource(BaseModel):
+    content: str          # 작성에 넘길 전체 청크 (선택 시 rag_context로)
+    source_type: str
+    project_name: str | None = None
+    snippet: str
+    similarity: float
+
+
+class RagSearchResponse(BaseModel):
+    sources: list[RagSource]
