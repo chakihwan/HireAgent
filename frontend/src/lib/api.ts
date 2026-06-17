@@ -625,3 +625,28 @@ export async function getCloudModels(): Promise<Record<string, string[]>> {
     return {};
   }
 }
+
+// ── 대화형 단계 실행 — 노드 단위 (ADR-031) ──────────────────────
+
+export type JdAnalyzeCandidate = {
+  jd_analysis: string;
+  target_company: string;
+  provider: string;
+  model: string;
+};
+
+// JD 분석을 N개 모델로 각각 실행 → 후보 N개 (사용자가 비교·택1)
+export async function runJdAnalyze(req: {
+  job_description: string;
+  models: { provider: string; model: string; api_key?: string }[];
+  user_id?: string;
+}): Promise<{ candidates: JdAnalyzeCandidate[] }> {
+  const res = await fetch(`${API_BASE}/api/v1/nodes/jd-analyze/run`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: "local", ...req }),
+  });
+  if (!res.ok) throw new Error(`JD 분석 실패 (${res.status})`);
+  return res.json();
+}
+

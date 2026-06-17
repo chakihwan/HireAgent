@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Copy, Check, AlertTriangle } from "lucide-react";
 import { WorkflowCanvas } from "@/components/features/WorkflowCanvas";
+import { InteractiveStudio } from "@/components/features/InteractiveStudio";
 import { RubricBars } from "@/components/features/RubricBars";
 import { DraftHistory } from "@/components/features/DraftHistory";
 import { RagCitations } from "@/components/features/RagCitations";
@@ -42,6 +43,7 @@ function CopyButton({ text }: { text: string }) {
 export default function GeneratePage() {
   const [step, setStep] = useState<Step>("jd");
   const [jd, setJd] = useState("");
+  const [mode, setMode] = useState<"auto" | "interactive">("auto");  // ADR-031: 자동/대화형
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [spaError, setSpaError] = useState<{ siteName: string | null; message: string } | null>(null);
@@ -549,8 +551,21 @@ export default function GeneratePage() {
         </div>
       </aside>
 
-      {/* ── 메인 캔버스 영역 ── */}
+      {/* ── 메인 영역 (자동/대화형 모드, ADR-031) ── */}
       <main className="flex-1 flex flex-col overflow-hidden relative">
+
+        {/* 모드 토글 */}
+        <div className="absolute top-3 right-3 z-20 flex rounded-lg border border-border bg-card p-0.5 text-xs shadow-sm">
+          <button type="button" onClick={() => setMode("auto")} className={`rounded-md px-2.5 py-1 transition-colors ${mode === "auto" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>빠른 자동</button>
+          <button type="button" onClick={() => setMode("interactive")} className={`rounded-md px-2.5 py-1 transition-colors ${mode === "interactive" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>대화형</button>
+        </div>
+
+        {mode === "interactive" ? (
+          <div className="flex-1 overflow-y-auto">
+            <InteractiveStudio jd={jd} ollamaModels={ollamaModels} />
+          </div>
+        ) : (
+        <>
 
         {/* 캔버스 상태 배너 */}
         {isGenerating && (
@@ -680,6 +695,8 @@ export default function GeneratePage() {
               </div>
             </div>
           </div>
+        )}
+        </>
         )}
       </main>
 
