@@ -358,6 +358,10 @@ export default function GeneratePage() {
             )}
           </section>
 
+          {/* 대화형 모드에선 항목·설정·생성은 캔버스에서 하므로 사이드바엔 공고만 (ADR-031) */}
+          {mode === "auto" && (
+          <>
+
           {/* 항목 선택 */}
           <section>
             <label className="text-[13px] font-semibold text-foreground">항목 선택</label>
@@ -519,9 +523,12 @@ export default function GeneratePage() {
               </div>
             </section>
           )}
+          </>
+          )}
         </div>
 
-        {/* 하단 고정 버튼 영역 */}
+        {/* 하단 고정 버튼 영역 (자동 모드만) */}
+        {mode === "auto" && (
         <div className="flex-shrink-0 border-t border-border px-4 py-3 space-y-2">
           {genError && (
             <div className="rounded-lg bg-red-50 border border-red-200 dark:bg-red-950/30 dark:border-red-900 px-3 py-2">
@@ -549,6 +556,7 @@ export default function GeneratePage() {
             </button>
           </div>
         </div>
+        )}
       </aside>
 
       {/* ── 메인 영역 (자동/대화형 모드, ADR-031) ── */}
