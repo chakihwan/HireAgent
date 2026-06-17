@@ -9,13 +9,14 @@ type StudioState = {
   slots: (ModelRef | null)[];
   candidates: JdAnalyzeCandidate[] | null;
   chosen: number | null;
+  // ── 단계 D: 내 경험(뉴런) 큐레이션 ──
+  ragSources: RagSource[] | null;
+  ragActiveKeys: string[]; // 켜둔 뉴런(프로젝트) 키 — 작성에 인용
+  ragConfirmed: boolean; // "이 경험으로 작성" 확정 → 작성 컬럼 노출
+  customRag: string; // 직접 붙여넣은 근거 (옵시디언 노트 등)
   // ── 단계 2: 작성 (항목·글자수) ──
   category: string;
   charLimit: number;
-  // ── RAG 큐레이션 (단계 D) ──
-  ragSources: RagSource[] | null;
-  ragExcluded: number[]; // 제외한 청크 인덱스 (기본 전부 포함)
-  customRag: string; // 직접 붙여넣은 근거
   // ── 작성 슬롯/후보 ──
   writeSlots: (ModelRef | null)[];
   writeCandidates: WriteCandidate[] | null;
@@ -27,7 +28,10 @@ type StudioState = {
   setCategory: (c: string) => void;
   setCharLimit: (n: number) => void;
   setRagSources: (s: RagSource[] | null) => void;
-  toggleRagExcluded: (i: number) => void;
+  setRagActiveKeys: (keys: string[]) => void;
+  toggleRagKey: (key: string) => void;
+  setRagConfirmed: (b: boolean) => void;
+  resetRag: () => void; // JD 후보 바꿀 때 내 경험 초기화
   setCustomRag: (s: string) => void;
   setWriteSlots: (s: (ModelRef | null)[]) => void;
   setWriteCandidates: (c: WriteCandidate[] | null) => void;
@@ -42,7 +46,8 @@ const INITIAL = {
   category: "자기소개",
   charLimit: 500,
   ragSources: null as RagSource[] | null,
-  ragExcluded: [] as number[],
+  ragActiveKeys: [] as string[],
+  ragConfirmed: false,
   customRag: "",
   writeSlots: [null, null] as (ModelRef | null)[],
   writeCandidates: null as WriteCandidate[] | null,
@@ -57,16 +62,20 @@ export const useStudioStore = create<StudioState>((set) => ({
   setCategory: (category) => set({ category }),
   setCharLimit: (charLimit) => set({ charLimit }),
   setRagSources: (ragSources) => set({ ragSources }),
-  toggleRagExcluded: (i) =>
+  setRagActiveKeys: (ragActiveKeys) => set({ ragActiveKeys }),
+  toggleRagKey: (key) =>
     set((s) => ({
-      ragExcluded: s.ragExcluded.includes(i)
-        ? s.ragExcluded.filter((x) => x !== i)
-        : [...s.ragExcluded, i],
+      ragActiveKeys: s.ragActiveKeys.includes(key)
+        ? s.ragActiveKeys.filter((k) => k !== key)
+        : [...s.ragActiveKeys, key],
     })),
+  setRagConfirmed: (ragConfirmed) => set({ ragConfirmed }),
+  resetRag: () =>
+    set({ ragSources: null, ragActiveKeys: [], ragConfirmed: false, customRag: "" }),
   setCustomRag: (customRag) => set({ customRag }),
   setWriteSlots: (writeSlots) => set({ writeSlots }),
   setWriteCandidates: (writeCandidates) => set({ writeCandidates }),
   setWriteChosen: (writeChosen) => set({ writeChosen }),
   reset: () =>
-    set({ ...INITIAL, slots: [null, null], writeSlots: [null, null], ragExcluded: [] }),
+    set({ ...INITIAL, slots: [null, null], writeSlots: [null, null], ragActiveKeys: [] }),
 }));

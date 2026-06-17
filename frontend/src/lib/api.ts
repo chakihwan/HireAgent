@@ -686,9 +686,8 @@ export type RagSource = {
   similarity: number;
 };
 
-// 선택한 JD분석 기반으로 관련 경험(청크) 검색 → 사용자가 인용할 것 큐레이션
+// 직무 분석 기반으로 내 경험(청크) 검색 → 뉴런 큐레이션 (항목 무관 — ADR-031 D)
 export async function runRagSearch(req: {
-  category: string;
   jd_analysis: string;
   user_id?: string;
 }): Promise<{ sources: RagSource[] }> {

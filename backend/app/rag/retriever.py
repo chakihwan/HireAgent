@@ -2,7 +2,7 @@
 
 user_id 필터 필수 (CLAUDE.md Rule #4).
 """
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.career_document import CareerDocument
@@ -79,3 +79,50 @@ async def search(
     stmt = stmt.order_by(distance).limit(limit)
     result = await db.execute(stmt)
     return [(row[0], float(row[1])) for row in result.all()]
+
+
+async def search_grouped_by_project(
+    db: AsyncSession,
+    *,
+    query: str,
+    user_id: str,
+    per_project: int = 5,
+) -> list[tuple[str, str, str | None, float]]:
+    """프로젝트(경험)별 대표 청크 — "내 경험" 뉴런 뷰용 (ADR-031 D).
+
+    프로젝트마다 직무 적합도 상위 청크만 고르게 뽑아, 청크 수가 많은 한 레포가
+    검색을 독식하는 문제를 막는다 (예: 수백 청크 모노레포 vs 소형 프로젝트).
+    project_name이 없으면(이력서 등) source_type으로 묶는다 — 프론트 그룹 키와 동일.
+    반환: (content, source_type, project_name, distance) — distance 작을수록 유사.
+    """
+    query_embedding = await embed_text(query)
+    distance = CareerDocument.embedding.cosine_distance(query_embedding)
+    partition = func.coalesce(CareerDocument.project_name, CareerDocument.source_type)
+    rn = func.row_number().over(partition_by=partition, order_by=distance.asc())
+
+    inner = (
+        select(
+            CareerDocument.content.label("content"),
+            CareerDocument.source_type.label("source_type"),
+            CareerDocument.project_name.label("project_name"),
+            distance.label("distance"),
+            rn.label("rn"),
+        )
+        .where(CareerDocument.user_id == user_id)
+        .subquery()
+    )
+    stmt = (
+        select(
+            inner.c.content,
+            inner.c.source_type,
+            inner.c.project_name,
+            inner.c.distance,
+        )
+        .where(inner.c.rn <= per_project)
+        .order_by(inner.c.distance)
+    )
+    result = await db.execute(stmt)
+    return [
+        (r.content, r.source_type, r.project_name, float(r.distance))
+        for r in result.all()
+    ]

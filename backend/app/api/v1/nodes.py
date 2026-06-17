@@ -13,7 +13,7 @@ from app.agents.essay_writer import essay_writer_node
 from app.agents.jd_analyzer import jd_analyzer_node
 from app.api.v1.essays import _resolve_api_key
 from app.db import AsyncSessionLocal, get_db
-from app.rag.retriever import search
+from app.rag.retriever import search_grouped_by_project
 from app.schemas.node import (
     JDAnalyzeCandidate,
     JDAnalyzeRequest,
@@ -110,19 +110,21 @@ async def run_write(
 async def run_rag_search(req: RagSearchRequest) -> RagSearchResponse:
     """직무 분석 기반으로 내 경험(청크)을 검색 → 뉴런 큐레이션 (ADR-031 D, 항목 무관).
 
-    "내 경험"은 항목과 무관하게 직무 전체에 맞는 경험을 더 많이 가져온다.
-    프론트가 project_name으로 묶어 프로젝트=뉴런으로 시각화한다.
+    "내 경험"은 항목과 무관하게 직무 전체에 맞는 경험을 가져온다. 프로젝트별 대표 청크를
+    고르게 뽑아(한 레포 독식 방지) 프론트가 프로젝트=허브 뉴런 + 청크=위성으로 시각화한다.
     """
     async with AsyncSessionLocal() as db:
-        results = await search(db, query=req.jd_analysis, user_id=req.user_id, limit=12)
+        rows = await search_grouped_by_project(
+            db, query=req.jd_analysis, user_id=req.user_id, per_project=5
+        )
     sources = [
         RagSource(
-            content=doc.content,
-            source_type=doc.source_type,
-            project_name=doc.project_name,
-            snippet=" ".join(doc.content[:90].split()),
+            content=content,
+            source_type=source_type,
+            project_name=project_name,
+            snippet=" ".join(content[:90].split()),
             similarity=round(1 - dist, 3),
         )
-        for doc, dist in results
+        for content, source_type, project_name, dist in rows
     ]
     return RagSearchResponse(sources=sources)

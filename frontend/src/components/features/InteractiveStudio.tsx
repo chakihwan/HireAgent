@@ -1,18 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, Check, Sparkles, ArrowRight, Minus, Plus, FileText } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Loader2, Check, Sparkles, ArrowRight, Minus, Plus, FileText, Brain } from "lucide-react";
 import { runJdAnalyze, runWrite, runRagSearch } from "@/lib/api";
 import { useCloudModels } from "@/lib/queries";
 import { useStudioStore, type ModelRef } from "@/lib/studio-store";
-
-const SOURCE_LABELS: Record<string, string> = {
-  resume: "이력서",
-  essay: "기존 자소서",
-  project_readme: "README",
-  project_doc: "문서",
-  custom: "기타",
-};
+import { groupNeurons, defaultActiveKeys } from "@/lib/neurons";
+import { ExperienceNeurons } from "./ExperienceNeurons";
 
 const PROVIDER_LABEL: Record<string, string> = {
   ollama: "💻 로컬 · Ollama (무료)",
@@ -90,7 +84,13 @@ function ModelSlots({
   );
 }
 
-// 대화형 단계 실행 (ADR-031 B1·C) — JD 분석 → 작성, 각 단계 N번 후보 택1.
+const Arrow = () => (
+  <div className="flex shrink-0 items-center text-muted-foreground">
+    <ArrowRight className="size-5" />
+  </div>
+);
+
+// 대화형 단계 실행 (ADR-031) — JD 분석 → 내 경험(뉴런) → 초안 작성, 각 단계 N번 후보 택1.
 export function InteractiveStudio({ jd, ollamaModels }: { jd: string; ollamaModels: string[] }) {
   const cloudModelsQ = useCloudModels();
   const cloudModels = cloudModelsQ.data ?? {};
@@ -106,24 +106,9 @@ export function InteractiveStudio({ jd, ollamaModels }: { jd: string; ollamaMode
   const [wError, setWError] = useState<string | null>(null);
   const [rLoading, setRLoading] = useState(false);
 
-  async function loadRag() {
-    if (s.chosen === null || !s.candidates) return;
-    setRLoading(true);
-    try {
-      const r = await runRagSearch({
-        category: s.category,
-        jd_analysis: s.candidates[s.chosen].jd_analysis,
-      });
-      s.setRagSources(r.sources);
-    } catch {
-      s.setRagSources([]);
-    } finally {
-      setRLoading(false);
-    }
-  }
-
   const jdValid = s.slots.filter((x): x is ModelRef => x !== null);
   const wValid = s.writeSlots.filter((x): x is ModelRef => x !== null);
+  const chosenCand = s.chosen !== null && s.candidates ? s.candidates[s.chosen] : null;
 
   async function analyze() {
     if (!jdValid.length || jd.trim().length < 10) return;
@@ -131,6 +116,7 @@ export function InteractiveStudio({ jd, ollamaModels }: { jd: string; ollamaMode
     setJdError(null);
     s.setCandidates(null);
     s.setChosen(null);
+    s.resetRag();
     try {
       const r = await runJdAnalyze({ job_description: jd, models: jdValid });
       s.setCandidates(r.candidates);
@@ -141,22 +127,51 @@ export function InteractiveStudio({ jd, ollamaModels }: { jd: string; ollamaMode
     }
   }
 
+  // JD 후보 택1 — 바꾸면 내 경험을 새로 떠올린다.
+  function chooseJd(i: number) {
+    s.setChosen(i);
+    s.resetRag();
+  }
+
+  // 직무 분석 기반으로 내 경험 검색 → 유사도 임계로 자동 활성 (ADR-031 D).
+  async function loadRag(analysis: string) {
+    setRLoading(true);
+    try {
+      const r = await runRagSearch({ jd_analysis: analysis });
+      s.setRagSources(r.sources);
+      s.setRagActiveKeys(defaultActiveKeys(groupNeurons(r.sources)));
+    } catch {
+      s.setRagSources([]);
+      s.setRagActiveKeys([]);
+    } finally {
+      setRLoading(false);
+    }
+  }
+
+  // JD 선택되면 내 경험 자동 검색 (한 번만).
+  useEffect(() => {
+    if (chosenCand && s.ragSources === null && !rLoading) {
+      void loadRag(chosenCand.jd_analysis);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chosenCand, s.ragSources]);
+
   async function write() {
-    if (s.chosen === null || !s.candidates || !wValid.length) return;
-    const picked = s.candidates[s.chosen];
+    if (!chosenCand || !wValid.length) return;
     setWLoading(true);
     setWError(null);
     s.setWriteCandidates(null);
     s.setWriteChosen(null);
     try {
-      // 선택한 청크(제외 안 한 것) + 직접 붙여넣은 근거 → rag_context
-      const ragContext = [
-        ...(s.ragSources ?? []).filter((_, i) => !s.ragExcluded.includes(i)).map((src) => src.content),
-        ...(s.customRag.trim() ? [s.customRag.trim()] : []),
-      ];
+      // 켜둔 뉴런(프로젝트)의 청크 전체 + 직접 붙여넣은 근거 → rag_context
+      const neurons = groupNeurons(s.ragSources ?? []);
+      const activeChunks = neurons
+        .filter((n) => s.ragActiveKeys.includes(n.key))
+        .flatMap((n) => n.chunks.map((c) => c.content));
+      const ragContext = [...activeChunks, ...(s.customRag.trim() ? [s.customRag.trim()] : [])];
       const r = await runWrite({
-        jd_analysis: picked.jd_analysis,
-        target_company: picked.target_company,
+        jd_analysis: chosenCand.jd_analysis,
+        target_company: chosenCand.target_company,
         category: s.category,
         char_limit: s.charLimit,
         rag_context: ragContext,
@@ -169,6 +184,8 @@ export function InteractiveStudio({ jd, ollamaModels }: { jd: string; ollamaMode
       setWLoading(false);
     }
   }
+
+  const activeNeuronCount = s.ragActiveKeys.length;
 
   return (
     <div className="flex h-full gap-4 overflow-x-auto p-6">
@@ -227,7 +244,7 @@ export function InteractiveStudio({ jd, ollamaModels }: { jd: string; ollamaMode
               <button
                 key={i}
                 type="button"
-                onClick={() => s.setChosen(i)}
+                onClick={() => chooseJd(i)}
                 className={`block w-full rounded-xl border p-3 text-left transition-all ${
                   s.chosen === i ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border bg-card hover:border-muted-foreground"
                 }`}
@@ -244,16 +261,87 @@ export function InteractiveStudio({ jd, ollamaModels }: { jd: string; ollamaMode
         )}
       </div>
 
-      {/* ── 단계 2: 작성 (JD 선택 시 우측에) ── */}
-      {s.chosen !== null && (
+      {/* ── 단계 D: 내 경험 (뉴런) — JD 선택 시 ── */}
+      {chosenCand && (
         <>
-          <div className="flex shrink-0 items-center text-muted-foreground">
-            <ArrowRight className="size-5" />
+          <Arrow />
+          <div className="flex w-[28rem] shrink-0 flex-col">
+            <div className="mb-2 flex items-start justify-between">
+              <div>
+                <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                  <Brain className="size-4 text-primary" /> 내 경험
+                </h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  공고와 가까운 순서로 떠올렸어요 · 클릭해 켜고 끄기
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => loadRag(chosenCand.jd_analysis)}
+                disabled={rLoading}
+                className="shrink-0 text-[11px] text-primary hover:underline disabled:opacity-40"
+              >
+                {rLoading ? "검색 중..." : "다시 검색"}
+              </button>
+            </div>
+
+            {/* 뉴런 캔버스 */}
+            <div className="relative h-[22rem] overflow-hidden rounded-xl border border-border bg-card">
+              {rLoading ? (
+                <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                  <Loader2 className="mr-1.5 size-4 animate-spin" /> 경험을 떠올리는 중...
+                </div>
+              ) : s.ragSources && s.ragSources.length > 0 ? (
+                <ExperienceNeurons
+                  sources={s.ragSources}
+                  company={chosenCand.target_company}
+                  activeKeys={s.ragActiveKeys}
+                  onToggle={s.toggleRagKey}
+                />
+              ) : (
+                <div className="flex h-full flex-col items-center justify-center gap-1 px-6 text-center">
+                  <p className="text-xs text-muted-foreground">관련 경험을 못 찾았어요.</p>
+                  <p className="text-[11px] text-muted-foreground">아래에 직접 붙여넣거나 그냥 작성해도 돼요.</p>
+                </div>
+              )}
+              {s.ragSources && s.ragSources.length > 0 && (
+                <span className="pointer-events-none absolute bottom-2 left-2 rounded-md bg-muted/80 px-2 py-1 text-[10px] text-muted-foreground">
+                  켜진 경험 {activeNeuronCount}개 · 크고 가까울수록 적합
+                </span>
+              )}
+            </div>
+
+            {/* 직접 근거 + 다음 단계 */}
+            <textarea
+              value={s.customRag}
+              onChange={(e) => s.setCustomRag(e.target.value)}
+              rows={2}
+              placeholder="직접 경험·근거 붙여넣기 (선택 — 옵시디언 노트 등)"
+              className="mt-2 w-full resize-none rounded-md border border-border bg-card px-2 py-1.5 text-[11px] text-foreground outline-none focus:border-muted-foreground"
+            />
+            <button
+              type="button"
+              onClick={() => s.setRagConfirmed(true)}
+              disabled={rLoading}
+              className="mt-2 w-full rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-40"
+            >
+              이 경험으로 초안 작성 →
+            </button>
           </div>
+        </>
+      )}
+
+      {/* ── 단계 2: 작성 — 경험 확정 시 ── */}
+      {chosenCand && s.ragConfirmed && (
+        <>
+          <Arrow />
           <div className="w-80 shrink-0 space-y-3">
             <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
               <FileText className="size-4 text-primary" /> 초안 작성
             </h2>
+            <p className="text-xs text-muted-foreground">
+              켜둔 경험 {activeNeuronCount}개{s.customRag.trim() ? " + 직접 근거" : ""}를 반영해요
+            </p>
             {/* 항목 + 글자수 */}
             <div className="flex gap-2">
               <select
@@ -277,59 +365,6 @@ export function InteractiveStudio({ jd, ollamaModels }: { jd: string; ollamaMode
                 className="w-16 rounded-md border border-border bg-card px-2 py-1.5 text-xs text-foreground outline-none"
               />
               <span className="self-center text-xs text-muted-foreground">자</span>
-            </div>
-
-            {/* RAG 근거 큐레이션 (선택한 청크만 작성에 반영) */}
-            <div className="space-y-1.5 border-t border-border pt-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-foreground">근거 자료 (RAG)</span>
-                <button
-                  type="button"
-                  onClick={loadRag}
-                  disabled={rLoading}
-                  className="text-[11px] text-primary hover:underline disabled:opacity-40"
-                >
-                  {rLoading ? "검색 중..." : s.ragSources ? "다시 검색" : "근거 불러오기"}
-                </button>
-              </div>
-              {s.ragSources &&
-                (s.ragSources.length === 0 ? (
-                  <p className="text-[11px] text-muted-foreground">관련 경험을 못 찾았어요. 직접 붙여넣거나 그냥 작성하세요.</p>
-                ) : (
-                  <div className="space-y-1">
-                    {s.ragSources.map((src, i) => {
-                      const included = !s.ragExcluded.includes(i);
-                      return (
-                        <label
-                          key={i}
-                          className={`flex cursor-pointer items-start gap-1.5 rounded-md border p-1.5 ${
-                            included ? "border-primary/40 bg-primary/5" : "border-border bg-card opacity-60"
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={included}
-                            onChange={() => s.toggleRagExcluded(i)}
-                            className="mt-0.5 accent-primary"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <span className="text-[10px] font-medium text-foreground">
-                              {SOURCE_LABELS[src.source_type] ?? src.source_type} · {src.similarity.toFixed(2)}
-                            </span>
-                            <p className="truncate text-[10px] text-muted-foreground">{src.snippet}</p>
-                          </div>
-                        </label>
-                      );
-                    })}
-                  </div>
-                ))}
-              <textarea
-                value={s.customRag}
-                onChange={(e) => s.setCustomRag(e.target.value)}
-                rows={2}
-                placeholder="직접 근거 붙여넣기 (선택 — 옵시디언 노트 등)"
-                className="w-full resize-none rounded-md border border-border bg-card px-2 py-1.5 text-[11px] text-foreground outline-none"
-              />
             </div>
 
             <ModelSlots groups={groups} slots={s.writeSlots} setSlots={s.setWriteSlots} />
