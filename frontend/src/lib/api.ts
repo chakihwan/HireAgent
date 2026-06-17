@@ -678,3 +678,26 @@ export async function runWrite(req: {
   return res.json();
 }
 
+export type RagSource = {
+  content: string;
+  source_type: string;
+  project_name: string | null;
+  snippet: string;
+  similarity: number;
+};
+
+// 선택한 JD분석 기반으로 관련 경험(청크) 검색 → 사용자가 인용할 것 큐레이션
+export async function runRagSearch(req: {
+  category: string;
+  jd_analysis: string;
+  user_id?: string;
+}): Promise<{ sources: RagSource[] }> {
+  const res = await fetch(`${API_BASE}/api/v1/nodes/rag/search`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: "local", ...req }),
+  });
+  if (!res.ok) throw new Error(`RAG 검색 실패 (${res.status})`);
+  return res.json();
+}
+

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { JdAnalyzeCandidate, WriteCandidate } from "./api";
+import type { JdAnalyzeCandidate, RagSource, WriteCandidate } from "./api";
 
 // 대화형 세션 상태 (ADR-031 ④) — 컴포넌트 언마운트(모드 전환)와 무관하게 유지.
 export type ModelRef = { provider: string; model: string };
@@ -9,9 +9,14 @@ type StudioState = {
   slots: (ModelRef | null)[];
   candidates: JdAnalyzeCandidate[] | null;
   chosen: number | null;
-  // ── 단계 2: 작성 ──
+  // ── 단계 2: 작성 (항목·글자수) ──
   category: string;
   charLimit: number;
+  // ── RAG 큐레이션 (단계 D) ──
+  ragSources: RagSource[] | null;
+  ragExcluded: number[]; // 제외한 청크 인덱스 (기본 전부 포함)
+  customRag: string; // 직접 붙여넣은 근거
+  // ── 작성 슬롯/후보 ──
   writeSlots: (ModelRef | null)[];
   writeCandidates: WriteCandidate[] | null;
   writeChosen: number | null;
@@ -21,6 +26,9 @@ type StudioState = {
   setChosen: (i: number | null) => void;
   setCategory: (c: string) => void;
   setCharLimit: (n: number) => void;
+  setRagSources: (s: RagSource[] | null) => void;
+  toggleRagExcluded: (i: number) => void;
+  setCustomRag: (s: string) => void;
   setWriteSlots: (s: (ModelRef | null)[]) => void;
   setWriteCandidates: (c: WriteCandidate[] | null) => void;
   setWriteChosen: (i: number | null) => void;
@@ -33,6 +41,9 @@ const INITIAL = {
   chosen: null as number | null,
   category: "자기소개",
   charLimit: 500,
+  ragSources: null as RagSource[] | null,
+  ragExcluded: [] as number[],
+  customRag: "",
   writeSlots: [null, null] as (ModelRef | null)[],
   writeCandidates: null as WriteCandidate[] | null,
   writeChosen: null as number | null,
@@ -45,8 +56,17 @@ export const useStudioStore = create<StudioState>((set) => ({
   setChosen: (chosen) => set({ chosen }),
   setCategory: (category) => set({ category }),
   setCharLimit: (charLimit) => set({ charLimit }),
+  setRagSources: (ragSources) => set({ ragSources }),
+  toggleRagExcluded: (i) =>
+    set((s) => ({
+      ragExcluded: s.ragExcluded.includes(i)
+        ? s.ragExcluded.filter((x) => x !== i)
+        : [...s.ragExcluded, i],
+    })),
+  setCustomRag: (customRag) => set({ customRag }),
   setWriteSlots: (writeSlots) => set({ writeSlots }),
   setWriteCandidates: (writeCandidates) => set({ writeCandidates }),
   setWriteChosen: (writeChosen) => set({ writeChosen }),
-  reset: () => set({ ...INITIAL, slots: [null, null], writeSlots: [null, null] }),
+  reset: () =>
+    set({ ...INITIAL, slots: [null, null], writeSlots: [null, null], ragExcluded: [] }),
 }));
