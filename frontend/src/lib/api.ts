@@ -700,3 +700,29 @@ export async function runRagSearch(req: {
   return res.json();
 }
 
+// ── 직무 충족도 (ADR-032) ──
+
+export type CoverageMatch = {
+  project_name: string | null;
+  source_type: string;
+  similarity: number;
+};
+export type RequirementCoverage = {
+  text: string;
+  matches: CoverageMatch[];
+};
+
+// JD 핵심 요구 ↔ 내 경험 매칭 → 충족도 지도 (요구별 매칭 경험·점수)
+export async function runCoverage(req: {
+  jd_analysis: string;
+  user_id?: string;
+}): Promise<{ requirements: RequirementCoverage[] }> {
+  const res = await fetch(`${API_BASE}/api/v1/nodes/coverage/run`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: "local", ...req }),
+  });
+  if (!res.ok) throw new Error(`충족도 분석 실패 (${res.status})`);
+  return res.json();
+}
+

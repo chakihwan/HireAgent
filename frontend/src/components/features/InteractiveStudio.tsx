@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, Check, Sparkles, ArrowRight, Minus, Plus, FileText, Brain } from "lucide-react";
-import { runJdAnalyze, runWrite, runRagSearch } from "@/lib/api";
+import { runJdAnalyze, runWrite, runRagSearch, runCoverage } from "@/lib/api";
 import { useCloudModels } from "@/lib/queries";
 import { useStudioStore, type ModelRef } from "@/lib/studio-store";
 import { groupNeurons, defaultActiveKeys } from "@/lib/neurons";
@@ -133,15 +133,20 @@ export function InteractiveStudio({ jd, ollamaModels }: { jd: string; ollamaMode
     s.resetRag();
   }
 
-  // 직무 분석 기반으로 내 경험 검색 → 유사도 임계로 자동 활성 (ADR-031 D).
+  // 직무 분석 기반으로 내 경험 검색 + 충족도 매칭 → 유사도 임계로 자동 활성 (ADR-031 D · 032).
   async function loadRag(analysis: string) {
     setRLoading(true);
     try {
-      const r = await runRagSearch({ jd_analysis: analysis });
+      const [r, cov] = await Promise.all([
+        runRagSearch({ jd_analysis: analysis }),
+        runCoverage({ jd_analysis: analysis }).catch(() => ({ requirements: [] })),
+      ]);
       s.setRagSources(r.sources);
+      s.setCoverage(cov.requirements);
       s.setRagActiveKeys(defaultActiveKeys(groupNeurons(r.sources)));
     } catch {
       s.setRagSources([]);
+      s.setCoverage([]);
       s.setRagActiveKeys([]);
     } finally {
       setRLoading(false);
@@ -272,7 +277,7 @@ export function InteractiveStudio({ jd, ollamaModels }: { jd: string; ollamaMode
                   <Brain className="size-4 text-primary" /> 내 경험
                 </h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  공고와 가까운 순서로 떠올렸어요 · 클릭해 켜고 끄기
+                  직무 요구별로 내 경험이 얼마나 받쳐주는지 · 클릭해 켜고 끄기
                 </p>
               </div>
               <button
@@ -294,6 +299,7 @@ export function InteractiveStudio({ jd, ollamaModels }: { jd: string; ollamaMode
               ) : s.ragSources && s.ragSources.length > 0 ? (
                 <ExperienceNeurons
                   sources={s.ragSources}
+                  coverage={s.coverage ?? []}
                   company={chosenCand.target_company}
                   activeKeys={s.ragActiveKeys}
                   onToggle={s.toggleRagKey}
@@ -306,7 +312,7 @@ export function InteractiveStudio({ jd, ollamaModels }: { jd: string; ollamaMode
               )}
               {s.ragSources && s.ragSources.length > 0 && (
                 <span className="pointer-events-none absolute bottom-2 left-2 rounded-md bg-muted/80 px-2 py-1 text-[10px] text-muted-foreground">
-                  켜진 경험 {activeNeuronCount}개 · 크고 가까울수록 적합
+                  켜진 경험 {activeNeuronCount}개 · 주황 요구 = 보강 필요
                 </span>
               )}
             </div>

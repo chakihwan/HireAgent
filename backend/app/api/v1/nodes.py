@@ -5,6 +5,7 @@
 """
 
 import asyncio
+import re
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +16,9 @@ from app.api.v1.essays import _resolve_api_key
 from app.db import AsyncSessionLocal, get_db
 from app.rag.retriever import search_grouped_by_project
 from app.schemas.node import (
+    CoverageMatch,
+    CoverageRequest,
+    CoverageResponse,
     JDAnalyzeCandidate,
     JDAnalyzeRequest,
     JDAnalyzeResponse,
@@ -22,6 +26,7 @@ from app.schemas.node import (
     RagSearchRequest,
     RagSearchResponse,
     RagSource,
+    RequirementCoverage,
     WriteCandidate,
     WriteRequest,
     WriteResponse,
@@ -128,3 +133,54 @@ async def run_rag_search(req: RagSearchRequest) -> RagSearchResponse:
         for content, source_type, project_name, dist in rows
     ]
     return RagSearchResponse(sources=sources)
+
+
+# ── 직무 충족도 지도 (ADR-032) ──────────────────────────────────
+
+# jd_analyzer가 출력한 "## 핵심 요구 역량" 불릿을 추출 (LLM 미사용 — 결정론적).
+_REQ_SECTION = re.compile(r"##\s*핵심\s*요구\s*역량\s*\n(.*?)(?:\n##|\Z)", re.DOTALL)
+_BULLET = re.compile(r"^\s*[-•*]\s*(.+?)\s*$", re.MULTILINE)
+_TRAIL_PAREN = re.compile(r"\s*[(（][^)）]*[)）]\s*$")
+
+
+def _extract_requirements(jd_analysis: str) -> list[str]:
+    """JD 분석 텍스트에서 핵심 요구 역량 불릿을 뽑는다 (최대 5개)."""
+    m = _REQ_SECTION.search(jd_analysis)
+    block = m.group(1) if m else ""
+    reqs: list[str] = []
+    for b in _BULLET.findall(block):
+        cleaned = _TRAIL_PAREN.sub("", b).strip()
+        if cleaned:
+            reqs.append(cleaned)
+    return reqs[:5]
+
+
+@router.post("/coverage/run", response_model=CoverageResponse)
+async def run_coverage(req: CoverageRequest) -> CoverageResponse:
+    """직무 핵심 요구 ↔ 내 경험 매칭 (ADR-032).
+
+    요구는 JD 분석의 "핵심 요구 역량" 불릿에서 정규식으로 추출(LLM 미사용).
+    요구마다 프로젝트별 최적 청크를 찾아 매칭 점수를 매긴다 → 프론트가 충족도 지도로 시각화.
+    매칭이 약한 요구 = "보강 필요"(직무가 원하지만 내 경험에 부족한 영역).
+    """
+    requirements = _extract_requirements(req.jd_analysis)
+    if not requirements:
+        return CoverageResponse(requirements=[])
+
+    async with AsyncSessionLocal() as db:
+        out: list[RequirementCoverage] = []
+        for text in requirements:
+            rows = await search_grouped_by_project(
+                db, query=text, user_id=req.user_id, per_project=1
+            )
+            matches = [
+                CoverageMatch(
+                    project_name=project_name,
+                    source_type=source_type,
+                    similarity=round(1 - dist, 3),
+                )
+                for _content, source_type, project_name, dist in rows
+            ]
+            matches.sort(key=lambda m: m.similarity, reverse=True)
+            out.append(RequirementCoverage(text=text, matches=matches))
+    return CoverageResponse(requirements=out)

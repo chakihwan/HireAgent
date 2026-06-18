@@ -30,12 +30,17 @@ export type Neuron = {
   similarity: number; // 청크 중 최대 유사도 (= 직무 적합도)
 };
 
+// 그룹 식별자 — project_name 우선, 없으면(이력서 등) source_type. coverage 매칭과 공유.
+export function neuronKey(projectName: string | null | undefined, sourceType: string): string {
+  return projectName?.trim() || `__${sourceType}`;
+}
+
 // 청크 → 뉴런 그룹. project_name이 없으면(이력서 등) source_type으로 묶는다.
 export function groupNeurons(sources: RagSource[]): Neuron[] {
   const map = new Map<string, Neuron>();
   for (const s of sources) {
     const name = s.project_name?.trim();
-    const key = name || `__${s.source_type}`;
+    const key = neuronKey(s.project_name, s.source_type);
     const label = name || SOURCE_LABELS[s.source_type] || s.source_type;
     const ex = map.get(key);
     if (ex) {

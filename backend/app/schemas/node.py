@@ -73,3 +73,26 @@ class RagSource(BaseModel):
 
 class RagSearchResponse(BaseModel):
     sources: list[RagSource]
+
+
+# ── 직무 충족도 (ADR-032, 요구사항 ↔ 경험 매칭) ──
+
+
+class CoverageRequest(BaseModel):
+    jd_analysis: str = Field(..., min_length=1)  # "## 핵심 요구 역량" 불릿에서 요구 추출
+    user_id: str = Field(default="local")
+
+
+class CoverageMatch(BaseModel):
+    project_name: str | None = None
+    source_type: str
+    similarity: float  # 이 요구와 해당 경험의 유사도 (0~1)
+
+
+class RequirementCoverage(BaseModel):
+    text: str
+    matches: list[CoverageMatch]  # 이 요구를 충족하는 경험들 (유사도순). 비면 = 보강 필요
+
+
+class CoverageResponse(BaseModel):
+    requirements: list[RequirementCoverage]

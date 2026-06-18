@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { JdAnalyzeCandidate, RagSource, WriteCandidate } from "./api";
+import type { JdAnalyzeCandidate, RagSource, RequirementCoverage, WriteCandidate } from "./api";
 
 // 대화형 세션 상태 (ADR-031 ④) — 컴포넌트 언마운트(모드 전환)와 무관하게 유지.
 export type ModelRef = { provider: string; model: string };
@@ -11,6 +11,7 @@ type StudioState = {
   chosen: number | null;
   // ── 단계 D: 내 경험(뉴런) 큐레이션 ──
   ragSources: RagSource[] | null;
+  coverage: RequirementCoverage[] | null; // 직무 요구↔경험 매칭 (ADR-032)
   ragActiveKeys: string[]; // 켜둔 뉴런(프로젝트) 키 — 작성에 인용
   ragConfirmed: boolean; // "이 경험으로 작성" 확정 → 작성 컬럼 노출
   customRag: string; // 직접 붙여넣은 근거 (옵시디언 노트 등)
@@ -28,6 +29,7 @@ type StudioState = {
   setCategory: (c: string) => void;
   setCharLimit: (n: number) => void;
   setRagSources: (s: RagSource[] | null) => void;
+  setCoverage: (c: RequirementCoverage[] | null) => void;
   setRagActiveKeys: (keys: string[]) => void;
   toggleRagKey: (key: string) => void;
   setRagConfirmed: (b: boolean) => void;
@@ -46,6 +48,7 @@ const INITIAL = {
   category: "자기소개",
   charLimit: 500,
   ragSources: null as RagSource[] | null,
+  coverage: null as RequirementCoverage[] | null,
   ragActiveKeys: [] as string[],
   ragConfirmed: false,
   customRag: "",
@@ -62,6 +65,7 @@ export const useStudioStore = create<StudioState>((set) => ({
   setCategory: (category) => set({ category }),
   setCharLimit: (charLimit) => set({ charLimit }),
   setRagSources: (ragSources) => set({ ragSources }),
+  setCoverage: (coverage) => set({ coverage }),
   setRagActiveKeys: (ragActiveKeys) => set({ ragActiveKeys }),
   toggleRagKey: (key) =>
     set((s) => ({
@@ -71,7 +75,7 @@ export const useStudioStore = create<StudioState>((set) => ({
     })),
   setRagConfirmed: (ragConfirmed) => set({ ragConfirmed }),
   resetRag: () =>
-    set({ ragSources: null, ragActiveKeys: [], ragConfirmed: false, customRag: "" }),
+    set({ ragSources: null, coverage: null, ragActiveKeys: [], ragConfirmed: false, customRag: "" }),
   setCustomRag: (customRag) => set({ customRag }),
   setWriteSlots: (writeSlots) => set({ writeSlots }),
   setWriteCandidates: (writeCandidates) => set({ writeCandidates }),
