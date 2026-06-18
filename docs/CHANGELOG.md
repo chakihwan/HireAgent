@@ -19,6 +19,8 @@
   정규식으로 추출(결정론적, 비용·지연 0). 매칭은 `search_grouped_by_project` 재사용
 - 백엔드 `POST /nodes/coverage/run`, 프론트 `runRagSearch`와 병렬 호출. 요구 추출 실패 시
   경험만 단순 방사형 폴백(회귀 0). 켜고 끄기·작성 인용은 ADR-031 그대로
+- **크게보기(전체화면 모달)** — 좁은 칸에 갇혀 작던 지도를 크게 볼 수 있게(ESC·배경 클릭 닫기).
+  같은 store 공유라 작은 맵과 켜고 끄기 동기화
 - **verify**: coverage 실측 5요구 추출·매칭(MLOps→mnist 2위 등 차별화), 지도 31노드 + gap
   주황 렌더 스크린샷 확인, tsc·route 컴파일 PASS
 

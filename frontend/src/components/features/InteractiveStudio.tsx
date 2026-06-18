@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Check, Sparkles, ArrowRight, Minus, Plus, FileText, Brain } from "lucide-react";
+import { Loader2, Check, Sparkles, ArrowRight, Minus, Plus, FileText, Brain, Maximize2, X } from "lucide-react";
 import { runJdAnalyze, runWrite, runRagSearch, runCoverage } from "@/lib/api";
 import { useCloudModels } from "@/lib/queries";
 import { useStudioStore, type ModelRef } from "@/lib/studio-store";
@@ -105,6 +105,21 @@ export function InteractiveStudio({ jd, ollamaModels }: { jd: string; ollamaMode
   const [wLoading, setWLoading] = useState(false);
   const [wError, setWError] = useState<string | null>(null);
   const [rLoading, setRLoading] = useState(false);
+  const [expanded, setExpanded] = useState(false); // 충족도 지도 크게보기
+
+  // 크게보기 — ESC 닫기 + 배경 스크롤 잠금
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExpanded(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [expanded]);
 
   const jdValid = s.slots.filter((x): x is ModelRef => x !== null);
   const wValid = s.writeSlots.filter((x): x is ModelRef => x !== null);
@@ -280,14 +295,25 @@ export function InteractiveStudio({ jd, ollamaModels }: { jd: string; ollamaMode
                   직무 요구별로 내 경험이 얼마나 받쳐주는지 · 클릭해 켜고 끄기
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => loadRag(chosenCand.jd_analysis)}
-                disabled={rLoading}
-                className="shrink-0 text-[11px] text-primary hover:underline disabled:opacity-40"
-              >
-                {rLoading ? "검색 중..." : "다시 검색"}
-              </button>
+              <div className="flex shrink-0 items-center gap-2.5">
+                {s.ragSources && s.ragSources.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setExpanded(true)}
+                    className="flex items-center gap-1 text-[11px] text-primary hover:underline"
+                  >
+                    <Maximize2 className="size-3" /> 크게보기
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => loadRag(chosenCand.jd_analysis)}
+                  disabled={rLoading}
+                  className="text-[11px] text-primary hover:underline disabled:opacity-40"
+                >
+                  {rLoading ? "검색 중..." : "다시 검색"}
+                </button>
+              </div>
             </div>
 
             {/* 뉴런 캔버스 */}
@@ -334,6 +360,44 @@ export function InteractiveStudio({ jd, ollamaModels }: { jd: string; ollamaMode
               이 경험으로 초안 작성 →
             </button>
           </div>
+
+          {/* 크게보기 — 같은 store 공유라 켜고 끄기 동기화 */}
+          {expanded && s.ragSources && s.ragSources.length > 0 && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+              onClick={() => setExpanded(false)}
+            >
+              <div
+                className="relative flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <Brain className="size-4 text-primary" />
+                    <span className="text-sm font-semibold text-foreground">내 경험 — 직무 충족도 지도</span>
+                    <span className="text-xs text-muted-foreground">· {chosenCand.target_company}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setExpanded(false)}
+                    className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    aria-label="닫기"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+                <div className="relative flex-1">
+                  <ExperienceNeurons
+                    sources={s.ragSources}
+                    coverage={s.coverage ?? []}
+                    company={chosenCand.target_company}
+                    activeKeys={s.ragActiveKeys}
+                    onToggle={s.toggleRagKey}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 
