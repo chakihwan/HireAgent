@@ -285,7 +285,7 @@ export function InteractiveStudio({ jd, ollamaModels }: { jd: string; ollamaMode
       {chosenCand && (
         <>
           <Arrow />
-          <div className="flex w-[28rem] shrink-0 flex-col">
+          <div className="flex w-[32rem] shrink-0 flex-col">
             <div className="mb-2 flex items-start justify-between">
               <div>
                 <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
@@ -317,7 +317,7 @@ export function InteractiveStudio({ jd, ollamaModels }: { jd: string; ollamaMode
             </div>
 
             {/* 뉴런 캔버스 */}
-            <div className="relative h-[22rem] overflow-hidden rounded-xl border border-border bg-card">
+            <div className="relative h-[30rem] overflow-hidden rounded-xl border border-border bg-card">
               {rLoading ? (
                 <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
                   <Loader2 className="mr-1.5 size-4 animate-spin" /> 경험을 떠올리는 중...
@@ -368,13 +368,13 @@ export function InteractiveStudio({ jd, ollamaModels }: { jd: string; ollamaMode
               onClick={() => setExpanded(false)}
             >
               <div
-                className="relative flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
+                className="relative flex h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
                   <div className="flex items-center gap-1.5">
                     <Brain className="size-4 text-primary" />
-                    <span className="text-sm font-semibold text-foreground">내 경험 — 직무 충족도 지도</span>
+                    <span className="text-sm font-semibold text-foreground">내 경험 — 직무 적합도 지도</span>
                     <span className="text-xs text-muted-foreground">· {chosenCand.target_company}</span>
                   </div>
                   <button
