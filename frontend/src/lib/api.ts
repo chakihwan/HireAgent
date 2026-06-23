@@ -712,7 +712,7 @@ export type RequirementCoverage = {
   matches: CoverageMatch[];
 };
 
-// JD 핵심 요구 ↔ 내 경험 매칭 → 충족도 지도 (요구별 매칭 경험·점수)
+// JD 핵심 요구 ↔ 내 경험 매칭 → 적합도 지도 (요구별 매칭 경험·점수)
 export async function runCoverage(req: {
   jd_analysis: string;
   user_id?: string;
@@ -722,7 +722,25 @@ export async function runCoverage(req: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ user_id: "local", ...req }),
   });
-  if (!res.ok) throw new Error(`충족도 분석 실패 (${res.status})`);
+  if (!res.ok) throw new Error(`적합도 분석 실패 (${res.status})`);
+  return res.json();
+}
+
+// 선택한 초안을 목표 글자수에 맞게 조정 (압축/확장, Python len 검증 — ADR-031 E)
+export async function runAdjust(req: {
+  content: string;
+  char_limit: number;
+  provider: string;
+  model: string;
+  api_key?: string;
+  user_id?: string;
+}): Promise<{ content: string; char_count: number; iterations: number; status: string }> {
+  const res = await fetch(`${API_BASE}/api/v1/nodes/adjust/run`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: "local", ...req }),
+  });
+  if (!res.ok) throw new Error(`글자수 조정 실패 (${res.status})`);
   return res.json();
 }
 

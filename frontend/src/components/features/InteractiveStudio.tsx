@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Check, Sparkles, ArrowRight, Minus, Plus, FileText, Brain, Maximize2, X } from "lucide-react";
-import { runJdAnalyze, runWrite, runRagSearch, runCoverage } from "@/lib/api";
+import { Loader2, Check, Sparkles, ArrowRight, Minus, Plus, FileText, Brain, Maximize2, X, Ruler } from "lucide-react";
+import { runJdAnalyze, runWrite, runRagSearch, runCoverage, runAdjust, saveToLibrary } from "@/lib/api";
 import { useCloudModels } from "@/lib/queries";
 import { useStudioStore, type ModelRef } from "@/lib/studio-store";
 import { groupNeurons, defaultActiveKeys } from "@/lib/neurons";
@@ -124,6 +124,72 @@ export function InteractiveStudio({ jd, ollamaModels }: { jd: string; ollamaMode
   const jdValid = s.slots.filter((x): x is ModelRef => x !== null);
   const wValid = s.writeSlots.filter((x): x is ModelRef => x !== null);
   const chosenCand = s.chosen !== null && s.candidates ? s.candidates[s.chosen] : null;
+  const chosenDraft = s.writeChosen !== null && s.writeCandidates ? s.writeCandidates[s.writeChosen] : null;
+
+  // ── 마무리 단계: 글자수 조정 · 저장 (ADR-031 E) ──
+  const [finalContent, setFinalContent] = useState("");
+  const [adjusting, setAdjusting] = useState(false);
+  const [adjMsg, setAdjMsg] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  // 초안 택1이 바뀌면 마무리 칸을 그 초안으로 초기화
+  useEffect(() => {
+    if (chosenDraft) {
+      setFinalContent(chosenDraft.content);
+      setAdjMsg(null);
+      setSaved(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.writeChosen, s.writeCandidates]);
+
+  async function adjust() {
+    if (!chosenDraft) return;
+    setAdjusting(true);
+    setAdjMsg(null);
+    try {
+      const r = await runAdjust({
+        content: finalContent,
+        char_limit: s.charLimit,
+        provider: chosenDraft.provider,
+        model: chosenDraft.model,
+      });
+      setFinalContent(r.content);
+      setSaved(false);
+      setAdjMsg(
+        r.status === "ok"
+          ? `목표에 맞췄어요 — ${r.char_count}자 (${r.iterations}회)`
+          : `${r.char_count}자 (${r.iterations}회 시도, 아직 ${r.status === "compress" ? "초과" : "부족"})`,
+      );
+    } catch (e) {
+      setAdjMsg(e instanceof Error ? e.message : "조정 실패");
+    } finally {
+      setAdjusting(false);
+    }
+  }
+
+  async function save() {
+    if (!finalContent.trim()) return;
+    setSaving(true);
+    try {
+      await saveToLibrary({
+        category: s.category,
+        content: finalContent,
+        char_target: s.charLimit,
+        is_final: true,
+        generation_metadata: {
+          source: "interactive",
+          company: chosenCand?.target_company,
+          model: chosenDraft ? `${chosenDraft.provider}:${chosenDraft.model}` : undefined,
+        },
+      });
+      setSaved(true);
+    } catch (e) {
+      setAdjMsg(e instanceof Error ? e.message : "저장 실패");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function analyze() {
     if (!jdValid.length || jd.trim().length < 10) return;
@@ -477,7 +543,80 @@ export function InteractiveStudio({ jd, ollamaModels }: { jd: string; ollamaMode
               </div>
             )}
             {s.writeChosen !== null && (
-              <p className="text-sm text-success">✓ 초안 선택 완료 (글자수 조정·저장은 다음 단계)</p>
+              <p className="text-sm text-success">✓ 초안 선택 — 오른쪽에서 마무리해요 →</p>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ── 마무리: 글자수 조정 · 저장 — 초안 택1 시 ── */}
+      {chosenCand && chosenDraft && (
+        <>
+          <Arrow />
+          <div className="w-80 shrink-0 space-y-3">
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+              <Ruler className="size-4 text-primary" /> 글자수 조정 · 저장
+            </h2>
+            {(() => {
+              const len = finalContent.length;
+              const lo = Math.floor(s.charLimit * 0.95);
+              const hi = Math.ceil(s.charLimit * 1.05);
+              const within = len >= lo && len <= hi;
+              return (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">목표 {s.charLimit}자</span>
+                  <span className={within ? "font-semibold text-success" : "font-semibold text-amber-600 dark:text-amber-400"}>
+                    {len}자 {within ? "✓" : len > hi ? "(초과)" : "(부족)"}
+                  </span>
+                </div>
+              );
+            })()}
+            <textarea
+              value={finalContent}
+              onChange={(e) => {
+                setFinalContent(e.target.value);
+                setSaved(false);
+              }}
+              rows={12}
+              className="w-full resize-none rounded-md border border-border bg-card px-3 py-2 text-xs leading-relaxed text-foreground outline-none focus:border-muted-foreground"
+            />
+            <button
+              type="button"
+              onClick={adjust}
+              disabled={adjusting}
+              className="w-full rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-xs font-semibold text-primary disabled:opacity-40"
+            >
+              {adjusting ? (
+                <span className="flex items-center justify-center gap-1.5">
+                  <Loader2 className="size-3.5 animate-spin" /> 조정 중...
+                </span>
+              ) : (
+                `글자수 맞추기 (${chosenDraft.model})`
+              )}
+            </button>
+            {adjMsg && <p className="text-[11px] text-muted-foreground">{adjMsg}</p>}
+            <button
+              type="button"
+              onClick={save}
+              disabled={saving || !finalContent.trim()}
+              className="w-full rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-40"
+            >
+              {saving ? (
+                <span className="flex items-center justify-center gap-1.5">
+                  <Loader2 className="size-3.5 animate-spin" /> 저장 중...
+                </span>
+              ) : (
+                "라이브러리에 저장"
+              )}
+            </button>
+            {saved && (
+              <p className="text-sm text-success">
+                ✓ 저장 완료 —{" "}
+                <a href="/library" className="underline">
+                  라이브러리
+                </a>
+                에서 확인
+              </p>
             )}
           </div>
         </>

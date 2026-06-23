@@ -14,8 +14,11 @@ from app.agents.essay_writer import essay_writer_node
 from app.agents.jd_analyzer import jd_analyzer_node
 from app.api.v1.essays import _resolve_api_key
 from app.db import AsyncSessionLocal, get_db
+from app.llm.factory import LLMFactory
 from app.rag.retriever import search_grouped_by_project
 from app.schemas.node import (
+    AdjustRequest,
+    AdjustResponse,
     CoverageMatch,
     CoverageRequest,
     CoverageResponse,
@@ -31,6 +34,8 @@ from app.schemas.node import (
     WriteRequest,
     WriteResponse,
 )
+from app.utils.char_counter import count_chars, validate_chars
+from app.utils.text_cleaner import clean_llm_output
 
 router = APIRouter(prefix="/nodes", tags=["nodes"])
 
@@ -184,3 +189,68 @@ async def run_coverage(req: CoverageRequest) -> CoverageResponse:
             matches.sort(key=lambda m: m.similarity, reverse=True)
             out.append(RequirementCoverage(text=text, matches=matches))
     return CoverageResponse(requirements=out)
+
+
+# ── 글자수 조정 (대화형 마무리 — ADR-031 E) ─────────────────────
+
+_ADJUST_SYSTEM = """당신은 자기소개서 분량 조정 전문가입니다.
+핵심 내용과 어조는 유지하면서 분량만 목표에 맞게 자연스럽게 조정합니다.
+
+규칙:
+- 마크다운 문법 금지(**, *, #, 불릿, 헤더 등)
+- 글자수 메타("수정 후 N자" 등)·이메일·전화·주소 출력 금지
+- 수정된 자소서 본문(순수 텍스트 단락)만 출력"""
+
+
+async def _adjust_once(
+    content: str, target: int, mode: str, provider: str, model: str, api_key: str
+) -> str:
+    """한 번 압축/확장. 글자수 판정·검증은 Python(ADR-001), LLM은 분량만 조정."""
+    cur = count_chars(content)
+    if mode == "compress":
+        lo = int(target * 0.92)
+        prompt = (
+            f"아래 자소서를 {target}자 이하로 자연스럽게 줄여주세요.\n"
+            f"현재 {cur}자 → 목표 {lo}~{target}자. 내용을 새로 추가하지 말고 기존에서만 줄이세요.\n\n"
+            f"[현재 자소서]\n{content}\n\n수정된 본문만 출력하세요."
+        )
+        max_tokens = min(int(target * 1.1), 1500)
+    else:  # expand
+        prompt = (
+            f"아래 자소서를 약 {target}자로 자연스럽게 늘려주세요.\n"
+            f"현재 {cur}자 → 목표 {target}자. 기존 내용과 일관된 구체적 맥락·사례를 보강하되 "
+            f"과장·허위는 금지합니다.\n\n"
+            f"[현재 자소서]\n{content}\n\n수정된 본문만 출력하세요."
+        )
+        max_tokens = min(int(target * 1.7), 2000)
+
+    llm = LLMFactory.create(provider, model, api_key)
+    result = await llm.generate(
+        prompt=prompt, system=_ADJUST_SYSTEM, max_tokens=max_tokens, temperature=0.3
+    )
+    return clean_llm_output(result.content)
+
+
+@router.post("/adjust/run", response_model=AdjustResponse)
+async def run_adjust(
+    req: AdjustRequest, db: AsyncSession = Depends(get_db)
+) -> AdjustResponse:
+    """선택한 초안을 목표 글자수에 맞게 조정 (압축/확장, 최대 3회 — ADR-031 E).
+
+    목표 도달 판정은 Python `validate_chars`(±5%), LLM은 분량 조정만 (Rule #1).
+    """
+    api_key = await _resolve_api_key(db, req.user_id, req.provider, req.api_key)
+    content = req.content
+    target = req.char_limit
+    status = validate_chars(content, target)
+    iterations = 0
+    while status != "ok" and iterations < 3:
+        iterations += 1
+        content = await _adjust_once(content, target, status, req.provider, req.model, api_key)
+        status = validate_chars(content, target)
+    return AdjustResponse(
+        content=content,
+        char_count=count_chars(content),
+        iterations=iterations,
+        status=status,
+    )

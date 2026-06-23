@@ -96,3 +96,22 @@ class RequirementCoverage(BaseModel):
 
 class CoverageResponse(BaseModel):
     requirements: list[RequirementCoverage]
+
+
+# ── 글자수 조정 (대화형 마무리 단계 — ADR-031 E) ──
+
+
+class AdjustRequest(BaseModel):
+    content: str = Field(..., min_length=1)
+    char_limit: int = Field(..., ge=50, le=2000)
+    provider: str
+    model: str
+    api_key: str = ""
+    user_id: str = Field(default="local")
+
+
+class AdjustResponse(BaseModel):
+    content: str
+    char_count: int  # Python len() 기준 (ADR-001)
+    iterations: int  # 조정 시도 횟수
+    status: str  # "ok" | "compress"(아직 초과) | "expand"(아직 부족)
